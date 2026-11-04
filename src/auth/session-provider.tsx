@@ -6,6 +6,7 @@ import { getMe, type MeData } from '@/api/auth';
 import { ApiError } from '@/api/client';
 import { api, checkWorkspace, endSession, loadWorkspace, onSessionEnd, secureTokens, setWorkspace, workspaceToBaseUrl } from '@/api/session';
 import { PLATFORM_DOMAIN } from './platform';
+import { identify } from '@/lib/crash';
 
 const BIOMETRIC = 'sortpi.biometric';
 
@@ -116,6 +117,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     else await SecureStore.deleteItemAsync(BIOMETRIC);
     setBiometricEnabledState(on);
   }, []);
+
+  useEffect(() => identify(me), [me]);
 
   const value = useMemo(
     () => ({ status, me, workspaceUrl, biometricAvailable, biometricEnabled, chooseWorkspace, signIn, signOut, unlock, retry: boot, setBiometricEnabled }),
