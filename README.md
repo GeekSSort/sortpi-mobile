@@ -20,6 +20,7 @@
   <a href="#get-started">Get started</a> ·
   <a href="#a-look-inside">App tour</a> ·
   <a href="#how-it-fits-together">Architecture</a> ·
+  <a href="#branching-and-releases">Branching</a> ·
   <a href="#build-a-tester-app">Tester build</a> ·
   <a href="docs/tester-guide.md">Tester guide</a>
 </p>
@@ -192,7 +193,7 @@ Each feature folder keeps its **rules in plain TypeScript files with tests** (`l
 ## Check your changes
 
 ```sh
-npm test                 # 296 unit tests: money, rules, API client, translations
+npm test                 # 298 unit tests: money, rules, API client, translations
 npx tsc --noEmit         # type check
 npx expo lint            # lint
 ```
@@ -201,7 +202,64 @@ There is one known lint error in `src/auth/session-provider.tsx` (setting state 
 
 Screens are checked on an Android emulator against a local backend. When sign-up sends a code by email, a local backend prints it in its console log. The parity tables record, row by row, what was seen and what was not.
 
+## Branching and releases
+
+Work moves in one direction, and **only `staging` builds an app**.
+
+```
+feature branch ──PR──▶ dev ──PR──▶ staging ──PR──▶ main
+                        │            │              │
+                   checks only   checks + BUILD   Google Play
+                   (no build)    + Firebase "team" (not built yet)
+```
+
+| Branch | What it is for | What CI does | Who is affected |
+| --- | --- | --- | --- |
+| your feature branch | One piece of work | Runs the checks on its pull request | Nobody |
+| `dev` (default) | Everything that is finished and checked | Checks again, no build | Nobody |
+| `staging` | What testers get | Checks, then builds the release APK and sends it to the Firebase `team` group | Testers get an email |
+| `main` | What real users get | Nothing yet | Google Play, once that step is built |
+
+### Day to day
+
+1. **Start from `dev`.** Name the branch `<your-name>/<short-description>`.
+
+   ```sh
+   git fetch origin
+   git switch -c yourname/short-description origin/dev
+   ```
+
+2. **Work in small commits** written as `type(scope): summary`, for example `fix(sell): say why a sale was refused`.
+3. **Check before you push** (the same checks CI runs):
+
+   ```sh
+   npm test && npx tsc --noEmit
+   ```
+
+4. **Open a pull request into `dev`** (it is the default, so GitHub already points there) and merge it when the `checks` run is green. Use a draft while it is unfinished. The `Kilo Code Review` check comes from an outside app and can be ignored.
+5. **Send testers a build:** open a pull request from `dev` into `staging` and merge it. The `staging build` run takes about 15 minutes, then the build appears in Firebase and testers are emailed. Watch it under the repository's **Actions** tab.
+6. **Ship to the Play Store** (later): a pull request from `staging` into `main`. The Play step is not built yet, see [docs/release-flow.md](docs/release-flow.md).
+
+If a merge into `staging` does not start a build, run it by hand: **Actions → staging build → Run workflow** (branch `staging`), or
+
+```sh
+gh workflow run "staging build" --ref staging
+```
+
+### Rules
+
+- **Never push straight to `dev`, `staging` or `main`.** Open a pull request. GitHub does not stop a direct push yet (no branch protection is set), so this is a rule between people.
+- **Stacked work:** when one change depends on another, base the second pull request on the first one's branch, and merge from the bottom up (re-target each to `dev` as the one below it merges).
+- **No builds from a laptop for testers.** A tester build always comes from `staging`, so everyone gets the same one. Local release builds are only for checking that a change builds.
+- **Never commit secrets:** `google-services.json`, keystores, service-account keys, `.env` files and passwords stay out of git. CI gets them from repository secrets (`FIREBASE_APP_ID`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `GOOGLE_SERVICES_JSON`). The repository is public.
+- **Native changes need a new build.** Adding or removing a package with native code (Firebase, camera, keyboard) is not visible to testers until a new `staging` build is made.
+- **An urgent fix for testers:** branch from `staging`, open the pull request into `staging`, then merge `staging` back into `dev` so `dev` does not lose it.
+
+How the pipeline is put together (the workflows, the Firebase project, the secrets and what the Play Store step still needs) is in [docs/release-flow.md](docs/release-flow.md).
+
 ## Build a tester app
+
+Testers get their app from the `staging` build above. To build one on your own machine, to check that a change builds:
 
 ```sh
 cd android
@@ -210,7 +268,7 @@ NODE_ENV=production ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v
 
 The APK is at `android/app/build/outputs/apk/release/app-release.apk` (about 64 MB). The `android/` folder is generated from `app.json` — never edit it by hand; regenerate it with `npx expo prebuild --platform android`.
 
-- Raise `android.versionCode` in `app.json` for every upload.
+- Raise `android.versionCode` in `app.json` for every manual upload. The `staging` build sets it from the GitHub run number itself.
 - This build is signed with the standard Android **debug** key. That is fine for Firebase App Distribution testers. **Make a real upload key before the Play Store.**
 - A release build only talks to `https` shops. Use a debug build (`npx expo run:android`) for a local `http` server.
 - Package name: `com.geekssort.sortpi`. iPhone builds need an Apple distribution profile and are not set up.
@@ -224,6 +282,7 @@ Full steps for testers and for whoever uploads builds are in [docs/tester-guide.
 | [docs/parity/README.md](docs/parity/README.md) | One row per web feature: what the phone does, and what was and was not seen |
 | [docs/design-rules.md](docs/design-rules.md) | The checklist every screen is walked against |
 | [docs/parity/build-plan.md](docs/parity/build-plan.md) | The plan that ordered the phases |
+| [docs/release-flow.md](docs/release-flow.md) | The branch flow, the CI workflows, the Firebase and GitHub setup, what the Play Store step needs |
 | [docs/tester-guide.md](docs/tester-guide.md) | Install, what to check, how to report a problem, how to upload builds |
 | [docs/server-requests/email-shop-name.md](docs/server-requests/email-shop-name.md) | A server change this app would like: "email me my shop name" |
 
