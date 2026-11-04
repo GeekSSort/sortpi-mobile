@@ -7,7 +7,11 @@ import { getPerformance, trace } from '@react-native-firebase/perf';
  * Only release builds send data, so a developer's own testing does not skew the numbers.
  */
 export function initPerformance(): void {
-  getPerformance().dataCollectionEnabled = !__DEV__;
+  try {
+    getPerformance().dataCollectionEnabled = !__DEV__;
+  } catch {
+    // no Firebase app here (web or the build's route export): nothing to switch
+  }
 }
 
 export async function timed<T>(name: string, run: () => Promise<T>): Promise<T> {
