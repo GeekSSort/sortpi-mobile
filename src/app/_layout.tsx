@@ -57,12 +57,15 @@ function Gate() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={status === 'signedIn'}>
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="add-product" options={{ ...header, presentation: 'modal', title: t('Add an item') }} />
         <Stack.Screen name="end-shift" options={{ ...header, presentation: 'modal', title: t('Close the day') }} />
         <Stack.Screen name="sales" options={{ ...header, title: t('Sales') }} />
         <Stack.Screen name="sale/[id]" options={{ ...header, title: t('Sale') }} />
+        <Stack.Screen name="kinds-brands" options={{ ...header, title: t('Kinds and brands') }} />
         <Stack.Screen name="price-check" options={{ ...header, title: t('Check a price') }} />
         <Stack.Screen name="products" options={{ ...header, title: t('Your items') }} />
         <Stack.Screen name="product/[id]" options={{ ...header, title: t('Item') }} />
+        <Stack.Screen name="edit-product/[id]" options={{ ...header, title: t('Edit item') }} />
       </Stack.Protected>
       <Stack.Protected guard={status === 'signedOut' && !langChosen}>
         <Stack.Screen name="language" />
