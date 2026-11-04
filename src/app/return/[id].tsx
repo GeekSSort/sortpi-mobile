@@ -176,7 +176,7 @@ function Form({ sale, onDone }: { sale: Sale; onDone: (d: { reference: string; r
       {blocked ? <Notice>This sale still has money owed, and this shop gives money back only on paid sales. Take the payment first, then send the goods back.</Notice> : null}
       {save.isError ? <Notice>{describeReturnError(save.error)}</Notice> : null}
 
-      <Button title="Send the goods back" variant="success" size="lg" loading={save.isPending} disabled={lines.length === 0 || !preview.data || blocked} onPress={confirm} />
+      <Button title="Take the goods back" variant="success" size="lg" loading={save.isPending} disabled={lines.length === 0 || !preview.data || blocked} onPress={confirm} />
     </>
   );
 }

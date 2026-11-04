@@ -104,7 +104,7 @@ function Gate() {
         <Stack.Screen name="new-purchase" options={{ ...header, title: t('New purchase') }} />
         <Stack.Screen name="money" options={{ ...header, title: t('Money in and out') }} />
         <Stack.Screen name="add-money" options={{ ...header, presentation: 'modal', title: t('Add money') }} />
-        <Stack.Screen name="return/[id]" options={{ ...header, title: t('Return to supplier') }} />
+        <Stack.Screen name="return/[id]" options={{ ...header, title: t('Take goods back') }} />
       </Stack.Protected>
       <Stack.Protected guard={status === 'signedOut' && !langChosen}>
         <Stack.Screen name="language" />
