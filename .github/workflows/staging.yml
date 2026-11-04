@@ -52,6 +52,8 @@ jobs:
         run: |
           {
             echo 'text<<EOF'
+            # must not start with '-': the action passes the notes on a command line and would read it as an option
+            echo 'Changes in this build:'
             git log -n 8 --pretty='- %s'
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
