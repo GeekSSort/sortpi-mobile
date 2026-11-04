@@ -18,7 +18,8 @@
       "package": "com.geekssort.sortpi",
       "versionCode": 1,
       "blockedPermissions": [
-        "android.permission.SYSTEM_ALERT_WINDOW"
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "com.google.android.gms.permission.AD_ID"
       ],
       "googleServicesFile": "./google-services.json"
     },
@@ -64,7 +65,8 @@
       ],
       "@react-native-firebase/app",
       "@react-native-firebase/crashlytics",
-      "@react-native-firebase/perf"
+      "@react-native-firebase/perf",
+      "@react-native-firebase/analytics"
     ],
     "experiments": {
       "typedRoutes": true,
