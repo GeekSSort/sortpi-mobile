@@ -66,6 +66,9 @@ function Gate() {
         <Stack.Screen name="suppliers" options={{ ...header, title: t('Suppliers') }} />
         <Stack.Screen name="supplier/[id]" options={{ ...header, title: t('Supplier') }} />
         <Stack.Screen name="add-supplier" options={{ ...header, presentation: 'modal', title: t('New supplier') }} />
+        <Stack.Screen name="purchases" options={{ ...header, title: t('Purchases') }} />
+        <Stack.Screen name="purchase/[id]" options={{ ...header, title: t('Order') }} />
+        <Stack.Screen name="send-back/[id]" options={{ ...header, title: t('Return to supplier') }} />
         <Stack.Screen name="kinds-brands" options={{ ...header, title: t('Kinds and brands') }} />
         <Stack.Screen name="movements" options={{ ...header, title: t('Stock history') }} />
         <Stack.Screen name="expiry" options={{ ...header, title: t('Expiry dates') }} />
@@ -77,6 +80,8 @@ function Gate() {
         <Stack.Screen name="product/[id]" options={{ ...header, title: t('Item') }} />
         <Stack.Screen name="edit-product/[id]" options={{ ...header, title: t('Edit item') }} />
         <Stack.Screen name="stock-count" options={{ ...header, title: t('Count your stock') }} />
+        <Stack.Screen name="new-purchase" options={{ ...header, title: t('New purchase') }} />
+        <Stack.Screen name="return/[id]" options={{ ...header, title: t('Return to supplier') }} />
       </Stack.Protected>
       <Stack.Protected guard={status === 'signedOut' && !langChosen}>
         <Stack.Screen name="language" />
