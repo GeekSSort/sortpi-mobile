@@ -56,6 +56,7 @@ function Gate() {
     <View style={{ flex: 1 }}>
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={status === 'signedIn'}>
+        <Stack.Screen name="(tabs)" />
       </Stack.Protected>
       <Stack.Protected guard={status === 'signedOut' && !langChosen}>
         <Stack.Screen name="language" />
