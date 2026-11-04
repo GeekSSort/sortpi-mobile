@@ -66,6 +66,7 @@ function Gate() {
         <Stack.Screen name="products" options={{ ...header, title: t('Your items') }} />
         <Stack.Screen name="product/[id]" options={{ ...header, title: t('Item') }} />
         <Stack.Screen name="edit-product/[id]" options={{ ...header, title: t('Edit item') }} />
+        <Stack.Screen name="stock-count" options={{ ...header, title: t('Count your stock') }} />
       </Stack.Protected>
       <Stack.Protected guard={status === 'signedOut' && !langChosen}>
         <Stack.Screen name="language" />
