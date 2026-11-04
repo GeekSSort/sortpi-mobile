@@ -112,6 +112,7 @@ function Gate() {
         <Stack.Screen name="join" />
         <Stack.Screen name="welcome" />
         <Stack.Screen name="workspace" />
+        <Stack.Screen name="signup" />
         <Stack.Screen name="forgot-password" />
       </Stack.Protected>
       <Stack.Protected guard={status === 'locked'}>
