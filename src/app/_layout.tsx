@@ -58,6 +58,8 @@ function Gate() {
       <Stack.Protected guard={status === 'signedIn'}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="end-shift" options={{ ...header, presentation: 'modal', title: t('Close the day') }} />
+        <Stack.Screen name="sales" options={{ ...header, title: t('Sales') }} />
+        <Stack.Screen name="sale/[id]" options={{ ...header, title: t('Sale') }} />
       </Stack.Protected>
       <Stack.Protected guard={status === 'signedOut' && !langChosen}>
         <Stack.Screen name="language" />
