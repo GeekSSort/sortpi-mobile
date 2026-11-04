@@ -1,7 +1,8 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { KeyboardAvoidingView, KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
@@ -99,8 +100,8 @@ export default function AddProductScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
       <SafeAreaView edges={['bottom']} style={{ flex: 1 }}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <ScrollView contentContainerStyle={{ paddingHorizontal: Spacing.three, paddingBottom: Spacing.five, gap: Spacing.three }} keyboardShouldPersistTaps="handled">
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+          <KeyboardAwareScrollView bottomOffset={24} contentContainerStyle={{ paddingHorizontal: Spacing.three, paddingBottom: Spacing.five, gap: Spacing.three }} keyboardShouldPersistTaps="handled">
             {!canCreate ? <Notice>You are not allowed to add products. Ask your manager to add it.</Notice> : null}
 
             {/* The scanned code, shown as what it is rather than as a text box. */}
@@ -184,7 +185,7 @@ export default function AddProductScreen() {
             ) : null}
 
             {failure ? <Notice>{failure}</Notice> : null}
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </KeyboardAvoidingView>
 
         <View style={{ padding: Spacing.three, borderTopWidth: 1, borderTopColor: theme.border, backgroundColor: theme.card }}>

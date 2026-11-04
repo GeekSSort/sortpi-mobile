@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { View } from 'react-native';
+import { KeyboardAvoidingView, KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { newIdempotencyKey } from '@/api/idempotency';
@@ -81,8 +82,8 @@ export default function AddMoneyScreen() {
   return (
     <SafeAreaView edges={['bottom']} style={{ flex: 1, backgroundColor: theme.canvas }}>
       <Stack.Screen options={{ title: income ? t('Add money in') : t('Add money out') }} />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.five }}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+        <KeyboardAwareScrollView bottomOffset={24} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.five }}>
           {!allowed ? <Notice>You do not have permission to do that.</Notice> : null}
           {allowed ? (
             <>
@@ -154,7 +155,7 @@ export default function AddMoneyScreen() {
               />
             </>
           ) : null}
-        </ScrollView>
+        </KeyboardAwareScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
