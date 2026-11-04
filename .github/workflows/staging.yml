@@ -39,6 +39,12 @@ jobs:
           node -e "const f='app.json';const j=JSON.parse(require('fs').readFileSync(f));j.expo.android.versionCode=Number(process.env.GITHUB_RUN_NUMBER);require('fs').writeFileSync(f,JSON.stringify(j,null,2)+'\n')"
           grep versionCode app.json
 
+      # The Firebase client config is not in git; it is kept as a base64 secret (GOOGLE_SERVICES_JSON).
+      - name: Write google-services.json
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: echo "$GOOGLE_SERVICES_JSON" | base64 -d > google-services.json
+
       # android/ is generated from app.json and is not in git.
       - run: npx expo prebuild --platform android --no-install
       - name: Build the release APK
