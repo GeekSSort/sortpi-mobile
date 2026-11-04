@@ -63,6 +63,9 @@ function Gate() {
         <Stack.Screen name="customer/[id]" options={{ ...header, title: t('Customer') }} />
         <Stack.Screen name="sales" options={{ ...header, title: t('Sales') }} />
         <Stack.Screen name="sale/[id]" options={{ ...header, title: t('Sale') }} />
+        <Stack.Screen name="suppliers" options={{ ...header, title: t('Suppliers') }} />
+        <Stack.Screen name="supplier/[id]" options={{ ...header, title: t('Supplier') }} />
+        <Stack.Screen name="add-supplier" options={{ ...header, presentation: 'modal', title: t('New supplier') }} />
         <Stack.Screen name="kinds-brands" options={{ ...header, title: t('Kinds and brands') }} />
         <Stack.Screen name="movements" options={{ ...header, title: t('Stock history') }} />
         <Stack.Screen name="expiry" options={{ ...header, title: t('Expiry dates') }} />
