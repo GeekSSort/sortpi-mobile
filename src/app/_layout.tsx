@@ -63,8 +63,10 @@ function Gate() {
       <Stack.Protected guard={status === 'signedOut' && langChosen}>
         {/* First entry is where the router lands when signed out: login sends you to workspace if none is saved. */}
         <Stack.Screen name="login" />
+        <Stack.Screen name="join" />
         <Stack.Screen name="welcome" />
         <Stack.Screen name="workspace" />
+        <Stack.Screen name="forgot-password" />
       </Stack.Protected>
       <Stack.Protected guard={status === 'locked'}>
         <Stack.Screen name="lock" />
