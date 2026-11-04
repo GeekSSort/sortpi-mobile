@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Share, View } from 'react-native';
+import { ActivityIndicator, Alert, Share, View } from 'react-native';
+import { KeyboardAvoidingView, KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import Animated, { FadeInUp, ZoomIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -13,7 +14,6 @@ import { haptics } from '@/lib/haptics';
 import { Notice } from '@/components/notice';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
-import { Alert } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { formatBDT } from '@/lib/money';
 import { closeShift, currentShift, shiftSummary } from '@/sell/api';
@@ -60,8 +60,8 @@ export default function EndShiftScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
       <SafeAreaView edges={['bottom']} style={{ flex: 1 }}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <ScrollView contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three }} keyboardShouldPersistTaps="handled">
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+          <KeyboardAwareScrollView bottomOffset={24} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three }} keyboardShouldPersistTaps="handled">
             {closed ? <DayClosed day={closed} shop={me?.organization?.name ?? 'SortPi'} onDone={() => router.back()} /> : null}
             {closed ? null : shift.isPending || (shift.data && summary.isPending) ? <ActivityIndicator color={theme.brand} /> : null}
             {!closed && shift.data === null ? <Notice kind="info">You have not started selling today.</Notice> : null}
@@ -94,7 +94,7 @@ export default function EndShiftScreen() {
                 <Button title="Close the day" size="lg" loading={close.isPending} disabled={!canClose} onPress={submit} />
               </>
             ) : null}
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </View>

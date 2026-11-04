@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { View } from 'react-native';
+import { KeyboardAvoidingView, KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
@@ -46,8 +47,8 @@ export default function AddSupplierScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
       <SafeAreaView edges={['bottom']} style={{ flex: 1 }}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <ScrollView contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three }} keyboardShouldPersistTaps="handled">
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+          <KeyboardAwareScrollView bottomOffset={24} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three }} keyboardShouldPersistTaps="handled">
             <View style={{ padding: Spacing.three, gap: Spacing.three, borderRadius: Radius.lg, borderCurve: 'continuous', backgroundColor: theme.card, borderWidth: 1, borderColor: theme.border }}>
               <Field label="Supplier name" required value={name} onChangeText={setName} autoCapitalize="words" error={errors.name} autoFocus />
               <Field label="Phone" required value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="01XXXXXXXXX" error={errors.phone} />
@@ -55,7 +56,7 @@ export default function AddSupplierScreen() {
             </View>
             {save.isError ? <Notice>{describeSupplierError(save.error)}</Notice> : null}
             <Button title="Save supplier" size="lg" loading={save.isPending} onPress={submit} />
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </View>

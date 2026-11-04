@@ -1,7 +1,8 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, Switch, View } from 'react-native';
+import { Switch, View } from 'react-native';
+import { KeyboardAvoidingView, KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { newIdempotencyKey } from '@/api/idempotency';
@@ -127,8 +128,8 @@ export default function NewPurchaseScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
       <SafeAreaView edges={['bottom']} style={{ flex: 1 }}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <ScrollView contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six }} keyboardShouldPersistTaps="handled">
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+          <KeyboardAwareScrollView bottomOffset={24} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six }} keyboardShouldPersistTaps="handled">
             <Tap accessibilityRole="button" onPress={() => setChoosing(true)} disabled={created} style={{ minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.lg, borderCurve: 'continuous', borderWidth: 1.5, borderColor: supplier ? theme.border : theme.brand, backgroundColor: theme.card }}>
               <Icon name="Package" size={22} color={theme.brand} />
               <View style={{ flex: 1 }}>
@@ -239,7 +240,7 @@ export default function NewPurchaseScreen() {
 
             {canPlace ? <Button title={created ? 'Finish the purchase' : 'Save the purchase'} variant="success" size="lg" loading={busy} disabled={!ready} onPress={() => go.mutate('full')} /> : null}
             <Button title="Save as a draft" variant="secondary" disabled={!ready || busy || created} onPress={() => go.mutate('draft')} />
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
 

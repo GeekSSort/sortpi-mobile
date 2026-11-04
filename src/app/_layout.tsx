@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { useColorScheme, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 import { SessionProvider, useSession } from '@/auth/session-provider';
 import { PrefsProvider, usePrefs } from '@/i18n/prefs';
@@ -27,6 +28,7 @@ export default function RootLayout() {
   const base = dark ? DarkTheme : DefaultTheme;
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+    <KeyboardProvider>
     <ThemeProvider value={{ ...base, colors: { ...base.colors, primary: c.brand, background: c.canvas, card: c.card, text: c.text, border: c.border } }}>
       <StatusBar style="auto" />
       <QueryClientProvider client={queryClient}>
@@ -37,6 +39,7 @@ export default function RootLayout() {
         </PrefsProvider>
       </QueryClientProvider>
     </ThemeProvider>
+    </KeyboardProvider>
     </GestureHandlerRootView>
   );
 }

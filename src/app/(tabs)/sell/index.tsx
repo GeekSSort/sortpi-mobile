@@ -17,7 +17,8 @@ import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { PayColors } from '@/constants/palette';
-import { Fonts, MaxContentWidth, Radius } from '@/constants/theme';
+import { BottomTabInset, Fonts, MaxContentWidth, Radius } from '@/constants/theme';
+import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useT } from '@/i18n/prefs';
 import { useTheme } from '@/hooks/use-theme';
 import { addMoney, compareMoney, formatBDT } from '@/lib/money';
@@ -445,7 +446,7 @@ export default function SellScreen() {
 
   return (
     <View style={{ flex: 1 }}>
-    <Screen topInset={false}>
+    <Screen topInset={false} keyboardGap={showBar ? barHeight + 40 : 24}>
       <Stack.Screen options={{ headerRight: mode === 'scan' ? () => <HeaderAction title="Close the day" onPress={() => router.push('/end-shift')} /> : undefined }} />
       <SaleGuide mode={mode} cartEmpty={isEmpty(cart)} usesBarcodes={usesBarcodes} />
       {mode === 'scan' ? (
@@ -568,7 +569,8 @@ export default function SellScreen() {
     </Screen>
     {/* Stays on screen while the cart scrolls, so paying is one tap away however long the bill is. */}
     {showBar ? (
-      <Animated.View onLayout={(e) => setBottomBar(e.nativeEvent.layout.height)} entering={FadeInDown.duration(220)} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 16, paddingVertical: 12, backgroundColor: theme.card, borderTopWidth: 1, borderTopColor: theme.border }}>
+      <KeyboardStickyView offset={{ closed: 0, opened: BottomTabInset }} style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}>
+      <Animated.View onLayout={(e) => setBottomBar(e.nativeEvent.layout.height)} entering={FadeInDown.duration(220)} style={{ paddingHorizontal: 16, paddingVertical: 12, backgroundColor: theme.card, borderTopWidth: 1, borderTopColor: theme.border }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
         <Tap accessibilityRole="button" accessibilityLabel={t('See the cart')} disabled={mode !== 'scan'} onPress={() => setCartOpen(true)} style={{ flex: 1 }}>
           <ThemedText type="caption" themeColor="textMuted">
@@ -588,6 +590,7 @@ export default function SellScreen() {
         )}
         </View>
       </Animated.View>
+      </KeyboardStickyView>
     ) : null}
     <BottomSheet visible={cartOpen && mode === 'scan'} onClose={() => setCartOpen(false)} title="Check the cart">
       <View style={{ gap: 12, paddingHorizontal: 16 }}>

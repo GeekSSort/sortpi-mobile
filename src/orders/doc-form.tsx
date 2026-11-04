@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { View } from 'react-native';
+import { KeyboardAvoidingView, KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
 import { useSession } from '@/auth/session-provider';
 import { BottomSheet } from '@/components/bottom-sheet';
@@ -79,8 +80,8 @@ export function DocForm({ mode }: { mode: 'order' | 'quote' }) {
   const card = { padding: Spacing.three, gap: Spacing.two, borderRadius: Radius.lg, borderCurve: 'continuous' as const, backgroundColor: theme.card, borderWidth: 1, borderColor: theme.border };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.canvas }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six }}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.canvas }} behavior="padding">
+      <KeyboardAwareScrollView bottomOffset={24} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six }}>
         <Tap accessibilityRole="button" onPress={() => setChoosing(true)} style={{ minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.lg, borderCurve: 'continuous', borderWidth: 1.5, borderColor: customer ? theme.border : theme.brand, backgroundColor: theme.card }}>
           <Icon name="Users" size={22} color={theme.brandText} />
           <View style={{ flex: 1 }}>
@@ -166,7 +167,7 @@ export function DocForm({ mode }: { mode: 'order' | 'quote' }) {
         {problem && (lines.length > 0 || who) ? <Notice kind="info">{problem}</Notice> : null}
         {save.isError ? <Notice>{describeOrderError(save.error)}</Notice> : null}
         <Button title={order ? 'Save the order' : 'Save the quotation'} variant="success" size="lg" loading={save.isPending} disabled={!!problem} onPress={() => save.mutate()} />
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       <BottomSheet visible={choosing} onClose={() => setChoosing(false)} title="Choose the customer">
         <CustomerPicker allowWalkIn={false} onPick={(c) => setCustomer(c)} onClose={() => setChoosing(false)} />
