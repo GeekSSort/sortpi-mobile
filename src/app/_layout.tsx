@@ -14,8 +14,10 @@ import { ConnectionBanner } from '@/components/connection-banner';
 import { useHeaderOptions } from '@/components/header-options';
 import { ToastHost } from '@/components/toast-host';
 import { Colors } from '@/constants/theme';
+import { initPerformance } from '@/lib/perf';
 
 SplashScreen.preventAutoHideAsync();
+initPerformance();
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30_000 } } });
 

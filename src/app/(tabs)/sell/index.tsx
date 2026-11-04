@@ -7,6 +7,7 @@ import { Alert, Pressable, Share, useColorScheme, Vibration, View } from 'react-
 
 import { newIdempotencyKey } from '@/api/idempotency';
 import { useSession } from '@/auth/session-provider';
+import { timed } from '@/lib/perf';
 import { BottomSheet } from '@/components/bottom-sheet';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
@@ -172,7 +173,7 @@ export default function SellScreen() {
     looking.current = true;
     setScanNote(null);
     try {
-      const item = await lookupBarcode(code, ctx.branchId);
+      const item = await timed('scan_lookup', () => lookupBarcode(code, ctx.branchId));
       if (item) {
         setCart((c) => addItem(c, item));
         haptics.tap();
@@ -223,7 +224,7 @@ export default function SellScreen() {
     setNotice(null);
     try {
       // The payment is at most what the server says the sale is worth: it refuses an overpayment, and change is not part of the sale.
-      const sale = await sell({ ...ctx, shiftId: shift.id, couponCode: d.couponCode, redeemPoints: d.points || undefined }, cart, plan.payments, saleKey.current);
+      const sale = await timed('confirm_sale', () => sell({ ...ctx, shiftId: shift.id, couponCode: d.couponCode, redeemPoints: d.points || undefined }, cart, plan.payments, saleKey.current!));
       setResult(sale);
       setMode('done');
       if (method !== 'CREDIT') void SecureStore.setItemAsync('sortpi.lastpay', method);
