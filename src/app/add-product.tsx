@@ -23,6 +23,7 @@ import { useSession } from '@/auth/session-provider';
 import { Scanner } from '@/scan/scanner';
 import { useUsesBarcodes } from '@/sell/use-barcodes';
 import { showToast } from '@/ui/toast';
+import { track } from '@/lib/analytics';
 import { useT } from '@/i18n/prefs';
 
 type Option = { id: string; name: string };
@@ -84,6 +85,7 @@ export default function AddProductScreen() {
       void qc.invalidateQueries({ queryKey: ['stock'] });
       void qc.invalidateQueries({ queryKey: ['home'] });
       setLastChoice({ category, unit });
+      track('item_added', { source: from === 'sell' ? 'sell' : 'stock' });
       showToast({ text: t('Saved: {name}', { name: name.trim() }) });
       if (from === 'sell' && barcode.trim() && me?.active_branch?.id) {
         // Straight into the cart: look it up the normal way so the price and unit come from the server.
