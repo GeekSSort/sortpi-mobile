@@ -1,0 +1,50 @@
+{
+ "_about": "Subset of DEFAULT_ROLES in saas/server apps/accounts/permissions_registry.py, only the codes the role logic reads. Re-export if the server changes a role.",
+ "roles": {
+  "Cashier": [
+   "inventory.view",
+   "pos.access",
+   "product.view",
+   "sale.create",
+   "sale.view_own"
+  ],
+  "Branch Manager": [
+   "inventory.adjust",
+   "inventory.view",
+   "pos.access",
+   "product.view",
+   "report.sales",
+   "sale.create",
+   "sale.view"
+  ],
+  "Inventory": [
+   "inventory.adjust",
+   "inventory.view",
+   "product.create",
+   "product.view"
+  ],
+  "Accountant": [
+   "customer.view",
+   "dashboard.view",
+   "inventory.view",
+   "product.view",
+   "report.sales",
+   "sale.view"
+  ],
+  "Admin": [
+   "customer.view",
+   "dashboard.view",
+   "inventory.adjust",
+   "inventory.view",
+   "pos.access",
+   "product.create",
+   "product.view",
+   "report.sales",
+   "sale.create",
+   "sale.view",
+   "sale.view_own",
+   "user.create",
+   "user.view"
+  ]
+ }
+}
