@@ -61,6 +61,7 @@ export const bn: Record<string, string> = {
   'Use Face ID to continue.': 'চালিয়ে যেতে ফেস আইডি ব্যবহার করুন।',
   'Use your fingerprint to continue.': 'চালিয়ে যেতে আপনার আঙুলের ছাপ দিন।',
   Unlock: 'খুলুন',
+  'Opening your shop…': 'আপনার দোকান খুলছে…',
   'No connection': 'ইন্টারনেট নেই',
   'You are still signed in. Check your internet and try again.': 'আপনি এখনো লগইন আছেন। ইন্টারনেট দেখে আবার চেষ্টা করুন।',
   'Unlock with Face ID': 'ফেস আইডি দিয়ে খুলুন',

@@ -9,7 +9,7 @@ import { useTheme } from '@/hooks/use-theme';
 
 export default function LockScreen() {
   const theme = useTheme();
-  const { unlock, signOut } = useSession();
+  const { unlock, signOut, unlocking } = useSession();
 
   useEffect(() => {
     void unlock(); // ask straight away; the button is there if it is cancelled
@@ -23,7 +23,7 @@ export default function LockScreen() {
         </View>
       </View>
       <View style={{ gap: 12 }}>
-        <Button title="Unlock" trailing={<Icon name="ScanFace" size={18} color={theme.onBrand} />} onPress={() => void unlock()} />
+        <Button title={unlocking ? 'Opening your shop…' : 'Unlock'} loading={unlocking} trailing={<Icon name="ScanFace" size={18} color={theme.onBrand} />} onPress={() => void unlock()} />
         <Button title="Sign out" variant="secondary" onPress={() => void signOut()} />
       </View>
     </AuthFrame>

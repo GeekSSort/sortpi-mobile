@@ -1,14 +1,26 @@
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 import { getMe, type MeData } from '@/api/auth';
 import { ApiError } from '@/api/client';
 import { api, checkWorkspace, endSession, loadWorkspace, onSessionEnd, secureTokens, setWorkspace, workspaceToBaseUrl } from '@/api/session';
 import { PLATFORM_DOMAIN } from './platform';
 import { identify } from '@/lib/crash';
+import { isFresh, retryableUnlockError } from './unlock';
 
 const BIOMETRIC = 'sortpi.biometric';
+
+type MeResult = { kind: 'ok'; me: MeData } | { kind: 'unreachable' } | { kind: 'ended' };
+
+/** Ask the server who this is. Never throws: the caller decides what each answer means. */
+async function fetchMe(): Promise<MeResult> {
+  try {
+    return { kind: 'ok', me: await getMe() };
+  } catch (error) {
+    return error instanceof ApiError && (error.status === 0 || error.status >= 500) ? { kind: 'unreachable' } : { kind: 'ended' };
+  }
+}
 
 /** booting: reading storage. unreachable: signed in before but the server did not answer. */
 export type SessionStatus = 'booting' | 'signedOut' | 'locked' | 'signedIn' | 'unreachable';
@@ -20,6 +32,8 @@ type Session = {
   workspaceUrl: string | null;
   biometricAvailable: boolean;
   biometricEnabled: boolean;
+  /** True from the fingerprint prompt until the shop has opened. */
+  unlocking: boolean;
   chooseWorkspace: (input: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -42,20 +56,25 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricEnabled, setBiometricEnabledState] = useState(false);
 
-  const loadMe = useCallback(async () => {
-    try {
-      setMe(await getMe());
+  const [unlocking, setUnlocking] = useState(false);
+  const unlockBusy = useRef(false);
+  /** /auth/me started while the fingerprint prompt is up, so its wait overlaps with the person's touch. Nothing is shown until unlock. */
+  const warm = useRef<{ at: number; result: Promise<MeResult> } | null>(null);
+
+  const apply = useCallback(async (result: MeResult) => {
+    if (result.kind === 'ok') {
+      setMe(result.me);
       setStatus('signedIn');
-    } catch (error) {
-      if (error instanceof ApiError && (error.status === 0 || error.status >= 500)) {
-        setStatus('unreachable');
-      } else {
-        await endSession();
-        setMe(null);
-        setStatus('signedOut');
-      }
+    } else if (result.kind === 'unreachable') {
+      setStatus('unreachable');
+    } else {
+      await endSession();
+      setMe(null);
+      setStatus('signedOut');
     }
   }, []);
+
+  const loadMe = useCallback(async () => apply(await fetchMe()), [apply]);
 
   const boot = useCallback(async () => {
     setStatus('booting');
@@ -67,7 +86,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setBiometricEnabledState(wantsLock);
     const { access, refresh } = await secureTokens.get();
     if (!url || (!access && !refresh)) return setStatus('signedOut');
-    if (wantsLock) return setStatus('locked'); // /auth/me waits until the person proves it is them
+    if (wantsLock) {
+      warm.current = { at: Date.now(), result: fetchMe() }; // fetched now, shown only after unlock
+      return setStatus('locked');
+    }
     await loadMe();
   }, [loadMe]);
 
@@ -106,11 +128,25 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const unlock = useCallback(async () => {
-    const result = await LocalAuthentication.authenticateAsync({ promptMessage: 'Unlock SortPi', cancelLabel: 'Cancel' });
-    if (!result.success) return false;
-    await loadMe();
-    return true;
-  }, [loadMe]);
+    if (unlockBusy.current) return false; // one prompt at a time: a second tap must not open a second prompt
+    unlockBusy.current = true;
+    setUnlocking(true);
+    try {
+      let result = await LocalAuthentication.authenticateAsync({ promptMessage: 'Unlock SortPi', cancelLabel: 'Cancel' });
+      if (!result.success && retryableUnlockError(result.error)) {
+        await new Promise((resolve) => setTimeout(resolve, 400)); // let the screen settle, then ask once more
+        result = await LocalAuthentication.authenticateAsync({ promptMessage: 'Unlock SortPi', cancelLabel: 'Cancel' });
+      }
+      if (!result.success) return false;
+      const ready = warm.current && isFresh(warm.current.at, Date.now()) ? warm.current.result : fetchMe();
+      warm.current = null;
+      await apply(await ready);
+      return true;
+    } finally {
+      unlockBusy.current = false;
+      setUnlocking(false);
+    }
+  }, [apply]);
 
   const setBiometricEnabled = useCallback(async (on: boolean) => {
     if (on) await SecureStore.setItemAsync(BIOMETRIC, '1');
@@ -121,8 +157,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => identify(me), [me]);
 
   const value = useMemo(
-    () => ({ status, me, workspaceUrl, biometricAvailable, biometricEnabled, chooseWorkspace, signIn, signOut, unlock, retry: boot, setBiometricEnabled }),
-    [status, me, workspaceUrl, biometricAvailable, biometricEnabled, chooseWorkspace, signIn, signOut, unlock, boot, setBiometricEnabled],
+    () => ({ status, me, workspaceUrl, biometricAvailable, biometricEnabled, unlocking, chooseWorkspace, signIn, signOut, unlock, retry: boot, setBiometricEnabled }),
+    [status, me, workspaceUrl, biometricAvailable, biometricEnabled, unlocking, chooseWorkspace, signIn, signOut, unlock, boot, setBiometricEnabled],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
