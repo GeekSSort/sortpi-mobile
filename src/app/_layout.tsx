@@ -17,11 +17,12 @@ import { Colors } from '@/constants/theme';
 import { initPerformance } from '@/lib/perf';
 
 SplashScreen.preventAutoHideAsync();
-initPerformance();
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30_000 } } });
 
 export default function RootLayout() {
+  // Not at module level: the build also loads this file in Node (to list the routes), where there is no Firebase app.
+  useEffect(() => initPerformance(), []);
   const dark = useColorScheme() === 'dark';
   const c = Colors[dark ? 'dark' : 'light'];
   const [fontsLoaded] = useFonts({ Ubuntu_300Light, Ubuntu_400Regular, Ubuntu_500Medium });
