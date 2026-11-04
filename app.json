@@ -17,7 +17,10 @@
       "predictiveBackGestureEnabled": true,
       "package": "com.geekssort.sortpi",
       "versionCode": 1,
-      "blockedPermissions": ["android.permission.SYSTEM_ALERT_WINDOW"]
+      "blockedPermissions": [
+        "android.permission.SYSTEM_ALERT_WINDOW"
+      ],
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "server",
@@ -58,7 +61,10 @@
           "cameraPermission": "SortPi uses the camera to scan barcodes and QR codes.",
           "microphonePermission": false
         }
-      ]
+      ],
+      "@react-native-firebase/app",
+      "@react-native-firebase/crashlytics",
+      "@react-native-firebase/perf"
     ],
     "experiments": {
       "typedRoutes": true,

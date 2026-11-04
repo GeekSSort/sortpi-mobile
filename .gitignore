@@ -41,3 +41,7 @@ example
 # generated native folders
 /ios
 /android
+
+# Firebase client config: CI writes it from the GOOGLE_SERVICES_JSON secret; locally get it with
+#   firebase apps:sdkconfig ANDROID <app id> --project sortpi-mobile > google-services.json
+google-services.json

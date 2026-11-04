@@ -3,7 +3,8 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, usePreventRemove } from 'expo-router';
 import { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, RefreshControl, ScrollView, Share, View } from 'react-native';
+import { Alert, RefreshControl, Share, View } from 'react-native';
+import { KeyboardAvoidingView, KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PLATFORM_DOMAIN } from '@/auth/platform';
@@ -91,8 +92,8 @@ export default function ShopDetailsScreen() {
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
       <Stack.Screen options={{ title: t('Shop details') }} />
       <SafeAreaView edges={['bottom']} style={{ flex: 1 }}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <ScrollView contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} />} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+          <KeyboardAwareScrollView bottomOffset={24} contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} />} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
             {q.isError ? <ErrorState message={t('Could not load your shop details.')} onRetry={() => void q.refetch()} /> : null}
             {q.isPending && canSee ? <SkeletonRows /> : null}
             {form && company ? (
@@ -134,7 +135,7 @@ export default function ShopDetailsScreen() {
                 </View>
               </>
             ) : null}
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </View>

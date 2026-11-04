@@ -265,6 +265,7 @@ export const bn: Record<string, string> = {
   'These goods are worth less than the customer owes. They pay the rest now. How?': 'এই মালের দাম কাস্টমারের বাকির চেয়ে কম। বাকিটা এখনই দিতে হবে। কীভাবে?',
   'This sale still has money owed, and this shop gives money back only on paid sales. Take the payment first, then send the goods back.': 'এই বিক্রিতে এখনো টাকা বাকি, আর এই দোকান শুধু পুরো টাকা পাওয়া বিক্রিতেই টাকা ফেরত দেয়। আগে টাকা নিন, তারপর মাল ফেরত নিন।',
   'Send the goods back': 'মাল ফেরত নিন',
+  'Take the goods back': 'মাল ফেরত নিন',
   'Send these goods back?': 'এই মাল ফেরত নেবেন?',
   'Stock goes back on the shelf and {amount} is given back.': 'মাল আবার স্টকে যাবে আর {amount} ফেরত দেওয়া হবে।',
   'Stock goes back on the shelf.': 'মাল আবার স্টকে যাবে।',

@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { useColorScheme, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 import { SessionProvider, useSession } from '@/auth/session-provider';
 import { PrefsProvider, usePrefs } from '@/i18n/prefs';
@@ -13,8 +14,10 @@ import { ConnectionBanner } from '@/components/connection-banner';
 import { useHeaderOptions } from '@/components/header-options';
 import { ToastHost } from '@/components/toast-host';
 import { Colors } from '@/constants/theme';
+import { initPerformance } from '@/lib/perf';
 
 SplashScreen.preventAutoHideAsync();
+initPerformance();
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30_000 } } });
 
@@ -27,6 +30,7 @@ export default function RootLayout() {
   const base = dark ? DarkTheme : DefaultTheme;
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+    <KeyboardProvider>
     <ThemeProvider value={{ ...base, colors: { ...base.colors, primary: c.brand, background: c.canvas, card: c.card, text: c.text, border: c.border } }}>
       <StatusBar style="auto" />
       <QueryClientProvider client={queryClient}>
@@ -37,6 +41,7 @@ export default function RootLayout() {
         </PrefsProvider>
       </QueryClientProvider>
     </ThemeProvider>
+    </KeyboardProvider>
     </GestureHandlerRootView>
   );
 }
@@ -101,7 +106,7 @@ function Gate() {
         <Stack.Screen name="new-purchase" options={{ ...header, title: t('New purchase') }} />
         <Stack.Screen name="money" options={{ ...header, title: t('Money in and out') }} />
         <Stack.Screen name="add-money" options={{ ...header, presentation: 'modal', title: t('Add money') }} />
-        <Stack.Screen name="return/[id]" options={{ ...header, title: t('Return to supplier') }} />
+        <Stack.Screen name="return/[id]" options={{ ...header, title: t('Take goods back') }} />
       </Stack.Protected>
       <Stack.Protected guard={status === 'signedOut' && !langChosen}>
         <Stack.Screen name="language" />

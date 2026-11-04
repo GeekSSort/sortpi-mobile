@@ -7,6 +7,7 @@ import { buildPreviewRequest, buildSellRequest } from './cart';
 import { fromCounterRows, type Counter } from './counters';
 import { fromRow, type HeldCart, type holdBody } from './held';
 import { toScannedItem, type LookupResponse } from './lookup-map';
+import { isWalkIn, walkInBody, WALK_IN_CODE, WALK_IN_NAME } from './walk-in';
 
 export type Shift = { id: string; counter_name?: string | null; opened_at: string; opening_cash: string };
 export type SaleResult = { id: string; invoice_number: string; grand_total: string; paid_amount: string; due_amount: string; status: string; loyalty_points_earned?: number; loyalty_points_spent?: number };
@@ -58,19 +59,36 @@ export async function loadSellContext(me: MeData): Promise<Omit<SellContext, 'sh
   return { branchId, warehouseId, customerId: await findWalkInCustomer() };
 }
 
-async function findWalkInCustomer(): Promise<string> {
-  const isWalkIn = (c: { code?: string }) => (c.code ?? '').toUpperCase() === 'CUS-WALKIN';
+type CustomerRow = { id: string; code?: string; name?: string };
+
+/** Looks by code, then by name (never by reading a page of customers: a big shop pushes "W" past page one). */
+async function findWalkIn(): Promise<string | null> {
   try {
-    const rows = await api.get<{ id: string; code?: string }[]>('/customers/', { query: { search: 'CUS-WALKIN', limit: 50 } });
-    const found = rows.find(isWalkIn);
-    if (found) return found.id;
+    for (const wanted of [WALK_IN_CODE, WALK_IN_NAME]) {
+      const rows = await api.get<CustomerRow[]>('/customers/', { query: { search: wanted, limit: 50 } });
+      const found = rows.find(isWalkIn);
+      if (found) return found.id;
+    }
   } catch (e) {
     if (!isForbidden(e)) throw e;
   }
-  const sync = await api.get<{ items: { id: string; code?: string }[] }>('/sync/customers/', { query: { since: '1970-01-01T00:00:00Z' } });
-  const found = sync.items.find(isWalkIn);
-  if (!found) throw new ApiError(0, 'NO_WALK_IN', 'This shop has no walk-in customer record. Ask an administrator to add one (code CUS-WALKIN).');
-  return found.id;
+  const sync = await api.get<{ items: CustomerRow[] }>('/sync/customers/', { query: { since: '1970-01-01T00:00:00Z' } });
+  return sync.items.find(isWalkIn)?.id ?? null;
+}
+
+/** A new shop has no walk-in record yet. Like the web till, make it the first time it is needed; a role that may not add customers is told who to ask. */
+async function findWalkInCustomer(): Promise<string> {
+  const found = await findWalkIn();
+  if (found) return found;
+  try {
+    return (await api.post<{ id: string }>('/customers/', walkInBody())).id;
+  } catch (e) {
+    if (isForbidden(e)) throw new ApiError(0, 'NO_WALK_IN', 'This shop has no walk-in customer record yet. Ask a manager to open Sell once so it is made.');
+    // Someone else made it a moment ago: the code is taken, so it exists now.
+    const again = await findWalkIn().catch(() => null);
+    if (again) return again;
+    throw e;
+  }
 }
 
 export async function currentShift(): Promise<Shift | null> {

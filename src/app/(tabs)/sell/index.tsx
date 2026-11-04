@@ -7,6 +7,7 @@ import { Alert, Pressable, Share, useColorScheme, Vibration, View } from 'react-
 
 import { newIdempotencyKey } from '@/api/idempotency';
 import { useSession } from '@/auth/session-provider';
+import { timed } from '@/lib/perf';
 import { BottomSheet } from '@/components/bottom-sheet';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
@@ -17,7 +18,8 @@ import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { PayColors } from '@/constants/palette';
-import { Fonts, MaxContentWidth, Radius } from '@/constants/theme';
+import { BottomTabInset, Fonts, MaxContentWidth, Radius } from '@/constants/theme';
+import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useT } from '@/i18n/prefs';
 import { useTheme } from '@/hooks/use-theme';
 import { addMoney, compareMoney, formatBDT } from '@/lib/money';
@@ -167,11 +169,11 @@ export default function SellScreen() {
   }
 
   async function onCode(code: string, scanned = true) {
-    if (!ctx || looking.current || mode !== 'scan') return;
+    if (!ctx || looking.current || scanNote || mode !== 'scan') return;
     looking.current = true;
     setScanNote(null);
     try {
-      const item = await lookupBarcode(code, ctx.branchId);
+      const item = await timed('scan_lookup', () => lookupBarcode(code, ctx.branchId));
       if (item) {
         setCart((c) => addItem(c, item));
         haptics.tap();
@@ -222,7 +224,7 @@ export default function SellScreen() {
     setNotice(null);
     try {
       // The payment is at most what the server says the sale is worth: it refuses an overpayment, and change is not part of the sale.
-      const sale = await sell({ ...ctx, shiftId: shift.id, couponCode: d.couponCode, redeemPoints: d.points || undefined }, cart, plan.payments, saleKey.current);
+      const sale = await timed('confirm_sale', () => sell({ ...ctx, shiftId: shift.id, couponCode: d.couponCode, redeemPoints: d.points || undefined }, cart, plan.payments, saleKey.current!));
       setResult(sale);
       setMode('done');
       if (method !== 'CREDIT') void SecureStore.setItemAsync('sortpi.lastpay', method);
@@ -399,7 +401,7 @@ export default function SellScreen() {
               {mode === 'scan' ? (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                   <Stepper icon="Minus" label={t('Fewer {name}', { name: l.name })} onPress={() => setCart((c) => changeQuantity(c, l.key, l.allowDecimal ? -0.5 : -1))} />
-                  <Tap accessibilityRole="button" accessibilityLabel={t('Change the amount of {name}', { name: l.name })} onPress={() => { setQtyKey(l.key); setQtyText(String(Number(l.quantity))); }} hitSlop={4} style={{ overflow: 'hidden', minWidth: 48, height: 40, paddingHorizontal: 8, borderRadius: 12, backgroundColor: theme.backgroundElement, alignItems: 'center', justifyContent: 'center' }}>
+                  <Tap accessibilityRole="button" accessibilityLabel={t('Change the amount of {name}', { name: l.name })} onPress={() => { setQtyKey(l.key); setQtyText(String(Number(l.quantity))); }} hitSlop={4} style={{ overflow: 'hidden', minWidth: 48, height: 40, paddingHorizontal: 8, borderRadius: 12, backgroundColor: theme.card, borderWidth: 1, borderColor: theme.border, alignItems: 'center', justifyContent: 'center' }}>
                     <Pop value={l.quantity}>
                       <ThemedText type="bodyMedium" style={{ textAlign: 'center' }}>
                         {Number(l.quantity)}
@@ -445,12 +447,12 @@ export default function SellScreen() {
 
   return (
     <View style={{ flex: 1 }}>
-    <Screen topInset={false}>
+    <Screen topInset={false} keyboardGap={showBar ? barHeight + 40 : 24}>
       <Stack.Screen options={{ headerRight: mode === 'scan' ? () => <HeaderAction title="Close the day" onPress={() => router.push('/end-shift')} /> : undefined }} />
       <SaleGuide mode={mode} cartEmpty={isEmpty(cart)} usesBarcodes={usesBarcodes} />
       {mode === 'scan' ? (
         <>
-          {usesBarcodes && showCamera ? <Scanner onCode={(c) => void onCode(c)} paused={looking.current} /> : null}
+          {usesBarcodes && showCamera ? <Scanner onCode={(c) => void onCode(c)} paused={scanNote !== null} /> : null}
           {canHold && heldCount > 0 ? (
             <Tap accessibilityRole="button" accessibilityLabel={t('Carts on hold')} onPress={() => setHeldOpen(true)} style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, borderRadius: Radius.md, backgroundColor: theme.warningSoft, borderWidth: 1, borderColor: theme.warning }}>
               <Icon name="Pause" size={20} color={theme.warning} />
@@ -469,7 +471,7 @@ export default function SellScreen() {
         </>
       ) : null}
 
-      {scanNote && mode === 'scan' ? <ScanNoteCard note={scanNote} canAdd={me?.permissions?.includes('product.create') ?? false} onAdd={(code) => router.push({ pathname: '/add-product', params: { code, from: 'sell' } })} onDismiss={() => setScanNote(null)} /> : null}
+      <ScanNoteSheet note={mode === 'scan' ? scanNote : null} canAdd={me?.permissions?.includes('product.create') ?? false} onAdd={(code) => { setScanNote(null); router.push({ pathname: '/add-product', params: { code, from: 'sell' } }); }} onDismiss={() => setScanNote(null)} />
       {notice ? <Notice>{notice}</Notice> : null}
 
       {mode === 'done' && result ? (
@@ -568,7 +570,15 @@ export default function SellScreen() {
     </Screen>
     {/* Stays on screen while the cart scrolls, so paying is one tap away however long the bill is. */}
     {showBar ? (
-      <Animated.View onLayout={(e) => setBottomBar(e.nativeEvent.layout.height)} entering={FadeInDown.duration(220)} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 16, paddingVertical: 12, backgroundColor: theme.card, borderTopWidth: 1, borderTopColor: theme.border }}>
+      <KeyboardStickyView offset={{ closed: 0, opened: BottomTabInset }} style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}>
+      <Animated.View onLayout={(e) => setBottomBar(e.nativeEvent.layout.height)} entering={FadeInDown.duration(220)} style={{ paddingHorizontal: 16, paddingVertical: 12, backgroundColor: theme.card, borderTopWidth: 1, borderTopColor: theme.border }}>
+        {/* A refusal (no stock, over the limit) is also said here: the notice at the top of the page is out of sight once the page is scrolled to Confirm. */}
+        {mode === 'pay' && notice ? (
+          <View accessibilityRole="alert" style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingBottom: 10, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
+            <Icon name="TriangleAlert" size={18} color={theme.danger} />
+            <ThemedText type="smallMedium" literal numberOfLines={3} style={{ flex: 1, color: theme.danger }}>{notice}</ThemedText>
+          </View>
+        ) : null}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
         <Tap accessibilityRole="button" accessibilityLabel={t('See the cart')} disabled={mode !== 'scan'} onPress={() => setCartOpen(true)} style={{ flex: 1 }}>
           <ThemedText type="caption" themeColor="textMuted">
@@ -588,6 +598,7 @@ export default function SellScreen() {
         )}
         </View>
       </Animated.View>
+      </KeyboardStickyView>
     ) : null}
     <BottomSheet visible={cartOpen && mode === 'scan'} onClose={() => setCartOpen(false)} title="Check the cart">
       <View style={{ gap: 12, paddingHorizontal: 16 }}>
@@ -676,44 +687,49 @@ function Stepper({ icon, label, onPress }: { icon: 'Minus' | 'Plus' | 'Trash2'; 
   );
 }
 
-/** What a scan turned up when it was not a product. A missing code is an invitation to add it, so the button leads. */
-function ScanNoteCard({ note, canAdd, onAdd, onDismiss }: { note: ScanNote; canAdd: boolean; onAdd: (code: string) => void; onDismiss: () => void }) {
+/**
+ * What a scan turned up when it was not a product, as a popup over the till. It used to sit under the item list, out of sight,
+ * so a shopkeeper who scanned an unknown packet saw nothing happen. A missing code is an invitation to add it, so the button leads.
+ */
+function ScanNoteSheet({ note, canAdd, onAdd, onDismiss }: { note: ScanNote | null; canAdd: boolean; onAdd: (code: string) => void; onDismiss: () => void }) {
   const theme = useTheme();
   const t = useT();
-  const missing = note.kind === 'missing';
-  const tint = missing ? theme.danger : theme.warning;
+  // Keep the last note while the sheet slides away, so it does not go blank on the way out.
+  const [shown, setShown] = useState<ScanNote | null>(note);
+  if (note && note !== shown) setShown(note);
+  const n = note ?? shown;
+  const missing = n?.kind === 'missing';
   return (
-    <View accessibilityRole="alert" style={{ gap: 14, padding: 16, borderRadius: Radius.lg, borderCurve: 'continuous', borderWidth: 1, backgroundColor: missing ? theme.dangerSoft : theme.warningSoft, borderColor: missing ? theme.dangerBorder : theme.warningSoft }}>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-        <View style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.card }}>
-          <Icon name="ScanLine" size={20} color={tint} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <ThemedText type="bodyMedium">{missing ? NOT_IN_CATALOGUE_TITLE : LOOKUP_FAILED_TITLE}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {missing ? (({ text, vars }) => t(text, vars))(notInCatalogueText(note.scanned, note.code)) : note.text}
-          </ThemedText>
-        </View>
-        <Pressable accessibilityRole="button" accessibilityLabel={t('Dismiss')} onPress={onDismiss} style={{ width: 48, height: 48, alignItems: 'center', justifyContent: 'center', marginTop: -8, marginRight: -12 }}>
-          <Icon name="X" size={20} color={theme.textMuted} />
-        </Pressable>
-      </View>
-      {missing ? (
-        <>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: Radius.md, backgroundColor: theme.card }}>
-            <ThemedText selectable literal style={{ fontFamily: Fonts?.mono, fontSize: 18, letterSpacing: 1, color: theme.text }}>
-              {note.code}
+    <BottomSheet visible={note !== null} onClose={onDismiss} title={missing ? NOT_IN_CATALOGUE_TITLE : LOOKUP_FAILED_TITLE}>
+      {n ? (
+        <View accessibilityRole="alert" style={{ gap: 14, paddingHorizontal: 16, paddingBottom: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <View style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: missing ? theme.dangerSoft : theme.warningSoft }}>
+              <Icon name="ScanLine" size={20} color={missing ? theme.danger : theme.warning} />
+            </View>
+            <ThemedText type="body" themeColor="textSecondary" style={{ flex: 1 }}>
+              {n.kind === 'missing' ? (({ text, vars }) => t(text, vars))(notInCatalogueText(n.scanned, n.code)) : n.text}
             </ThemedText>
           </View>
-          {canAdd ? (
-            <Button title="Add this product" size="lg" onPress={() => onAdd(note.code)} trailing={<Icon name="Plus" size={20} color={theme.onBrand} />} />
-          ) : (
-            <ThemedText type="small" themeColor="textMuted" style={{ textAlign: 'center' }}>
-              Ask your manager to add it.
-            </ThemedText>
-          )}
-        </>
+          {n.kind === 'missing' ? (
+            <>
+              <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: Radius.md, backgroundColor: theme.card, borderWidth: 1, borderColor: theme.border }}>
+                <ThemedText selectable literal style={{ fontFamily: Fonts?.mono, fontSize: 18, letterSpacing: 1, color: theme.text }}>
+                  {n.code}
+                </ThemedText>
+              </View>
+              {canAdd ? (
+                <Button title="Add this product" size="lg" onPress={() => onAdd(n.code)} trailing={<Icon name="Plus" size={20} color={theme.onBrand} />} />
+              ) : (
+                <ThemedText type="small" themeColor="textMuted" style={{ textAlign: 'center' }}>
+                  Ask your manager to add it.
+                </ThemedText>
+              )}
+            </>
+          ) : null}
+          <Button title="Not now" variant="secondary" onPress={onDismiss} />
+        </View>
       ) : null}
-    </View>
+    </BottomSheet>
   );
 }

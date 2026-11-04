@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack, usePreventRemove } from 'expo-router';
 import { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, RefreshControl, ScrollView, Switch, View } from 'react-native';
+import { Alert, RefreshControl, Switch, View } from 'react-native';
+import { KeyboardAvoidingView, KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useSession } from '@/auth/session-provider';
@@ -95,8 +96,8 @@ export default function PointsScreen() {
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
       <Stack.Screen options={{ title: t('Customer points') }} />
       <SafeAreaView edges={['bottom']} style={{ flex: 1 }}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <ScrollView contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} />} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+          <KeyboardAwareScrollView bottomOffset={24} contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} />} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
             {q.isError ? <ErrorState message={t('Could not load your settings.')} onRetry={() => void q.refetch()} /> : null}
             {q.isPending ? <SkeletonRows /> : null}
             {now ? (
@@ -196,7 +197,7 @@ export default function PointsScreen() {
                 {canEdit ? <Button title="Save" variant="success" size="lg" loading={save.isPending} disabled={!dirty} onPress={submit} /> : null}
               </>
             ) : null}
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
