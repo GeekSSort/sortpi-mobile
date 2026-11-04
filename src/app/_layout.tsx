@@ -14,6 +14,7 @@ import { ConnectionBanner } from '@/components/connection-banner';
 import { useHeaderOptions } from '@/components/header-options';
 import { ToastHost } from '@/components/toast-host';
 import { Colors } from '@/constants/theme';
+import { initAnalytics, useScreenTracking } from '@/lib/analytics';
 import { initPerformance } from '@/lib/perf';
 
 SplashScreen.preventAutoHideAsync();
@@ -22,7 +23,10 @@ const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, sta
 
 export default function RootLayout() {
   // Not at module level: the build also loads this file in Node (to list the routes), where there is no Firebase app.
-  useEffect(() => initPerformance(), []);
+  useEffect(() => {
+    initPerformance();
+    initAnalytics();
+  }, []);
   const dark = useColorScheme() === 'dark';
   const c = Colors[dark ? 'dark' : 'light'];
   const [fontsLoaded] = useFonts({ Ubuntu_300Light, Ubuntu_400Regular, Ubuntu_500Medium });
@@ -49,6 +53,7 @@ export default function RootLayout() {
 
 /** Which screens exist depends on the session: the router cannot reach a screen its guard hides. */
 function Gate() {
+  useScreenTracking();
   const { status } = useSession();
   const { ready, langChosen, t } = usePrefs();
   const header = useHeaderOptions();

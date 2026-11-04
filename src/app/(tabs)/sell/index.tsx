@@ -7,6 +7,7 @@ import { Alert, Pressable, Share, useColorScheme, Vibration, View } from 'react-
 
 import { newIdempotencyKey } from '@/api/idempotency';
 import { useSession } from '@/auth/session-provider';
+import { track } from '@/lib/analytics';
 import { timed } from '@/lib/perf';
 import { BottomSheet } from '@/components/bottom-sheet';
 import { Button } from '@/components/button';
@@ -226,6 +227,7 @@ export default function SellScreen() {
       // The payment is at most what the server says the sale is worth: it refuses an overpayment, and change is not part of the sale.
       const sale = await timed('confirm_sale', () => sell({ ...ctx, shiftId: shift.id, couponCode: d.couponCode, redeemPoints: d.points || undefined }, cart, plan.payments, saleKey.current!));
       setResult(sale);
+      track('sale_completed', { items: itemCount(cart), method: plan.payments.length > 1 ? 'SPLIT' : (plan.payments[0]?.payment_method ?? 'NONE') });
       setMode('done');
       if (method !== 'CREDIT') void SecureStore.setItemAsync('sortpi.lastpay', method);
       haptics.success();

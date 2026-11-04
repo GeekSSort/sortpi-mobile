@@ -4,6 +4,7 @@
   "main": "expo-router/entry",
   "dependencies": {
     "@expo-google-fonts/ubuntu": "^0.4.1",
+    "@react-native-firebase/analytics": "^27.1.0",
     "@react-native-firebase/app": "^27.1.0",
     "@react-native-firebase/crashlytics": "^27.1.0",
     "@react-native-firebase/perf": "^27.1.0",

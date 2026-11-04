@@ -10,6 +10,7 @@ import { useSession } from '@/auth/session-provider';
 import { Button } from '@/components/button';
 import { Field } from '@/components/field';
 import { Icon } from '@/components/icons/icon';
+import { track } from '@/lib/analytics';
 import { haptics } from '@/lib/haptics';
 import { Notice } from '@/components/notice';
 import { ThemedText } from '@/components/themed-text';
@@ -40,6 +41,7 @@ export default function EndShiftScreen() {
   const close = useMutation({
     mutationFn: () => closeShift(shift.data!.id, counted.trim(), note),
     onSuccess: async () => {
+      track('day_closed');
       if (s) setClosed({ sales: s.sale_count, total: s.total_sales, cash: counted.trim(), variance });
       haptics.success();
       qc.setQueryData(['shift', me?.id ?? ''], null);
