@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="340" viewBox="0 0 1280 340" role="img" aria-labelledby="title desc">
+  <title id="title">SortPi Mobile — Your shop, in your pocket.</title>
+  <desc id="desc">The SortPi phone app for shop owners. Scan to sell, plain Bangla or English, colour you can read at a glance.</desc>
+  <rect width="1280" height="340" rx="20" fill="#0f172a"/>
+  <path d="M860 0v340M960 0v340M1060 0v340M1160 0v340M780 80h500M780 180h500M780 280h500" stroke="#1e293b"/>
+  <g transform="translate(56 46) scale(.09)">
+    <rect x="96" y="96" width="832" height="832" rx="184" fill="#fff"/>
+    <circle cx="328" cy="328" r="172" fill="#2563eb"/>
+    <rect x="524" y="156" width="344" height="344" rx="16" fill="#2998cf"/>
+    <rect x="156" y="524" width="344" height="344" rx="16" fill="#8bb2de"/>
+    <rect x="524" y="524" width="344" height="344" rx="16" fill="#244cac"/>
+    <path d="M582 602h228M634 602v173M746 602v124q0 49 42 49" fill="none" stroke="#fff" stroke-width="25" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <g font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif">
+    <text x="166" y="93" fill="#fff" font-size="35" font-weight="700" letter-spacing="-1">SortPi Mobile</text>
+    <text x="168" y="119" fill="#93c5fd" font-size="13" letter-spacing="2">SELL · COUNT · COLLECT · FROM YOUR PHONE</text>
+    <text x="64" y="202" fill="#fff" font-size="45" font-weight="650" letter-spacing="-1.5">Your shop, in your pocket.</text>
+    <text x="66" y="239" fill="#a8b7cd" font-size="18">Scan to sell. Plain Bangla or English. Built for the shop owner.</text>
+    <rect x="66" y="274" width="104" height="29" rx="6" fill="#1e3a5f"/><text x="81" y="294" fill="#bfdbfe" font-size="12">ANDROID</text>
+    <rect x="180" y="274" width="154" height="29" rx="6" fill="#1e293b"/><text x="195" y="294" fill="#cbd5e1" font-size="12">BANGLA + ENGLISH</text>
+    <rect x="344" y="274" width="112" height="29" rx="6" fill="#1e293b"/><text x="359" y="294" fill="#cbd5e1" font-size="12">PREVIEW 1.0</text>
+  </g>
+  <g transform="translate(930 28)">
+    <rect x="0" y="0" width="150" height="284" rx="26" fill="#e2e8f0"/>
+    <rect x="8" y="8" width="134" height="268" rx="19" fill="#f8fafc"/>
+    <rect x="58" y="14" width="34" height="6" rx="3" fill="#cbd5e1"/>
+    <rect x="18" y="34" width="114" height="34" rx="9" fill="#2563eb"/>
+    <rect x="18" y="80" width="54" height="64" rx="9" fill="#ecfdf3" stroke="#a7f3d0"/>
+    <rect x="78" y="80" width="54" height="64" rx="9" fill="#fef2f2" stroke="#fecaca"/>
+    <rect x="18" y="154" width="54" height="64" rx="9" fill="#fef3c7" stroke="#fde68a"/>
+    <rect x="78" y="154" width="54" height="64" rx="9" fill="#fef2f2" stroke="#fecaca"/>
+    <rect x="18" y="230" width="114" height="26" rx="8" fill="#dbeafe"/>
+    <circle cx="36" cy="94" r="8" fill="#16a34a"/><circle cx="96" cy="94" r="8" fill="#dc2626"/><circle cx="36" cy="168" r="8" fill="#d97706"/><circle cx="96" cy="168" r="8" fill="#dc2626"/>
+  </g>
+  <g transform="translate(1100 80) scale(.62)">
+    <circle cx="48" cy="48" r="43" fill="#2563eb"/>
+    <rect x="101" y="5" width="86" height="86" rx="5" fill="#2998cf"/>
+    <rect x="5" y="101" width="86" height="86" rx="5" fill="#8bb2de"/>
+    <rect x="101" y="101" width="86" height="86" rx="5" fill="#244cac"/>
+    <path d="M116 121h56M129 121v43M157 121v31q0 12 11 12" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
