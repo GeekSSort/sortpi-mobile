@@ -88,6 +88,9 @@ function Gate() {
         <Stack.Screen name="add-counter" options={{ ...header, presentation: 'modal', title: t('Add Counter') }} />
         <Stack.Screen name="add-role" options={{ ...header, presentation: 'modal', title: t('Add Role') }} />
         <Stack.Screen name="add-user" options={{ ...header, presentation: 'modal', title: t('Add a person') }} />
+        <Stack.Screen name="add-account" options={{ ...header, presentation: 'modal', title: t('Add Account') }} />
+        <Stack.Screen name="add-transfer" options={{ ...header, presentation: 'modal', title: t('Move money') }} />
+        <Stack.Screen name="add-regular-payment" options={{ ...header, presentation: 'modal', title: t('Add Regular Payment') }} />
         <Stack.Screen name="add-supplier" options={{ ...header, presentation: 'modal', title: t('New supplier') }} />
         <Stack.Screen name="purchases" options={{ ...page, title: t('Purchase History') }} />
         <Stack.Screen name="purchase/[id]" options={{ ...page, title: t('Order') }} />
@@ -117,6 +120,10 @@ function Gate() {
         <Stack.Screen name="activity" options={{ ...page, title: t('Activity Log') }} />
         <Stack.Screen name="warehouses" options={{ ...page, title: t('Warehouses') }} />
         <Stack.Screen name="counters" options={{ ...page, title: t('Counters') }} />
+        <Stack.Screen name="accounts" options={{ ...page, title: t('Accounts') }} />
+        <Stack.Screen name="account/[id]" options={{ ...page, title: t('Account') }} />
+        <Stack.Screen name="account-transfers" options={{ ...page, title: t('Account Transfers') }} />
+        <Stack.Screen name="regular-payments" options={{ ...page, title: t('Regular Payments') }} />
         <Stack.Screen name="shifts" options={{ ...page, title: t('Shifts') }} />
         <Stack.Screen name="payroll" options={{ ...page, title: t('Payroll') }} />
         <Stack.Screen name="reports" options={{ ...page, title: t('Reports') }} />
