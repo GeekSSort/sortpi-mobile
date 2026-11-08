@@ -29,6 +29,8 @@ import { stockSummary } from '@/stock/api';
 import { formatQuantity } from '@/stock/status';
 
 /** The shop at a glance, in plain words: today's takings, who owes, what is running out, the week, the latest sales. */
+const sameName = (a?: string | null, b?: string | null) => !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
+
 export default function HomeScreen() {
   const router = useRouter();
   const theme = useTheme();
@@ -65,9 +67,12 @@ export default function HomeScreen() {
         <Image source={require('@/assets/images/splash-icon.png')} style={{ width: 40, height: 40, borderRadius: 10 }} />
         <View style={{ flex: 1 }}>
           <ThemedText type="heading" literal>{me?.organization.name ?? 'SortPi'}</ThemedText>
-          <ThemedText type="small" themeColor="textMuted" literal>
-            {me?.active_branch?.name ?? t('All branches')}
-          </ThemedText>
+          {/* A one-branch shop often names its branch after the business: say it once. */}
+          {sameName(me?.active_branch?.name, me?.organization.name) ? null : (
+            <ThemedText type="small" themeColor="textMuted" literal>
+              {me?.active_branch?.name ?? t('All branches')}
+            </ThemedText>
+          )}
         </View>
       </View>
 
