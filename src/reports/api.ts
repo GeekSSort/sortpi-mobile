@@ -20,7 +20,7 @@ const q = (w: Window) => ({ query: w });
 /** Sales figures for a window. Needs `report.sales`. */
 export const salesSummary = (w: Window) => api.get<Summary>('/sales/summary/', q(w));
 export const salesDaily = (w: Window) => api.get<DailyRow[]>('/sales/daily/', q(w));
-export const bestSellers = (w: Window) => api.get<ProductRow[]>('/sales/by-product/', { query: { ...w, limit: 5 } });
+export const bestSellers = (w: Window, limit = 5) => api.get<ProductRow[]>('/sales/by-product/', { query: { ...w, limit } });
 export const salesByKind = (w: Window) => api.get<KindRow[]>('/sales/by-category/', q(w));
 export const howPaid = (w: Window) => api.get<TenderRow[]>('/sales/by-payment-method/', q(w));
 /** Profit statement. Needs `finance.view_pl` (not `report.*`: a branch manager holds every report code but not this). */

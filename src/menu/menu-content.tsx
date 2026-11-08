@@ -1,8 +1,9 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 
 import { useSession } from '@/auth/session-provider';
+import { useLocalShop } from '@/local/provider';
 import { Icon, type IconName } from '@/components/icons/icon';
 import { ThemedText } from '@/components/themed-text';
 import { BottomTabInset, Radius, Spacing } from '@/constants/theme';
@@ -76,6 +77,7 @@ export function ProfileSettings({ onDone }: { onDone?: () => void } = {}) {
   const theme = useTheme();
   const { t, lang, setLang, size, setSize, scheme, setScheme, setGuideDone } = usePrefs();
   const [paper, setPaper] = usePaperPref();
+  const shop = useLocalShop();
   const { me, signOut, biometricAvailable, biometricEnabled, setBiometricEnabled } = useSession();
   const name = me?.full_name || me?.email || '';
   const roles = me?.roles?.length ? me.roles.join(', ') : '';
@@ -113,6 +115,27 @@ export function ProfileSettings({ onDone }: { onDone?: () => void } = {}) {
       {biometricAvailable ? (
         <Group>
           <Row icon="ScanFace" title={process.env.EXPO_OS === 'ios' ? 'Unlock with Face ID' : 'Unlock with fingerprint'} sub="Keeps your shop safe if someone else picks up your phone." trailing={<Switch value={biometricEnabled} onValueChange={(on) => void setBiometricEnabled(on)} trackColor={{ true: theme.brand }} />} />
+        </Group>
+      ) : null}
+
+      {shop.allowed ? (
+        <Group>
+          <Row
+            icon="Package"
+            title="Shop on this phone"
+            sub={shop.error ? t(shop.error) : shop.syncedAt ? t('Updated {time} · {n} items', { time: new Date(shop.syncedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }), n: shop.products }) : t('Not downloaded yet')}
+            trailing={
+              shop.syncing ? (
+                <ActivityIndicator color={theme.brand} />
+              ) : (
+                <Tap accessibilityRole="button" onPress={() => void shop.syncNow()} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 14 }}>
+                  <ThemedText type="smallMedium" style={{ color: theme.brandText }}>
+                    {t('Update')}
+                  </ThemedText>
+                </Tap>
+              )
+            }
+          />
         </Group>
       ) : null}
 
