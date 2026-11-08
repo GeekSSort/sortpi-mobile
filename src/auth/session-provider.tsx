@@ -34,6 +34,8 @@ type Session = {
   biometricEnabled: boolean;
   /** True from the fingerprint prompt until the shop has opened. */
   unlocking: boolean;
+  /** Raw reason the last fingerprint try failed (`lockout`, `not_enrolled`...), or null. */
+  unlockError: string | null;
   chooseWorkspace: (input: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -57,6 +59,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [biometricEnabled, setBiometricEnabledState] = useState(false);
 
   const [unlocking, setUnlocking] = useState(false);
+  const [unlockError, setUnlockError] = useState<string | null>(null);
   const unlockBusy = useRef(false);
   /** /auth/me started while the fingerprint prompt is up, so its wait overlaps with the person's touch. Nothing is shown until unlock. */
   const warm = useRef<{ at: number; result: Promise<MeResult> } | null>(null);
@@ -131,13 +134,23 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     if (unlockBusy.current) return false; // one prompt at a time: a second tap must not open a second prompt
     unlockBusy.current = true;
     setUnlocking(true);
+    setUnlockError(null);
     try {
-      let result = await LocalAuthentication.authenticateAsync({ promptMessage: 'Unlock SortPi', cancelLabel: 'Cancel' });
+      // An earlier prompt that Android dropped without an answer leaves the library believing one is still open, and it then
+      // refuses every new request with `app_cancel` until the app restarts. Clearing it first makes each tap start fresh.
+      const ask = async () => {
+        await LocalAuthentication.cancelAuthenticate().catch(() => undefined);
+        return LocalAuthentication.authenticateAsync({ promptMessage: 'Unlock SortPi', cancelLabel: 'Cancel' });
+      };
+      let result = await ask();
       if (!result.success && retryableUnlockError(result.error)) {
         await new Promise((resolve) => setTimeout(resolve, 400)); // let the screen settle, then ask once more
-        result = await LocalAuthentication.authenticateAsync({ promptMessage: 'Unlock SortPi', cancelLabel: 'Cancel' });
+        result = await ask();
       }
-      if (!result.success) return false;
+      if (!result.success) {
+        setUnlockError(result.error ?? 'unknown');
+        return false;
+      }
       const ready = warm.current && isFresh(warm.current.at, Date.now()) ? warm.current.result : fetchMe();
       warm.current = null;
       await apply(await ready);
@@ -157,8 +170,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => identify(me), [me]);
 
   const value = useMemo(
-    () => ({ status, me, workspaceUrl, biometricAvailable, biometricEnabled, unlocking, chooseWorkspace, signIn, signOut, unlock, retry: boot, setBiometricEnabled }),
-    [status, me, workspaceUrl, biometricAvailable, biometricEnabled, unlocking, chooseWorkspace, signIn, signOut, unlock, boot, setBiometricEnabled],
+    () => ({ status, me, workspaceUrl, biometricAvailable, biometricEnabled, unlocking, unlockError, chooseWorkspace, signIn, signOut, unlock, retry: boot, setBiometricEnabled }),
+    [status, me, workspaceUrl, biometricAvailable, biometricEnabled, unlocking, unlockError, chooseWorkspace, signIn, signOut, unlock, boot, setBiometricEnabled],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
