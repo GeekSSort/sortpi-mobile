@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef, useState, type ComponentRef } from 'react';
 import { Linking, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,7 +21,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
 import { haptics } from '@/lib/haptics';
 import { formatBDT } from '@/lib/money';
-import { getSupplier, paySupplier, supplierLedger, type LedgerRow } from '@/suppliers/api';
+import { ManageActions } from '@/components/manage-actions';
+import { deleteSupplier, getSupplier, paySupplier, updateSupplier, supplierLedger, type LedgerRow } from '@/suppliers/api';
 import { describeSupplierError, ledgerWords, owesMore, payProblem, weOwe } from '@/suppliers/logic';
 import { showToast } from '@/ui/toast';
 
@@ -31,7 +32,25 @@ export default function SupplierScreen() {
   const { t, lang } = usePrefs();
   const queryClient = useQueryClient();
   const { me } = useSession();
+  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const perms = me?.permissions ?? [];
+  const remove = useMutation({
+    mutationFn: () => deleteSupplier(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+      showToast({ text: t('Supplier deleted.') });
+    },
+    onError: () => showToast({ text: t('Could not delete the supplier. Try again.') }),
+  });
+  const reopen = useMutation({
+    mutationFn: () => updateSupplier(id, { is_active: true }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+      showToast({ text: t('Switched on.') });
+    },
+    onError: () => showToast({ text: t('Could not switch it on. Try again.') }),
+  });
   const canPay = me?.permissions?.includes('supplier.payment') ?? false;
   const canSeeLedger = me?.permissions?.includes('supplier.view_ledger') ?? false;
   const supplier = useQuery({ queryKey: ['suppliers', 'one', id], queryFn: () => getSupplier(id), enabled: !!id });
@@ -158,6 +177,7 @@ export default function SupplierScreen() {
                   ) : null}
                 </View>
               ) : null}
+              <ManageActions noun="supplier" active={s.is_active} onActivate={() => reopen.mutate()} canEdit={perms.includes('supplier.update')} canDelete={perms.includes('supplier.delete')} busy={remove.isPending || reopen.isPending} onEdit={() => router.push({ pathname: '/add-supplier', params: { id } })} onDelete={() => remove.mutate()} />
             </>
           ) : null}
         </ScrollView>

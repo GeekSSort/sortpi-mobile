@@ -23,7 +23,7 @@ export function BottomSheet({ visible, onClose, title, children }: { visible: bo
   const { height } = useWindowDimensions();
   const drag = useSharedValue(0);
   useEffect(() => {
-    if (!visible) drag.value = 0;
+    if (!visible) drag.set(0);
   }, [visible, drag]);
 
   // On Android the keyboard opens over a sheet instead of pushing it up, so the sheet lifts itself by the keyboard's height
@@ -41,13 +41,13 @@ export function BottomSheet({ visible, onClose, title, children }: { visible: bo
 
   const pan = Gesture.Pan()
     .onChange((e) => {
-      drag.value = Math.max(0, drag.value + e.changeY);
+      drag.set(Math.max(0, drag.get() + e.changeY));
     })
     .onEnd((e) => {
-      if (drag.value > 100 || e.velocityY > 900) scheduleOnRN(onClose);
-      else drag.value = withSpring(0, { damping: 20, stiffness: 300 });
+      if (drag.get() > 100 || e.velocityY > 900) scheduleOnRN(onClose);
+      else drag.set(withSpring(0, { damping: 20, stiffness: 300 }));
     });
-  const lift = useAnimatedStyle(() => ({ transform: [{ translateY: drag.value }] }));
+  const lift = useAnimatedStyle(() => ({ transform: [{ translateY: drag.get() }] }));
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>

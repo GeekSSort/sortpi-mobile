@@ -4,7 +4,7 @@ import type { PurchaseStatus, StatusFilter, purchaseBody } from './logic';
 import type { returnBody } from './returns';
 
 /** The parts of an order the phone shows (checked on the OpenAPI file and the live local API). Money is text. */
-export type PurchaseItemRow = { id: string; variant: string; sku: string; product_name: string; variant_name: string; unit_short_name: string; unit_allow_decimal: boolean; quantity: string; received_quantity: string; outstanding: string; returned_quantity: string; returnable: string; unit_cost: string; line_total: string };
+export type PurchaseItemRow = { id: string; variant: string; tax_rate?: string; discount_amount?: string; batch_no?: string; expiry_date?: string | null; sku: string; product_name: string; variant_name: string; unit_short_name: string; unit_allow_decimal: boolean; quantity: string; received_quantity: string; outstanding: string; returned_quantity: string; returnable: string; unit_cost: string; line_total: string };
 export type Purchase = {
   id: string;
   reference_no: string;
@@ -22,6 +22,7 @@ export type Purchase = {
   due_amount: string;
   note: string;
   adds_stock: boolean;
+  kind?: 'PURCHASE' | 'OLD_INVOICE';
   items: PurchaseItemRow[];
 };
 export type PurchaseTotals = { count: number; total: string; paid: string; due: string; with_due: number };
@@ -41,6 +42,10 @@ export const getPurchase = (id: string) => api.get<Purchase>(`/purchases/${id}/`
 
 /** Makes a DRAFT: nothing moves, nothing is owed. One `idempotencyKey` per save. */
 export const createPurchase = (body: ReturnType<typeof purchaseBody>, idempotencyKey: string) => api.post<Purchase>('/purchases/', body, { idempotencyKey });
+/** Replaces the lines and details of a draft, or of a placed order nothing has arrived on (the books follow). Needs `purchase.update`. */
+export const updatePurchase = (id: string, body: Record<string, unknown>) => api.patch<Purchase>(`/purchases/${id}/`, body);
+/** Deletes a DRAFT (a placed order is cancelled instead). Needs `purchase.delete`. */
+export const deletePurchase = (id: string) => api.delete<void>(`/purchases/${id}/`);
 /** Places the order: the supplier is now owed. Stock does not move yet. */
 export const confirmPurchase = (id: string) => api.post<Purchase>(`/purchases/${id}/confirm/`);
 /** Everything still outstanding arrives: stock goes up, at the landed cost. (Omitting `lines` means all.) */
@@ -60,3 +65,21 @@ export type PurchaseReturn = { id: string; reference_no: string; return_date: st
 export const sendGoodsBack = (id: string, body: ReturnType<typeof returnBody>) => api.post<PurchaseReturn>(`/purchases/${id}/returns/`, body);
 /** The returns already made on one order, newest first. Needs `purchase.view`. */
 export const returnsOfPurchase = (id: string) => api.get<PurchaseReturn[]>('/purchase-returns/', { query: { purchase: id, limit: 50 } });
+
+/** Bills from before the shop used SortPi, newest first. Needs `purchase.view`. */
+export async function listOldInvoices(page: number) {
+  const env = await api.envelope<Purchase[]>('GET', '/purchases/', { query: { limit: 25, page, kind: 'OLD_INVOICE' } });
+  return { rows: env.data ?? [], nextPage: page < (env.meta?.total_pages ?? 1) ? page + 1 : undefined };
+}
+/** Records an old supplier bill: its stock and book entries are posted today, at the bill's cost. Needs `purchase.create`. */
+export const recordOldInvoice = (body: Record<string, unknown>, idempotencyKey: string) => api.post<Purchase>('/purchases/old-invoices/', body, { idempotencyKey });
+/** Voids an old invoice with a reason (kept in the audit log). Needs `purchase.delete`. */
+export const voidOldInvoice = (id: string, reason: string) => api.post<Purchase>(`/purchases/${id}/void/`, { reason });
+
+/** Returns made to suppliers, newest first. Read-only: a return is made from the purchase it belongs to. Needs `purchase.view`. */
+export type SupplierReturn = { id: string; reference_no: string; purchase: string; purchase_reference: string; supplier_name: string; return_date: string; grand_total: string; reason: string; status: string };
+export async function listSupplierReturns(page: number) {
+  const env = await api.envelope<SupplierReturn[]>('GET', '/purchase-returns/', { query: { limit: 25, page } });
+  return { rows: env.data ?? [], nextPage: page < (env.meta?.total_pages ?? 1) ? page + 1 : undefined };
+}
+export const supplierReturnSummary = () => api.get<{ count: number; value: string; suppliers: number; units: string }>('/purchase-returns/summary/');

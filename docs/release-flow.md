@@ -23,6 +23,7 @@ Only `staging` builds. Merging into `dev` is cheap and silent; merging `dev` int
 4. GitHub, repository Settings, Secrets and variables, Actions: add
    - `FIREBASE_SERVICE_ACCOUNT_JSON`: the whole JSON key file, pasted as text
    - `FIREBASE_APP_ID`: the app ID above
+   - `GOOGLE_SERVICES_JSON`: the app's `google-services.json`, base64 (`base64 -i google-services.json`). Get the file with `firebase apps:sdkconfig ANDROID <app id> --project sortpi-mobile`. It is not in git; the staging build writes it before building.
 5. Delete the downloaded key file from the computer. Never commit it.
 
 The version code of every staging build is the GitHub run number (set in the workflow), so each upload is newer than the last.

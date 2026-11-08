@@ -26,7 +26,5 @@ jobs:
       - run: echo '/// <reference types="expo/types" />' > expo-env.d.ts
       - run: npx tsc --noEmit
       - run: npm test
-      # ponytail: lint does not block yet, the app still has a few old React Compiler errors (add-product, session-provider).
-      # Make it blocking by deleting continue-on-error once they are fixed.
+      # Lint errors (the React Compiler rules included) now stop a pull request. Warnings do not.
       - run: npx expo lint
-        continue-on-error: true

@@ -83,7 +83,7 @@ export default function KindsAndBrandsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
-      <Stack.Screen options={{ title: t('Kinds and brands'), headerRight: canAdd ? () => <HeaderAction title="Add" icon="Plus" onPress={() => setSheet({ mode: 'add', parent: null })} /> : undefined }} />
+      <Stack.Screen options={{ title: t('Categories & Brands'), headerRight: canAdd ? () => <HeaderAction title="Add" icon="Plus" onPress={() => setSheet({ mode: 'add', parent: null })} /> : undefined }} />
       <FlatList
         contentInsetAdjustmentBehavior="automatic"
         data={shown}

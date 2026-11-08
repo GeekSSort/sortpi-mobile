@@ -1,5 +1,5 @@
 import { api } from '@/api/session';
-import type { SalesToday } from '@/home/api';
+import { soldInRange, type SalesToday } from '@/home/api';
 
 import { rangeDates, type SalesRange } from './logic';
 import type { previewBody, returnBody, ReturnPreview } from './returns';
@@ -54,8 +54,11 @@ export async function listSales(o: { search: string; range: SalesRange; page: nu
 
 export const getSale = (id: string) => api.get<Sale>(`/sales/${id}/`);
 
-/** Count, total and money still owed for a range. The server honours `date_from` and `date_to` here (checked on the live API). */
-export const salesTotals = (range: SalesRange) => api.get<SalesToday>('/sales/totals/', { query: rangeDates(range) });
+/** Cancel a sale (needs `sale.cancel`). The shop puts the stock and the customer's balance back with reversing entries and keeps the sale on record; a second cancel is refused. */
+export const cancelSale = (id: string) => api.post<Sale>(`/sales/${id}/cancel/`);
+
+/** Count, total and money still owed for a range; the total is net of goods that came back, like the web Dashboard. */
+export const salesTotals = (range: SalesRange): Promise<SalesToday> => soldInRange(rangeDates(range));
 
 // ---- returns (needs `sale.refund`; checked against openapi.yaml and the live local API: /sales/{id}/returns/preview/ writes nothing) ----
 export const previewReturn = (saleId: string, body: ReturnType<typeof previewBody>) => api.post<ReturnPreview>(`/sales/${saleId}/returns/preview/`, body);

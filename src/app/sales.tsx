@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
 
 import { useSession } from '@/auth/session-provider';
+import { useDebounced } from '@/lib/use-debounced';
 import { EmptyState } from '@/components/empty-state';
 import { ErrorState } from '@/components/error-state';
 import { Field } from '@/components/field';
@@ -36,13 +37,14 @@ export default function SalesScreen() {
   const bigText = useTextFactor() > BIG_TEXT;
   const [range, setRange] = useState<SalesRange>('today');
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounced(search); // the list asks the shop once the typing pauses, not on every letter
   const allowed = ['sale.view', 'sale.view_own'].some((p) => me?.permissions?.includes(p));
   const canSell = ['pos.access', 'sale.create'].every((p) => me?.permissions?.includes(p));
 
   const totals = useQuery({ queryKey: ['sales', 'totals', range], queryFn: () => salesTotals(range), enabled: allowed, staleTime: 30_000 });
   const list = useInfiniteQuery({
-    queryKey: ['sales', 'list', range, search.trim()],
-    queryFn: ({ pageParam }) => listSales({ range, search, page: pageParam }),
+    queryKey: ['sales', 'list', range, debouncedSearch.trim()],
+    queryFn: ({ pageParam }) => listSales({ range, search: debouncedSearch, page: pageParam }),
     initialPageParam: 1,
     getNextPageParam: (last) => last.nextPage,
     enabled: allowed,

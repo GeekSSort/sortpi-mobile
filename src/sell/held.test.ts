@@ -38,3 +38,9 @@ test('resuming adds to what is in the cart and merges the same item', () => {
   assert.equal(out[0].quantity, '3');
   assert.equal(out[1].variantId, 'v2');
 });
+
+test('a retried hold keeps its reference', () => {
+  const a = holdBody({ branchId: 'b', cart: [], now: 1_700_000_000_000 });
+  const b = holdBody({ branchId: 'b', cart: [], now: 1_700_000_999_999, reference: a.reference });
+  assert.equal(a.reference, b.reference);
+});

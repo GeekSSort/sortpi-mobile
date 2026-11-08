@@ -54,3 +54,43 @@ test('server refusals read as sentences', () => {
   assert.match(describeProductError(new ApiError(400, 'DUPLICATE_SKU', 'x')), /SKU/);
   assert.equal(describeProductError(new ApiError(400, 'VALIDATION_ERROR', 'x', { name: ['This field is required.'] })), 'name: This field is required.');
 });
+
+import { openingStockBody } from './new-product.ts';
+
+test('a brand and a generic name go with the item', () => {
+  const body = buildProductRequest({ ...ok, brandId: 'b1', genericName: ' Paracetamol 500 mg ' });
+  assert.equal(body.brand, 'b1');
+  assert.equal(body.generic_name, 'Paracetamol 500 mg');
+});
+
+test('sizes make a VARIABLE item with every price on its own row, and nothing at the top', () => {
+  const body = buildProductRequest({ ...ok, variants: [{ name: ' Small ', price: '100', cost: '60', opening: '' }, { name: 'Large', price: '', cost: '70', opening: '' }] });
+  assert.equal((body as { type?: string }).type, 'VARIABLE');
+  assert.equal('price' in body, false);
+  assert.equal('barcode' in body, false);
+  assert.deepEqual((body as { variants: unknown[] }).variants, [{ name: 'Small', is_default: true, cost_price: '60', selling_price: '100' }, { name: 'Large', is_default: false, cost_price: '70' }]);
+});
+
+test('sizes are checked: two at least, named, different, with real amounts and a cost for stock', () => {
+  const r = (name: string, o: Partial<{ price: string; cost: string; opening: string }> = {}) => ({ name, price: '', cost: '', opening: '', ...o });
+  assert.ok(validateNewProduct({ ...ok, variants: [r('Small')] }).variants);
+  assert.ok(validateNewProduct({ ...ok, variants: [r('Small'), r(' ')] }).variants);
+  assert.ok(validateNewProduct({ ...ok, variants: [r('Small'), r('small')] }).variants);
+  assert.ok(validateNewProduct({ ...ok, variants: [r('S', { price: '1,5' }), r('L')] }).variants);
+  assert.ok(validateNewProduct({ ...ok, variants: [r('S', { opening: '5' }), r('L')] }).variants);
+  assert.equal(validateNewProduct({ ...ok, variants: [r('S', { opening: '5', cost: '20' }), r('L')] }).variants, undefined);
+});
+
+test('opening stock needs a cost, is one STOCK_IN adjustment, and expects an empty shelf', () => {
+  assert.ok(validateNewProduct({ ...ok, openingStock: '10' }).openingStock);
+  assert.equal(validateNewProduct({ ...ok, openingStock: '10', costPrice: '30' }).openingStock, undefined);
+  const b = openingStockBody({ ...ok, openingStock: '10', costPrice: '30' }, [{ id: 'v1', name: 'Default' }], 'w1');
+  assert.deepEqual(b, { warehouse: 'w1', reason: 'STOCK_IN', note: 'Opening stock for Coca-Cola 500ml', apply: true, expect_unchanged: true, items: [{ variant: 'v1', new_quantity: '10.000', expected_quantity: '0.000', unit_cost: '30' }] });
+  assert.equal(openingStockBody({ ...ok, openingStock: '' }, [{ id: 'v1', name: 'Default' }], 'w1'), null);
+});
+
+test('with sizes, each size is counted onto its own variant by name', () => {
+  const f = { ...ok, variants: [{ name: 'Small', price: '', cost: '60', opening: '4' }, { name: 'Large', price: '', cost: '70', opening: '' }, { name: 'XL', price: '', cost: '80', opening: '2' }] };
+  const b = openingStockBody(f, [{ id: 'a', name: 'Small' }, { id: 'b', name: 'Large' }, { id: 'c', name: 'xl' }], 'w1');
+  assert.deepEqual(b?.items.map((i) => [i.variant, i.new_quantity, i.unit_cost]), [['a', '4.000', '60'], ['c', '2.000', '80']]);
+});

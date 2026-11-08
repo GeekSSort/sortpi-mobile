@@ -81,7 +81,7 @@ export default function PlanScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
-      <Stack.Screen options={{ title: t('Your plan') }} />
+      <Stack.Screen options={{ title: t('Plan & billing') }} />
       <ScrollView contentInsetAdjustmentBehavior="automatic" refreshControl={<RefreshControl refreshing={sub.isRefetching || plans.isRefetching} onRefresh={refresh} />} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
         {failed ? <ErrorState message={t('Could not load your plan.')} onRetry={refresh} /> : null}
         {loading && !failed ? <SkeletonRows /> : null}

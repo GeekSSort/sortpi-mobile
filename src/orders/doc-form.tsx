@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 import { KeyboardAvoidingView, KeyboardAwareScrollView } from 'react-native-keyboard-controller';
@@ -25,14 +25,20 @@ import type { PickedCustomer } from '@/sell/customers';
 import { useUsesBarcodes } from '@/sell/use-barcodes';
 import { showToast } from '@/ui/toast';
 
-import { createOrder, createQuote, previewQuote } from './api';
-import { addDocLine, dateAhead, describeOrderError, docProblem, DUE_CHOICES, orderBody, quoteBody, VALID_CHOICES, type DateChoice, type DocLine } from './logic';
+import { createOrder, createQuote, getOrder, getQuote, previewQuote, updateOrder, updateQuote, type CustomerOrder, type Quotation } from './api';
+import { addDocLine, lineFromSaved, dateAhead, describeOrderError, docProblem, DUE_CHOICES, orderBody, quoteBody, VALID_CHOICES, type DateChoice, type DocLine } from './logic';
 
 /**
  * Write down an order or a quotation: who, what and how many, and the day. The server works out every price and tax, so nothing here
  * adds money up: the figure shown is the server's own estimate for these items.
  */
-export function DocForm({ mode }: { mode: 'order' | 'quote' }) {
+export function DocForm({ mode, id, kind }: { mode: 'order' | 'quote'; id?: string; kind?: 'ORDER' | 'REPAIR' | 'TAILORING' }) {
+  const one = useQuery({ queryKey: [mode === 'order' ? 'orders' : 'quotes', 'one', id], queryFn: async (): Promise<CustomerOrder | Quotation> => (mode === 'order' ? getOrder(id as string) : getQuote(id as string)), enabled: !!id });
+  if (id && !one.data) return <View style={{ flex: 1 }} />;
+  return <DocFormInner mode={mode} doc={one.data} kind={kind} />;
+}
+
+function DocFormInner({ mode, doc, kind }: { mode: 'order' | 'quote'; doc?: CustomerOrder | Quotation; kind?: 'ORDER' | 'REPAIR' | 'TAILORING' }) {
   const theme = useTheme();
   const { t } = usePrefs();
   const router = useRouter();
@@ -40,12 +46,15 @@ export function DocForm({ mode }: { mode: 'order' | 'quote' }) {
   const { me } = useSession();
   const branchId = me?.active_branch?.id;
   const canScan = useUsesBarcodes();
-  const [customer, setCustomer] = useState<PickedCustomer | null>(null);
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [choice, setChoice] = useState<DateChoice>(mode === 'order' ? 'three' : 'week');
-  const [note, setNote] = useState('');
-  const [lines, setLines] = useState<DocLine[]>([]);
+  const [customer, setCustomer] = useState<PickedCustomer | null>(doc?.customer_id ? { id: doc.customer_id, name: doc.customer_name, phone: doc.customer_phone, wholesale: false, balance: '0', creditLimit: '0' } : null);
+  const [name, setName] = useState(doc && !doc.customer_id ? doc.customer_name : '');
+  const [phone, setPhone] = useState(doc && !doc.customer_id ? doc.customer_phone : '');
+  // when editing, no choice means "keep the day it has"
+  const [choice, setChoice] = useState<DateChoice | null>(doc ? null : mode === 'order' ? 'three' : 'week');
+  const [note, setNote] = useState(doc?.note ?? '');
+  const [lines, setLines] = useState<DocLine[]>(doc ? (doc.items as { variant_id: string; product_name: string; sku: string; quantity: string }[]).map(lineFromSaved) : []);
+  const keptDate = doc ? ('due_date' in doc ? doc.due_date : doc.valid_until) : '';
+  const date = choice ? dateAhead(choice) : keptDate;
   const [choosing, setChoosing] = useState(false);
   const [adding, setAdding] = useState(false);
   const order = mode === 'order';
@@ -63,14 +72,18 @@ export function DocForm({ mode }: { mode: 'order' | 'quote' }) {
 
   const save = useMutation({
     mutationFn: async () => {
-      const date = dateAhead(choice);
-      if (order) return { kind: 'order' as const, doc: await createOrder(orderBody({ customerId: customer!.id, dueDate: date, note, branchId, lines })) };
-      return { kind: 'quote' as const, doc: await createQuote(quoteBody({ customer: customer ? { id: customer.id } : { name, phone }, validUntil: date, note, branchId, lines })) };
+      if (order) {
+        const body = orderBody({ customerId: customer!.id, dueDate: date, note, branchId, lines, kind });
+        return { kind: 'order' as const, doc: doc ? await updateOrder(doc.id, body) : await createOrder(body) };
+      }
+      const body = quoteBody({ customer: customer ? { id: customer.id } : { name, phone }, validUntil: date, note, branchId, lines });
+      return { kind: 'quote' as const, doc: doc ? await updateQuote(doc.id, body) : await createQuote(body) };
     },
     onSuccess: (r) => {
       haptics.success();
       showToast({ text: order ? t('Order saved') : t('Quotation saved') });
       void queryClient.invalidateQueries({ queryKey: [order ? 'orders' : 'quotes'] });
+      if (doc) return router.back();
       router.replace(r.kind === 'order' ? { pathname: '/order/[id]', params: { id: r.doc.id } } : { pathname: '/quotation/[id]', params: { id: r.doc.id } });
     },
     onError: () => haptics.warning(),
@@ -81,6 +94,7 @@ export function DocForm({ mode }: { mode: 'order' | 'quote' }) {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.canvas }} behavior="padding">
+      {doc ? <Stack.Screen options={{ title: order ? t('Edit order') : t('Edit quotation') }} /> : null}
       <KeyboardAwareScrollView bottomOffset={24} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six }}>
         <Tap accessibilityRole="button" onPress={() => setChoosing(true)} style={{ minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.lg, borderCurve: 'continuous', borderWidth: 1.5, borderColor: customer ? theme.border : theme.brand, backgroundColor: theme.card }}>
           <Icon name="Users" size={22} color={theme.brandText} />
@@ -120,7 +134,7 @@ export function DocForm({ mode }: { mode: 'order' | 'quote' }) {
             })}
           </View>
           <ThemedText type="caption" themeColor="textMuted" literal>
-            {dateAhead(choice).split('-').reverse().join('/')}
+            {date.split('-').reverse().join('/')}
           </ThemedText>
         </View>
 

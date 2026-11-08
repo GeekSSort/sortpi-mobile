@@ -39,6 +39,11 @@ export function supplierBody(f: NewSupplierForm, code: string) {
   return { code, name: f.name.trim(), phone: f.phone.trim(), email: '', ...(f.contact.trim() ? { contact_person: f.contact.trim() } : {}), is_active: true };
 }
 
+/** Body for PATCH /suppliers/{id}/: only what the form edits. An emptied contact person is sent as empty so it clears. */
+export function supplierPatch(f: NewSupplierForm) {
+  return { name: f.name.trim(), phone: f.phone.trim(), contact_person: f.contact.trim() };
+}
+
 /** One line of the account, in everyday words. Rows with a positive amount make the shop owe more; a payment or goods sent back is negative. */
 export function ledgerWords(type: string): string {
   switch (type) {

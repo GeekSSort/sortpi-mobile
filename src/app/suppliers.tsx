@@ -110,6 +110,7 @@ function SupplierListRow({ row, onPress }: { row: SupplierRow; onPress: () => vo
         <ThemedText type="caption" themeColor="textMuted" numberOfLines={1} literal>
           {row.code}
           {row.phone ? ` · ${row.phone}` : ''}
+          {row.is_active ? '' : ` · ${t('Inactive')}`}
         </ThemedText>
       </View>
       <View style={{ alignItems: 'flex-end' }}>

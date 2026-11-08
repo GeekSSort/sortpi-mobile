@@ -13,9 +13,10 @@ import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
 import { formatBDT, compareMoney } from '@/lib/money';
-import { bestSellers, customerDue, howPaid, profitAndLoss, salesByKind, salesDaily, salesSummary, supplierDue } from '@/reports/api';
+import { listStock } from '@/stock/api';
+import { bestSellers, customerDue, howPaid, profitAndLoss, salesByBranch, salesByCashier, salesByKind, salesDaily, salesSummary, stockWrittenOff, supplierDue } from '@/reports/api';
 import { isOneDay, margin, PERIODS, periodDates, profitTone, type PeriodId } from '@/reports/logic';
-import { BestSellers, ByKind, customerDues, DailyBars, Dues, HowPaid, ProfitStatement, ReportCard, supplierDues } from '@/reports/sections';
+import { BestSellers, ByKind, ByPerson, customerDues, DailyBars, Dues, HowPaid, ProfitStatement, ReportCard, RunningOut, supplierDues, WrittenOff } from '@/reports/sections';
 
 const money = (v: string) => formatBDT(v, { dp: 0 });
 
@@ -38,10 +39,15 @@ export default function ReportsScreen() {
   const paid = useQuery({ queryKey: ['reports', 'paid', ...key], queryFn: () => howPaid(w), enabled: seesSales });
   const best = useQuery({ queryKey: ['reports', 'best', ...key], queryFn: () => bestSellers(w), enabled: seesSales });
   const kinds = useQuery({ queryKey: ['reports', 'kinds', ...key], queryFn: () => salesByKind(w), enabled: seesSales });
+  const cashiers = useQuery({ queryKey: ['reports', 'cashiers', ...key], queryFn: () => salesByCashier(w), enabled: seesSales });
+  const branches = useQuery({ queryKey: ['reports', 'branches', ...key], queryFn: () => salesByBranch(w), enabled: seesSales });
+  const seesStock = perms.includes('inventory.view');
+  const low = useQuery({ queryKey: ['reports', 'running-out'], queryFn: async () => (await listStock({ search: '', filter: 'low', page: 1, withUnstocked: false })).rows.slice(0, 10), enabled: seesStock });
+  const writtenOff = useQuery({ queryKey: ['reports', 'written-off', ...key], queryFn: () => stockWrittenOff(w), enabled: seesPnl });
   const pnl = useQuery({ queryKey: ['reports', 'pnl', ...key], queryFn: () => profitAndLoss(w), enabled: seesPnl });
   const owedToUs = useQuery({ queryKey: ['reports', 'customer-due'], queryFn: customerDue, enabled: seesDues });
   const weOwe = useQuery({ queryKey: ['reports', 'supplier-due'], queryFn: supplierDue, enabled: seesDues });
-  const all = [summary, daily, paid, best, kinds, pnl, owedToUs, weOwe];
+  const all = [summary, daily, paid, best, kinds, cashiers, branches, low, writtenOff, pnl, owedToUs, weOwe];
   const s = summary.data;
   const profit = s?.gross_profit;
 
@@ -52,7 +58,7 @@ export default function ReportsScreen() {
       refreshControl={<RefreshControl refreshing={all.some((q) => q.isRefetching)} onRefresh={() => void Promise.all(all.map((q) => q.refetch()))} />}
       contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
       <Stack.Screen options={{ title: t('Reports'), headerRight: seesSales ? () => <HeaderAction title="Day report" icon="Receipt" onPress={() => router.push('/day-report')} /> : undefined }} />
-      {!seesSales && !seesPnl && !seesDues ? <Notice>You are not allowed to see reports. Ask the owner or manager.</Notice> : null}
+      {!seesSales && !seesPnl && !seesDues && !seesStock ? <Notice>You are not allowed to see reports. Ask the owner or manager.</Notice> : null}
 
       {seesSales || seesPnl ? (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two }}>
@@ -109,12 +115,31 @@ export default function ReportsScreen() {
           <ReportCard title={t('Sales by kind of item')} icon="Package" query={kinds}>
             {kinds.data ? <ByKind rows={kinds.data} /> : null}
           </ReportCard>
+
+          <ReportCard title={t('Sales by cashier')} icon="Users" query={cashiers}>
+            {cashiers.data ? <ByPerson rows={cashiers.data.map((r) => ({ id: r.cashier_id, name: r.cashier_name, sale_count: r.sale_count, revenue: r.revenue }))} /> : null}
+          </ReportCard>
+
+          <ReportCard title={t('Branch performance')} icon="Store" query={branches}>
+            {branches.data ? <ByPerson rows={branches.data.map((r) => ({ id: r.branch_id, name: r.branch_name, sale_count: r.sale_count, revenue: r.revenue }))} /> : null}
+          </ReportCard>
         </>
       ) : null}
 
       {seesPnl ? (
-        <ReportCard title={t('What you kept')} icon="Cash" query={pnl}>
-          {pnl.data ? <ProfitStatement pnl={pnl.data} /> : null}
+        <>
+          <ReportCard title={t('What you kept')} icon="Cash" query={pnl}>
+            {pnl.data ? <ProfitStatement pnl={pnl.data} /> : null}
+          </ReportCard>
+          <ReportCard title={t('Stock written off')} icon="TriangleAlert" query={writtenOff}>
+            {writtenOff.data ? <WrittenOff rows={writtenOff.data} /> : null}
+          </ReportCard>
+        </>
+      ) : null}
+
+      {seesStock ? (
+        <ReportCard title={t('Running out')} icon="Package" hint={t('Right now, whatever the time chosen above.')} query={low}>
+          {low.data ? <RunningOut rows={low.data} /> : null}
         </ReportCard>
       ) : null}
 

@@ -51,3 +51,8 @@ export function buildCustomerRequest(f: NewCustomerForm) {
     ...(f.creditLimit.trim() ? { credit_limit: f.creditLimit.trim() } : {}),
   };
 }
+
+/** Body for PATCH /customers/{id}/: only what this form edits, so the email and the active flag are left as they are. */
+export function buildCustomerPatch(f: NewCustomerForm) {
+  return { name: f.name.trim(), phone: f.phone.trim(), customer_type: f.wholesale ? 'WHOLESALE' : 'RETAIL', ...(f.creditLimit.trim() ? { credit_limit: f.creditLimit.trim() } : {}) };
+}
