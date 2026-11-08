@@ -32,13 +32,13 @@ import { addDocLine, lineFromSaved, dateAhead, describeOrderError, docProblem, D
  * Write down an order or a quotation: who, what and how many, and the day. The server works out every price and tax, so nothing here
  * adds money up: the figure shown is the server's own estimate for these items.
  */
-export function DocForm({ mode, id }: { mode: 'order' | 'quote'; id?: string }) {
+export function DocForm({ mode, id, kind }: { mode: 'order' | 'quote'; id?: string; kind?: 'ORDER' | 'REPAIR' | 'TAILORING' }) {
   const one = useQuery({ queryKey: [mode === 'order' ? 'orders' : 'quotes', 'one', id], queryFn: async (): Promise<CustomerOrder | Quotation> => (mode === 'order' ? getOrder(id as string) : getQuote(id as string)), enabled: !!id });
   if (id && !one.data) return <View style={{ flex: 1 }} />;
-  return <DocFormInner mode={mode} doc={one.data} />;
+  return <DocFormInner mode={mode} doc={one.data} kind={kind} />;
 }
 
-function DocFormInner({ mode, doc }: { mode: 'order' | 'quote'; doc?: CustomerOrder | Quotation }) {
+function DocFormInner({ mode, doc, kind }: { mode: 'order' | 'quote'; doc?: CustomerOrder | Quotation; kind?: 'ORDER' | 'REPAIR' | 'TAILORING' }) {
   const theme = useTheme();
   const { t } = usePrefs();
   const router = useRouter();
@@ -73,7 +73,7 @@ function DocFormInner({ mode, doc }: { mode: 'order' | 'quote'; doc?: CustomerOr
   const save = useMutation({
     mutationFn: async () => {
       if (order) {
-        const body = orderBody({ customerId: customer!.id, dueDate: date, note, branchId, lines });
+        const body = orderBody({ customerId: customer!.id, dueDate: date, note, branchId, lines, kind });
         return { kind: 'order' as const, doc: doc ? await updateOrder(doc.id, body) : await createOrder(body) };
       }
       const body = quoteBody({ customer: customer ? { id: customer.id } : { name, phone }, validUntil: date, note, branchId, lines });

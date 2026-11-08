@@ -18,7 +18,18 @@ export type NewProductForm = {
   wholesalePrice: string;
   mrp: string;
   reorderLevel: string;
+  /** The brand (optional). */
+  brandId?: string;
+  /** What is in it, for trades that ask (pharmacy). */
+  genericName?: string;
+  /** How many are on the shelf now (a single item). Counted in right after the item is made, at the cost typed above. */
+  openingStock?: string;
+  /** Sizes or colours. Two or more make it a VARIABLE item, each with its own price, cost and opening stock. */
+  variants?: VariantRow[];
 };
+
+/** One size or colour of an item. */
+export type VariantRow = { name: string; price: string; cost: string; opening: string };
 
 export type FormErrors = Partial<Record<keyof NewProductForm, string>>;
 
@@ -39,6 +50,19 @@ export function validateNewProduct(f: NewProductForm): FormErrors {
   if (f.wholesalePrice.trim() && !isPriceText(f.wholesalePrice)) errors.wholesalePrice = amount;
   if (f.mrp.trim() && !isPriceText(f.mrp)) errors.mrp = amount;
   if (f.reorderLevel.trim() && !isQtyText(f.reorderLevel)) errors.reorderLevel = 'Enter a quantity like 10.';
+  const rows = f.variants ?? [];
+  if (rows.length > 0) {
+    const names = rows.map((r) => r.name.trim().toLowerCase());
+    if (rows.length < 2) errors.variants = 'Add at least two sizes or colours, or switch it off.';
+    else if (names.some((n) => !n)) errors.variants = 'Every size or colour needs a name.';
+    else if (new Set(names).size !== names.length) errors.variants = 'Two of them have the same name.';
+    else if (rows.some((r) => (r.price.trim() && !isPriceText(r.price)) || (r.cost.trim() && !isPriceText(r.cost)))) errors.variants = 'Check the prices. Use an amount like 120 or 120.50.';
+    else if (rows.some((r) => r.opening.trim() && !isQtyText(r.opening))) errors.variants = 'Check how many are on the shelf. Use a number like 10.';
+    else if (rows.some((r) => Number(r.opening) > 0 && !(Number(r.cost) > 0))) errors.variants = 'To count stock in, type what you paid for each one.';
+  } else {
+    if (f.openingStock?.trim() && !isQtyText(f.openingStock)) errors.openingStock = 'Enter a quantity like 10.';
+    else if (Number(f.openingStock) > 0 && !(Number(f.costPrice) > 0)) errors.openingStock = 'To count stock in, type what you paid.';
+  }
   return errors;
 }
 
@@ -50,8 +74,33 @@ export function profitNote(cost: string, price: string): { profit: string; perce
   return { profit, percent, loss: compareMoney(profit, '0') < 0 };
 }
 
-/** Body for POST /products/. A product without `variants` gets one default variant on the server. */
+/**
+ * Body for POST /products/, the way the web's New Items form sends it. One item: a single "Default" variant carries the code, cost and
+ * MRP, while the price, barcode and wholesale price ride at the top (the server puts them on that variant). Sizes or colours (two or
+ * more): the item is VARIABLE and every price lives on its own row, because the top-level ones would only disagree with the rows.
+ */
 export function buildProductRequest(f: NewProductForm) {
+  const rows = f.variants ?? [];
+  const base = {
+    name: f.name.trim(),
+    category: f.categoryId,
+    unit: f.unitId,
+    ...(f.brandId ? { brand: f.brandId } : {}),
+    ...(f.genericName?.trim() ? { generic_name: f.genericName.trim() } : {}),
+    ...(f.reorderLevel.trim() ? { reorder_level: f.reorderLevel.trim() } : {}),
+  };
+  if (rows.length > 1) {
+    return {
+      ...base,
+      type: 'VARIABLE' as const,
+      variants: rows.map((r, i) => ({
+        name: r.name.trim(),
+        is_default: i === 0,
+        ...(r.cost.trim() ? { cost_price: r.cost.trim() } : {}),
+        ...(r.price.trim() && Number(r.price) > 0 ? { selling_price: r.price.trim() } : {}),
+      })),
+    };
+  }
   // The code, cost price and MRP belong to the variant, so they ride on one "Default" row, as the web sends them.
   const row = {
     ...(f.sku.trim() ? { sku: f.sku.trim() } : {}),
@@ -59,14 +108,39 @@ export function buildProductRequest(f: NewProductForm) {
     ...(f.mrp.trim() ? { mrp: f.mrp.trim() } : {}),
   };
   return {
-    name: f.name.trim(),
-    category: f.categoryId,
-    unit: f.unitId,
+    ...base,
     ...(f.barcode.trim() ? { barcode: f.barcode.trim() } : {}),
     ...(f.price.trim() ? { price: f.price.trim() } : {}),
     ...(f.wholesalePrice.trim() ? { wholesale_price: f.wholesalePrice.trim() } : {}),
-    ...(f.reorderLevel.trim() ? { reorder_level: f.reorderLevel.trim() } : {}),
     ...(Object.keys(row).length ? { variants: [{ name: 'Default', is_default: true, ...row }] } : {}),
+  };
+}
+
+type Made = { id: string; name: string }[];
+/**
+ * Counts the opening stock in after the item is made, as the web does: one STOCK_IN adjustment (goods arriving, not goods found, so it
+ * stays out of the profit), applied in the same call. A new variant holds nothing, so each line expects zero on the shelf and carries the
+ * cost typed for it. Null when nothing was typed.
+ */
+export function openingStockBody(f: NewProductForm, made: Made, warehouse: string) {
+  const rows = f.variants ?? [];
+  const lines =
+    rows.length > 1
+      ? rows.flatMap((r) => {
+          const hit = made.find((v) => v.name.trim().toLowerCase() === r.name.trim().toLowerCase());
+          return hit && Number(r.opening) > 0 ? [{ variant: hit.id, qty: r.opening, cost: r.cost }] : [];
+        })
+      : made[0] && Number(f.openingStock) > 0
+        ? [{ variant: made[0].id, qty: f.openingStock as string, cost: f.costPrice }]
+        : [];
+  if (lines.length === 0) return null;
+  return {
+    warehouse,
+    reason: 'STOCK_IN' as const,
+    note: `Opening stock for ${f.name.trim()}`,
+    apply: true,
+    expect_unchanged: true,
+    items: lines.map((l) => ({ variant: l.variant, new_quantity: parseMoney(l.qty).toFixed(3), expected_quantity: '0.000', unit_cost: l.cost.trim() })),
   };
 }
 

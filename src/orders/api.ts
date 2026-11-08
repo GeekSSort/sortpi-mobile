@@ -29,15 +29,16 @@ export type QuoteItem = { id: string; product_name: string; sku: string; quantit
 export type Quotation = { id: string; reference_no: string; customer_id: string | null; customer_name: string; customer_phone: string; quote_date: string; valid_until: string; status: 'OPEN' | 'SENT' | 'CANCELLED'; expired: boolean; subtotal: string; tax_amount: string; grand_total: string; note: string; items: QuoteItem[] };
 
 const PAGE = 25;
-export type OrderFilter = { status: OrderStatus | 'ALL'; due?: 'overdue' | 'today' | 'week'; search: string; page: number };
+export type OrderKind = 'ORDER' | 'REPAIR' | 'TAILORING';
+export type OrderFilter = { status: OrderStatus | 'ALL'; due?: 'overdue' | 'today' | 'week'; search: string; page: number; kind?: OrderKind };
 
 /** One page of customer orders, newest first. Needs `sale.view`. */
 export async function listOrders(o: OrderFilter) {
-  const env = await api.envelope<CustomerOrder[]>('GET', '/customer-orders/', { query: { limit: PAGE, page: o.page, status: o.status === 'ALL' ? undefined : o.status, due: o.due, search: o.search.trim() || undefined } });
+  const env = await api.envelope<CustomerOrder[]>('GET', '/customer-orders/', { query: { limit: PAGE, page: o.page, kind: o.kind, status: o.status === 'ALL' ? undefined : o.status, due: o.due, search: o.search.trim() || undefined } });
   return { rows: env.data ?? [], total: env.meta?.total ?? 0, nextPage: o.page < (env.meta?.total_pages ?? 1) ? o.page + 1 : undefined };
 }
 /** How many orders match (one row is asked for, the total is read). */
-export const countOrders = async (q: { status?: OrderStatus; due?: 'overdue' | 'today' | 'week' }) => (await api.envelope<CustomerOrder[]>('GET', '/customer-orders/', { query: { limit: 1, ...q } })).meta?.total ?? 0;
+export const countOrders = async (q: { status?: OrderStatus; due?: 'overdue' | 'today' | 'week'; kind?: OrderKind }) => (await api.envelope<CustomerOrder[]>('GET', '/customer-orders/', { query: { limit: 1, ...q } })).meta?.total ?? 0;
 export const getOrder = (id: string) => api.get<CustomerOrder>(`/customer-orders/${id}/`);
 /** Takes an order. Needs `sale.create`. Not idempotent on the server: the screen guards a retry. */
 export const createOrder = (body: ReturnType<typeof orderBody>) => api.post<CustomerOrder>('/customer-orders/', body);

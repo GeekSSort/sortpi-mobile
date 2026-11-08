@@ -139,6 +139,11 @@ function Gate() {
         <Stack.Screen name="serials" options={{ ...page, title: t('Serial Numbers') }} />
         <Stack.Screen name="barcode-labels" options={{ ...page, title: t('Barcode Labels') }} />
         <Stack.Screen name="notifications" options={{ ...page, title: t('Notifications') }} />
+        <Stack.Screen name="gift-cards" options={{ ...page, title: t('Gift Cards') }} />
+        <Stack.Screen name="instalments" options={{ ...page, title: t('Instalments') }} />
+        <Stack.Screen name="deliveries" options={{ ...page, title: t('Deliveries') }} />
+        <Stack.Screen name="trade-ins" options={{ ...page, title: t('Trade-ins') }} />
+        <Stack.Screen name="commission" options={{ ...page, title: t('Commission') }} />
         <Stack.Screen name="shifts" options={{ ...page, title: t('Shifts') }} />
         <Stack.Screen name="payroll" options={{ ...page, title: t('Payroll') }} />
         <Stack.Screen name="reports" options={{ ...page, title: t('Reports') }} />

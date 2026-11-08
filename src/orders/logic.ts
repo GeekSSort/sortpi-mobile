@@ -79,7 +79,8 @@ export const lineFromSaved = (i: { variant_id: string; product_name: string; sku
 const lineBody = (l: DocLine) => ({ variant_id: l.variantId, quantity: parseMoney(l.quantity).toFixed(3) });
 
 /** The server prices everything: only what and how many are sent. */
-export const orderBody = (o: { customerId: string; dueDate: string; note: string; branchId?: string; lines: DocLine[] }) => ({
+export const orderBody = (o: { customerId: string; dueDate: string; note: string; branchId?: string; lines: DocLine[]; kind?: 'ORDER' | 'REPAIR' | 'TAILORING' }) => ({
+  ...(o.kind && o.kind !== 'ORDER' ? { kind: o.kind } : {}),
   customer_id: o.customerId,
   due_date: o.dueDate,
   ...(o.note.trim() ? { note: o.note.trim() } : {}),
