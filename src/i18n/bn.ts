@@ -2297,4 +2297,18 @@ export const bn: Record<string, string> = {
   'No orders are due.': 'কোনো অর্ডার বাকি নেই।',
   '{n} orders are due or overdue.': '{n}টি অর্ডারের সময় হয়েছে বা পেরিয়ে গেছে।',
   'View orders': 'অর্ডার দেখুন',
+  // --- ask: question log
+  'Was this what you asked?': 'এটাই কি আপনি জানতে চেয়েছিলেন?',
+  'Thanks.': 'ধন্যবাদ।',
+  'Sorry. What did you mean?': 'দুঃখিত। আপনি কী বোঝাতে চেয়েছিলেন?',
+  'Yes': 'হ্যাঁ',
+  'No': 'না',
+  'Questions kept on this phone': 'এই ফোনে রাখা প্রশ্ন',
+  'Questions asked on this phone': 'এই ফোনে করা প্রশ্ন',
+  'What you ask is kept only on this phone, so the assistant can be tested on real shop talk. Nothing is sent anywhere unless you share it. Questions may include customer or item names.': 'আপনি যা জিজ্ঞেস করেন তা শুধু এই ফোনেই থাকে, যাতে সহায়ককে আসল দোকানের কথায় পরীক্ষা করা যায়। আপনি শেয়ার না করলে কোথাও পাঠানো হয় না। প্রশ্নে কাস্টমার বা মালের নাম থাকতে পারে।',
+  '{n} saved': '{n}টি রাখা আছে',
+  'Share the questions': 'প্রশ্নগুলো শেয়ার করুন',
+  'Delete the saved questions': 'রাখা প্রশ্নগুলো মুছুন',
+  'Delete the saved questions?': 'রাখা প্রশ্নগুলো মুছবেন?',
+  '{n} questions will be removed from this phone.': 'এই ফোন থেকে {n}টি প্রশ্ন মুছে যাবে।',
 };

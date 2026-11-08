@@ -8,7 +8,8 @@ import { AnswerCard } from '@/ask/answer-card';
 import { answerFor, answerIntent, runPlan } from '@/ask/fetch';
 import { matchIntent, type IntentId } from '@/ask/intents';
 import { modelUsable, planQuestion } from '@/ask/llm';
-import { logMiss } from '@/ask/miss-log';
+import { keepQuestion, markQuestion } from '@/ask/log-app';
+import type { Verdict } from '@/ask/question-log';
 import { SUGGESTION_WORDS, type Answer } from '@/ask/model';
 import { loadModelState, useModelState } from '@/ask/model-store';
 import { describePlan, toolsFor } from '@/ask/plan';
@@ -24,7 +25,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
 
 /** What the shop says back. Each one is a message in the conversation, so earlier answers stay where they are. */
-type Reply = { kind: 'thinking' } | { kind: 'answer'; answer: Answer; heard?: string } | { kind: 'pick'; options: IntentId[] } | { kind: 'error'; question: string; intent?: IntentId };
+type Reply = { kind: 'thinking' } | { kind: 'answer'; answer: Answer; heard?: string; logId?: number | null; verdict?: Verdict } | { kind: 'pick'; options: IntentId[]; logId?: number | null } | { kind: 'error'; question: string; intent?: IntentId };
 type Message = { id: number; from: 'me'; text: string } | { id: number; from: 'shop'; reply: Reply };
 
 const STARTERS: IntentId[] = ['sales_today', 'low_stock', 'top_products', 'due_amount'];
@@ -41,7 +42,7 @@ export default function AskScreen() {
   const next = useRef(1);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const perms = me?.permissions;
-  const category = (me?.organization as { category?: { name?: string; features?: string[] } } | undefined)?.category;
+  const category = (me?.organization as { category?: { code?: string; name?: string; features?: string[] } } | undefined)?.category;
   const features = category?.features;
 
   useEffect(() => {
@@ -58,23 +59,50 @@ export default function AskScreen() {
       const theirs = next.current++;
       setText('');
       setMessages((all) => [...all, { id: mine, from: 'me', text: shown }, { id: theirs, from: 'shop', reply: { kind: 'thinking' } }]);
+      const business = category?.code ?? null;
       try {
-        if (intent) return settle(theirs, { kind: 'answer', answer: await answerIntent(intent, undefined, perms) });
+        if (intent) return settle(theirs, { kind: 'answer', answer: await answerIntent(intent, undefined, perms) }); // a tapped suggestion is not a typed question
         const m = matchIntent(shown);
+        let how: { path: 'matcher' | 'model' | 'none'; result: string; plan?: string } = m.kind === 'intent' ? { path: 'matcher', result: m.intent } : { path: 'none', result: m.kind };
         if (m.kind !== 'intent') {
-          void logMiss(shown, m.kind);
           // The word matcher was not sure: if the helper model is on this phone, let it turn the sentence into a lookup.
           const plan = (await modelUsable()) ? await planQuestion(shown, { business: category?.name, features, words: await ownWords(), tools: toolsFor(features, perms) }) : null;
-          if (plan && plan !== 'none') return settle(theirs, { kind: 'answer', answer: await runPlan(plan, perms, features), heard: describePlan(plan, t) });
-          if (m.kind === 'unsure') return settle(theirs, { kind: 'pick', options: m.suggestions });
+          if (plan) how = { path: 'model', result: plan === 'none' ? 'none' : plan.tool, plan: plan === 'none' ? undefined : JSON.stringify(plan) };
+          if (plan && plan !== 'none') {
+            const logId = await keepQuestion({ text: shown, ...how, business });
+            return settle(theirs, { kind: 'answer', answer: await runPlan(plan, perms, features), heard: describePlan(plan, t), logId });
+          }
+          if (m.kind === 'unsure') return settle(theirs, { kind: 'pick', options: m.suggestions, logId: await keepQuestion({ text: shown, ...how, business }) });
         }
+        const logId = await keepQuestion({ text: shown, ...how, business });
         const answer = await answerFor(m, perms);
-        settle(theirs, answer ? { kind: 'answer', answer } : { kind: 'pick', options: STARTERS });
+        settle(theirs, answer ? { kind: 'answer', answer, logId } : { kind: 'pick', options: STARTERS, logId });
       } catch {
         settle(theirs, { kind: 'error', question: shown, intent });
       }
     },
     [perms, settle, t, category, features],
+  );
+
+  /** The person says whether an answer was what they asked. A "no" keeps the question for later and offers the common ones to choose from. */
+  const rate = useCallback((id: number, verdict: Verdict) => {
+    setMessages((all) =>
+      all.map((m) => {
+        if (m.id !== id || m.from !== 'shop' || m.reply.kind !== 'answer') return m;
+        void markQuestion(m.reply.logId, verdict);
+        return { ...m, reply: { ...m.reply, verdict } };
+      }),
+    );
+  }, []);
+
+  /** Picking what they meant is the best label there is: it is kept with the question. */
+  const meant = useCallback(
+    (id: number, intent: IntentId) => {
+      const m = messages.find((x) => x.id === id);
+      if (m?.from === 'shop' && (m.reply.kind === 'pick' || m.reply.kind === 'answer')) void markQuestion(m.reply.logId, 'wrong', SUGGESTION_WORDS[intent]);
+      void ask('', intent);
+    },
+    [messages, ask],
   );
 
   return (
@@ -102,7 +130,7 @@ export default function AskScreen() {
                 <ThemedText type="body" style={{ color: '#fff' }} literal>{m.text}</ThemedText>
               </View>
             ) : (
-              <ShopReply key={m.id} reply={m.reply} onPick={(i) => void ask('', i)} onRetry={(r) => void ask(r.question, r.intent)} onAsk={(i) => void ask('', i)} />
+              <ShopReply key={m.id} reply={m.reply} onPick={(i) => meant(m.id, i)} onRetry={(r) => void ask(r.question, r.intent)} onAsk={(i) => void ask('', i)} onRate={(v) => rate(m.id, v)} />
             ),
           )}
         </ScrollView>
@@ -128,7 +156,7 @@ export default function AskScreen() {
   );
 }
 
-function ShopReply({ reply, onPick, onRetry, onAsk }: { reply: Reply; onPick: (i: IntentId) => void; onRetry: (r: { question: string; intent?: IntentId }) => void; onAsk: (i: IntentId) => void }) {
+function ShopReply({ reply, onPick, onRetry, onAsk, onRate }: { reply: Reply; onPick: (i: IntentId) => void; onRetry: (r: { question: string; intent?: IntentId }) => void; onAsk: (i: IntentId) => void; onRate: (v: Verdict) => void }) {
   const { t } = usePrefs();
   if (reply.kind === 'thinking')
     return (
@@ -158,6 +186,7 @@ function ShopReply({ reply, onPick, onRetry, onAsk }: { reply: Reply; onPick: (i
     <View style={{ gap: Spacing.one }}>
       {reply.heard ? <ThemedText type="small" themeColor="textMuted" literal>{`${t('I understood this as')}: ${reply.heard}`}</ThemedText> : null}
       <AnswerCard a={reply.answer} onAsk={onAsk} />
+      {reply.logId != null ? <Rating verdict={reply.verdict} onRate={onRate} onPick={onPick} /> : null}
     </View>
   );
 }
@@ -176,5 +205,32 @@ function Chip({ label, onPress }: { label: string; onPress: () => void }) {
     <Tap accessibilityRole="button" onPress={onPress} style={{ minHeight: 48, justifyContent: 'center', paddingHorizontal: 16, borderRadius: Radius.full, backgroundColor: theme.brandSoft, borderWidth: 1.5, borderColor: theme.brandSoftBorder }}>
       <ThemedText type="smallMedium" style={{ color: theme.brandText }} literal>{label}</ThemedText>
     </Tap>
+  );
+}
+
+/** "Was this what you asked?" Kept on the phone with the question, so real mistakes can be found and fixed. */
+function Rating({ verdict, onRate, onPick }: { verdict?: Verdict; onRate: (v: Verdict) => void; onPick: (i: IntentId) => void }) {
+  const theme = useTheme();
+  const { t } = usePrefs();
+  if (verdict === 'right') return <ThemedText type="small" themeColor="textMuted">Thanks.</ThemedText>;
+  if (verdict === 'wrong')
+    return (
+      <View style={{ gap: Spacing.two, alignItems: 'flex-start' }}>
+        <ThemedText type="small" themeColor="textMuted">Sorry. What did you mean?</ThemedText>
+        {STARTERS.map((i) => (
+          <Chip key={i} label={SUGGESTION_WORDS[i]} onPress={() => onPick(i)} />
+        ))}
+      </View>
+    );
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.two }}>
+      <ThemedText type="small" themeColor="textMuted">Was this what you asked?</ThemedText>
+      <Tap accessibilityRole="button" accessibilityLabel={t('Yes')} onPress={() => onRate('right')} style={{ width: 48, height: 48, alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name="ThumbUp" size={22} color={theme.success} />
+      </Tap>
+      <Tap accessibilityRole="button" accessibilityLabel={t('No')} onPress={() => onRate('wrong')} style={{ width: 48, height: 48, alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name="ThumbDown" size={22} color={theme.danger} />
+      </Tap>
+    </View>
   );
 }

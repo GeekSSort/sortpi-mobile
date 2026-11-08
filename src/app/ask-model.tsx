@@ -1,7 +1,8 @@
 import { Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView, View } from 'react-native';
+import { Alert, ScrollView, Share, View } from 'react-native';
 
+import { deleteQuestions, questionCount, questionsCsv } from '@/ask/log-app';
 import { megabytes, percent, spaceNeeded, type Gate } from '@/ask/model-state';
 import { MODEL } from '@/ask/model-spec';
 import { checkGate, loadModelState, pauseDownload, removeModel, startDownload, useModelState } from '@/ask/model-store';
@@ -21,9 +22,11 @@ export default function AskModelScreen() {
   const { t } = usePrefs();
   const s = useModelState();
   const [gate, setGate] = useState<Gate>('ok');
+  const [kept, setKept] = useState(0);
 
   useEffect(() => {
     queueMicrotask(() => void loadModelState());
+    void questionCount().then(setKept);
   }, []);
 
   async function begin() {
@@ -44,6 +47,21 @@ export default function AskModelScreen() {
     Alert.alert(t('Delete the helper?'), t('This frees {n} MB. Ask still works with the word matcher.', { n: SIZE }), [
       { text: t('Cancel'), style: 'cancel' },
       { text: t('Delete'), style: 'destructive', onPress: () => void removeModel() },
+    ]);
+  }
+
+  async function shareQuestions() {
+    try {
+      await Share.share({ title: t('Questions asked on this phone'), message: await questionsCsv() });
+    } catch {
+      // closing the share sheet is not an error
+    }
+  }
+
+  function confirmDeleteQuestions() {
+    Alert.alert(t('Delete the saved questions?'), t('{n} questions will be removed from this phone.', { n: kept }), [
+      { text: t('Cancel'), style: 'cancel' },
+      { text: t('Delete'), style: 'destructive', onPress: () => void deleteQuestions().then(() => setKept(0)) },
     ]);
   }
 
@@ -79,6 +97,14 @@ export default function AskModelScreen() {
       {s.kind === 'paused' ? <Button title="Continue download" onPress={() => void begin()} /> : null}
       {s.kind === 'downloading' ? <Button title="Pause" variant="secondary" onPress={() => void pauseDownload()} /> : null}
       {s.kind === 'ready' || s.kind === 'paused' || (s.kind === 'failed' && s.received > 0) ? <Button title="Delete the helper" variant="secondary" onPress={confirmRemove} /> : null}
+
+      <View style={{ gap: Spacing.two, paddingTop: Spacing.three }}>
+        <ThemedText type="heading">Questions kept on this phone</ThemedText>
+        <ThemedText type="small" themeColor="textMuted">What you ask is kept only on this phone, so the assistant can be tested on real shop talk. Nothing is sent anywhere unless you share it. Questions may include customer or item names.</ThemedText>
+        <ThemedText type="bodyMedium" literal>{t('{n} saved', { n: kept })}</ThemedText>
+        {kept > 0 ? <Button title="Share the questions" variant="secondary" onPress={() => void shareQuestions()} /> : null}
+        {kept > 0 ? <Button title="Delete the saved questions" variant="secondary" onPress={confirmDeleteQuestions} /> : null}
+      </View>
     </ScrollView>
   );
 }
