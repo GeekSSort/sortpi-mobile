@@ -6,6 +6,7 @@ import { searchCatalog } from '@/sell/catalog';
 import { listStock } from '@/stock/api';
 import { itemName } from '@/sell/catalog-map';
 
+import { itemSearchTerms } from './banglish';
 import { allowed } from './allowed';
 import type { IntentId, Match } from './intents';
 import { billsAnswer, duesAnswer, notAllowed, notUnderstood, paymentsAnswer, priceAnswer, profitAnswer, salesAnswer, startSellingAnswer, stockListAnswer, stockOfAnswer, topAnswer, type Answer } from './model';
@@ -49,12 +50,20 @@ export async function answerIntent(intent: IntentId, product: string | undefined
     }
     case 'payments_today': return paymentsAnswer((await howPaid(range('today'))).map((r) => ({ label: r.label, amount: r.amount })));
     case 'product_price': {
-      const items = (await searchCatalog({ q: product ?? '', page: 1, wholesale: false })).items.slice(0, 5);
+      let items: Awaited<ReturnType<typeof searchCatalog>>['items'] = [];
+      for (const q of itemSearchTerms(product ?? '')) {
+        items = (await searchCatalog({ q, page: 1, wholesale: false })).items.slice(0, 5);
+        if (items.length) break;
+      }
       return priceAnswer(product ?? '', items.map((i) => ({ name: i.name, price: i.price, unit: i.unitShort })));
     }
     case 'product_stock': {
-      const p = await listStock({ search: product ?? '', filter: 'all', page: 1 });
-      return stockOfAnswer(product ?? '', p.rows.slice(0, 5).map((r) => ({ name: itemName(r.product_name, r.variant_name), stock: r.available, unit: r.unit_short_name, reorder: r.reorder_level })));
+      let rows: Awaited<ReturnType<typeof listStock>>['rows'] = [];
+      for (const q of itemSearchTerms(product ?? '')) {
+        rows = (await listStock({ search: q, filter: 'all', page: 1 })).rows;
+        if (rows.length) break;
+      }
+      return stockOfAnswer(product ?? '', rows.slice(0, 5).map((r) => ({ name: itemName(r.product_name, r.variant_name), stock: r.available, unit: r.unit_short_name, reorder: r.reorder_level })));
     }
     case 'start_selling': return startSellingAnswer();
   }

@@ -66,3 +66,18 @@ test('a question that only shares "ajker" or "koto" with the shop is not about t
   for (const q of ['ajker tarikh', 'time koto', 'ajker weather', 'hello', 'how are you']) assert.notEqual(intentOf(matchIntent(q)), 'payments_today', q);
   for (const q of ['ajker tarikh', 'ajker weather', 'hello']) assert.equal(matchIntent(q).kind === 'intent', false, q);
 });
+
+test('"pani koy botte" is a stock question about water, in Banglish and in Bangla script', async () => {
+  const { itemSearchTerms } = await import('./banglish.ts');
+  for (const q of ['pani koy botte', 'pani koy botol ase', 'পানি কয় বোতল আছে', 'pani ase ki']) {
+    const m = matchIntent(q);
+    assert.equal(m.kind, 'intent', q);
+    if (m.kind === 'intent') {
+      assert.equal(m.intent, 'product_stock', q);
+      assert.deepEqual(itemSearchTerms(m.product ?? ''), ['water', m.product], q);
+    }
+  }
+  assert.equal(matchIntent('pani dam koto').kind === 'intent' && (matchIntent('pani dam koto') as { intent: string }).intent, 'product_price');
+  assert.deepEqual(itemSearchTerms('coca cola'), ['coca cola']);
+  assert.deepEqual(itemSearchTerms(''), []);
+});

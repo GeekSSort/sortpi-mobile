@@ -9,7 +9,8 @@ const WORDS: Record<string, string[]> = {
   bill: ['bil', 'bills', 'bils', 'invoice', 'invoices', 'hisab', 'hishab', 'hisaab', 'বিল', 'হিসাব', 'ইনভয়েস'],
   sale: ['sales', 'sell', 'selling', 'bikri', 'bikry', 'bikkri', 'bikrir', 'বিক্রি', 'বিক্রয়', 'বিক্রির'],
   koto: ['kto', 'kata', 'kt', 'koto', 'kotto', 'how', 'কত', 'কতো', 'কি পরিমাণ'],
-  koyta: ['koita', 'koyta', 'koyti', 'kotogulo', 'কয়টা', 'কয়টি', 'কতটি', 'কতগুলো'],
+  koyta: ['koita', 'koyta', 'koyti', 'kotogulo', 'koy', 'koi', 'koyti', 'কয়টা', 'কয়টি', 'কতটি', 'কতগুলো', 'কয়', 'কয়টাই', 'how many'],
+  unit: ['botol', 'botte', 'botoll', 'botl', 'bottle', 'bottles', 'bottel', 'pcs', 'pc', 'piece', 'pieces', 'pis', 'pic', 'packet', 'packets', 'pkt', 'carton', 'ctn', 'dozen', 'dojon', 'বোতল', 'পিস', 'প্যাকেট', 'কার্টন', 'ডজন', 'টা', 'টি'],
   stock: ['stk', 'stok', 'stoke', 'মজুত', 'স্টক', 'inventory'],
   low: ['kom', 'kam', 'komse', 'komche', 'low', 'কম', 'কমে'],
   out: ['sesh', 'shesh', 'nai', 'nei', 'finished', 'out', 'শেষ', 'নেই'],
@@ -42,9 +43,39 @@ export function normalizeBanglish(text: string): string {
 }
 
 /** Words that say what is being asked but are not a thing's name. What is left over in a question is the item the person means. */
-const NOT_A_NAME = new Set(['ajker', 'gotokal', 'week', 'bill', 'sale', 'koto', 'koyta', 'stock', 'low', 'out', 'price', 'product', 'baki', 'customer', 'supplier', 'profit', 'top', 'ase', 'ki', 'dekhao', 'taka', 'er', 'ta', 'te', 'ke', 'tar', 'dite', 'hobe', 'hoy', 'hoyeche', 'ache', 'a', 'the', 'is', 'of', 'me', 'amar', 'ekta', 'ek']);
+const NOT_A_NAME = new Set(['unit', 'ajker', 'gotokal', 'week', 'bill', 'sale', 'koto', 'koyta', 'stock', 'low', 'out', 'price', 'product', 'baki', 'customer', 'supplier', 'profit', 'top', 'ase', 'ki', 'dekhao', 'taka', 'er', 'ta', 'te', 'ke', 'tar', 'dite', 'hobe', 'hoy', 'hoyeche', 'ache', 'a', 'the', 'is', 'of', 'me', 'amar', 'ekta', 'ek']);
 
 /** The words of a question that name an item ("coca cola"), after the question words are taken away. */
 export function nameWords(normalized: string): string[] {
   return normalized.split(' ').filter((w) => w.length >= 2 && !NOT_A_NAME.has(w));
+}
+
+/**
+ * What shopkeepers call common goods, mapped to the English name an item is usually stored under. A shop's catalogue is mostly English,
+ * so "pani" is searched as "water" first and as typed second. Add a word here when a shop asks for it.
+ */
+const ITEM_WORDS: Record<string, string> = {
+  pani: 'water', jol: 'water', পানি: 'water', জল: 'water',
+  chini: 'sugar', cini: 'sugar', চিনি: 'sugar',
+  chal: 'rice', cal: 'rice', চাল: 'rice',
+  tel: 'oil', তেল: 'oil',
+  dim: 'egg', ডিম: 'egg',
+  dudh: 'milk', dud: 'milk', দুধ: 'milk',
+  lobon: 'salt', nun: 'salt', লবণ: 'salt', নুন: 'salt',
+  ata: 'flour', atta: 'flour', আটা: 'flour', moyda: 'flour', ময়দা: 'flour',
+  dal: 'lentil', daal: 'lentil', ডাল: 'lentil',
+  peyaj: 'onion', piyaj: 'onion', পেঁয়াজ: 'onion',
+  alu: 'potato', aloo: 'potato', আলু: 'potato',
+  sabon: 'soap', shabon: 'soap', সাবান: 'soap',
+  cha: 'tea', chaa: 'tea', চা: 'tea',
+  biscuit: 'biscuit', বিস্কুট: 'biscuit', biskut: 'biscuit',
+  juice: 'juice', জুস: 'juice',
+};
+
+/** The searches to try for an item name, best first: the English words, then what was typed. */
+export function itemSearchTerms(name: string): string[] {
+  const typed = name.trim();
+  if (!typed) return [];
+  const english = typed.split(' ').map((w) => ITEM_WORDS[w] ?? w).join(' ');
+  return english === typed ? [typed] : [english, typed];
 }
