@@ -23,3 +23,11 @@ test('every failure has words, and a lockout says what to do', () => {
   assert.match(unlockErrorText('not_enrolled'), /Settings/);
   assert.ok(unlockErrorText(undefined).length > 10);
 });
+
+import { LOCK_AFTER_MS, shouldRelock } from './unlock.ts';
+
+test('the lock comes back after a minute away, not after a glance at another app', () => {
+  assert.equal(shouldRelock(null, 10_000), false);
+  assert.equal(shouldRelock(1_000, 1_000 + LOCK_AFTER_MS - 1), false);
+  assert.equal(shouldRelock(1_000, 1_000 + LOCK_AFTER_MS), true);
+});

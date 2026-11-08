@@ -5,6 +5,10 @@
  */
 export const retryableUnlockError = (error?: string): boolean => error === 'system_cancel' || error === 'app_cancel' || error === 'unable_to_process';
 
+/** Away from the app this long (home button, a call, another app), and a phone with the lock on asks for the fingerprint again. */
+export const LOCK_AFTER_MS = 60_000;
+export const shouldRelock = (leftAt: number | null, now: number): boolean => leftAt !== null && now - leftAt >= LOCK_AFTER_MS;
+
 /** Why the fingerprint did not open the shop, in words a shopkeeper can act on. The raw code goes beside it so it can be read out for support. */
 export function unlockErrorText(error?: string): string {
   switch (error) {
