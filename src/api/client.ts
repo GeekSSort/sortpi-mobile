@@ -52,6 +52,8 @@ export type RequestOptions = {
   /** Skip the Authorization header (login, refresh, accept-invitation). */
   anonymous?: boolean;
   signal?: AbortSignal;
+  /** The answer is a document (a receipt's HTML), not JSON: hand back the text as `data`. Errors still come back as JSON. */
+  asText?: boolean;
 };
 
 export type ClientOptions = {
@@ -115,6 +117,7 @@ export function createApiClient(opts: ClientOptions) {
     opts.onReach?.(true);
     let body: Envelope<T> | null = null;
     const text = await response.text();
+    if (o.asText && response.ok) return { data: text as unknown as T };
     if (text) {
       try {
         body = JSON.parse(text) as Envelope<T>;

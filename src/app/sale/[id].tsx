@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useState } from 'react';
 import { ScrollView, Share, View } from 'react-native';
 
 import { useSession } from '@/auth/session-provider';
@@ -13,6 +14,7 @@ import { MONTHS, saleWhen } from '@/home/week';
 import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
 import { formatBDT } from '@/lib/money';
+import { PaperSheet } from '@/sell/paper-sheet';
 import { receiptText } from '@/sell/receipt';
 import { getSale, type Sale } from '@/sales/api';
 import { isWalkIn, METHOD_LABEL, saleState } from '@/sales/logic';
@@ -41,6 +43,7 @@ function Body({ sale, lang, shop, canRefund }: { sale: Sale; lang: 'en' | 'bn'; 
   const theme = useTheme();
   const router = useRouter();
   const { t } = usePrefs();
+  const [printing, setPrinting] = useState(false);
   const state = saleState(sale);
   const when = saleWhen(sale.sale_date);
   const day = when.day === 'today' ? t('Today') : when.day === 'yesterday' ? t('Yesterday') : `${when.day.date} ${MONTHS[lang][when.day.month]}`;
@@ -109,6 +112,8 @@ function Body({ sale, lang, shop, canRefund }: { sale: Sale; lang: 'en' | 'bn'; 
       ) : null}
 
       {canRefund ? <Button title="Take goods back" variant="secondary" onPress={() => router.push({ pathname: '/return/[id]', params: { id: sale.id } })} /> : null}
+      <Button title="Print receipt" onPress={() => setPrinting(true)} />
+      <PaperSheet saleId={printing ? sale.id : null} onClose={() => setPrinting(false)} />
       <Button
         title="Share receipt"
         variant="secondary"

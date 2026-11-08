@@ -10,6 +10,12 @@ import { toScannedItem, type LookupResponse } from './lookup-map';
 import { isWalkIn, walkInBody, WALK_IN_CODE, WALK_IN_NAME } from './walk-in';
 
 export type Shift = { id: string; counter_name?: string | null; opened_at: string; opening_cash: string };
+import type { ReceiptWidth } from './paper';
+export type { ReceiptWidth };
+
+/** The server's own receipt for a sale, as HTML ready to print (`GET /sales/{id}/receipt/`). It leaves out cost and profit unless the caller may see them. */
+export const receiptHtml = (saleId: string, width: ReceiptWidth) => api.get<string>(`/sales/${saleId}/receipt/`, { query: { width }, asText: true });
+
 export type SaleResult = { id: string; invoice_number: string; grand_total: string; paid_amount: string; due_amount: string; status: string; loyalty_points_earned?: number; loyalty_points_spent?: number };
 
 /** `null` when no product has this code (404): the caller may offer to add it. `barcode` is a scanner's exact road, `code` the typed one (SKU or barcode). */

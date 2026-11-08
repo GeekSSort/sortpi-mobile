@@ -127,3 +127,11 @@ test('a plan refusal reaches screens in words a shopkeeper can act on', async ()
   const client = createApiClient({ baseUrl: () => BASE, tokens: memoryTokens('A1', 'R1'), fetchImpl: async () => json(403, { success: false, code: 'PLAN_LIMIT_REACHED', message: "The organization is at its plan's product ceiling." }) });
   await assert.rejects(client.post('/products/', {}), (e: unknown) => e instanceof ApiError && e.code === 'PLAN_LIMIT_REACHED' && e.message === 'Your plan has reached its limit. Open “Your plan” to move up.');
 });
+
+test('asText hands back a document as is, and a refusal still reads as an error', async () => {
+  const html = '<html><body>Receipt</body></html>';
+  const ok = createApiClient({ baseUrl: () => BASE, tokens: memoryTokens('A', 'R'), fetchImpl: async () => new Response(html, { status: 200, headers: { 'Content-Type': 'text/html' } }) });
+  assert.equal(await ok.get<string>('/sales/x/receipt/', { asText: true }), html);
+  const bad = createApiClient({ baseUrl: () => BASE, tokens: memoryTokens('A', 'R'), fetchImpl: async () => json(404, { success: false, code: 'NOT_FOUND', message: 'No such sale here.' }) });
+  await assert.rejects(() => bad.get<string>('/sales/x/receipt/', { asText: true }), (e: unknown) => e instanceof ApiError && e.status === 404);
+});
