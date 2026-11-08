@@ -18,3 +18,11 @@ export function fitToPaper(html: string, width: ReceiptWidth): string {
   const mm = width === '58mm' ? 58 : 80;
   return `<style>html,body{width:${mm}mm !important;max-width:${mm}mm !important;margin-left:auto !important;margin-right:auto !important}</style>${html}`;
 }
+
+/** What this phone remembers about the receipt paper: a real size prints straight away, `ask` asks every time, null means never chosen yet. */
+export type PaperPref = ReceiptWidth | 'ask' | null;
+
+export function parsePaperPref(raw: string | null | undefined): PaperPref {
+  if (raw === 'ask') return 'ask';
+  return PAPERS.some((p) => p.width === raw) ? (raw as ReceiptWidth) : null;
+}

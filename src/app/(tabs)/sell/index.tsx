@@ -23,7 +23,7 @@ import { BottomTabInset, Fonts, MaxContentWidth, Radius } from '@/constants/them
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useT } from '@/i18n/prefs';
 import { useTheme } from '@/hooks/use-theme';
-import { addMoney, compareMoney, formatBDT } from '@/lib/money';
+import { addMoney, compareMoney, formatBDT, subMoney } from '@/lib/money';
 import { Scanner } from '@/scan/scanner';
 import { CustomerPicker } from '@/sell/customer-picker';
 import { DiscountBlock } from '@/sell/discount-block';
@@ -31,7 +31,9 @@ import { totalFromRefusal } from '@/sell/discounts';
 import { useDiscounts } from '@/sell/use-discounts';
 import { SaleGuide } from '@/sell/sale-guide';
 import type { PickedCustomer } from '@/sell/customers';
-import { buildPayments, type PayChoice } from '@/sell/payment';
+import { amountDueNow, buildPayments, walletReference, WALLETS, type PayChoice } from '@/sell/payment';
+import { clearDraft, clearPending, loadDraft, loadPending, saveDraft, savePending } from '@/sell/journal-store';
+import { mayHaveCommitted, type PendingSale } from '@/sell/journal';
 import { PaperSheet } from '@/sell/paper-sheet';
 import { receiptText } from '@/sell/receipt';
 import { haptics } from '@/lib/haptics';
@@ -40,7 +42,7 @@ import { amountDue } from '@/customers/logic';
 import { salesToday } from '@/home/api';
 import { currentShift, dropHeld, listCounters, heldCarts, holdCart, loadSellContext, lookupBarcode, openShift, previewTotal, resumeHeld, sell, type SaleResult } from '@/sell/api';
 import { defaultCounter } from '@/sell/counters';
-import { holdBody, mergeHeld, type HeldCart } from '@/sell/held';
+import { holdBody, holdReference, mergeHeld, type HeldCart } from '@/sell/held';
 import { HeldSheet } from '@/sell/held-sheet';
 import { addItem, changeDue, changeQuantity, setQuantity, estimateSubtotal, isEmpty, itemCount, lastQuantity, lineEstimate, lineKey, removeLine, type Cart, type CartLine, type PaymentMethod, type ScannedItem } from '@/sell/cart';
 import { SwipeToRemove } from '@/components/swipe-to-remove';
@@ -107,7 +109,15 @@ export default function SellScreen() {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<SaleResult | null>(null);
   const looking = useRef(false);
-  const saleKey = useRef<string | null>(null);
+  // The sale that was sent but not answered (or not yet confirmed), kept on the phone so it can be sent again with the SAME key.
+  const [pending, setPending] = useState<PendingSale | null>(null);
+  const [hidePending, setHidePending] = useState(false);
+  const [ready, setReady] = useState(false); // the unfinished sale and the saved cart have been looked for
+  const holdTry = useRef<{ reference: string; unanswered: boolean } | null>(null); // one hold may be tried more than once
+  const [wallet, setWallet] = useState<string | null>(null);
+  useEffect(() => {
+    void SecureStore.getItemAsync('sortpi.wallet').then((w) => w && (WALLETS as readonly string[]).includes(w) && setWallet(w));
+  }, []);
 
   // A product just added from the not-found card comes back here and goes straight into the cart.
   useFocusEffect(
@@ -137,6 +147,38 @@ export default function SellScreen() {
   const ctxQuery = useQuery({ queryKey: ['sell-context', userId, me?.active_branch?.id], queryFn: () => loadSellContext(me!), enabled: !!me });
   const shiftQuery = useQuery({ queryKey: ['shift', userId], queryFn: currentShift, enabled: !!me });
   const baseCtx = ctxQuery.data;
+  // On opening the till: an unfinished sale comes first, else the cart that was on screen before a lock, a call or a kill.
+  const draftBranch = baseCtx?.branchId;
+  useEffect(() => {
+    if (!userId || !draftBranch || ready) return;
+    let live = true;
+    void (async () => {
+      const p = await loadPending(userId);
+      if (!live) return;
+      if (p) setPending(p);
+      else {
+        const draft = await loadDraft(userId, draftBranch);
+        if (live && draft) {
+          setCart((c) => (c.length ? c : draft.cart));
+          if (draft.customer) setCustomer((c) => c ?? draft.customer);
+        }
+      }
+      if (live) setReady(true);
+    })();
+    return () => {
+      live = false;
+    };
+  }, [userId, draftBranch, ready]);
+  // The cart on screen is kept on the phone, so nothing is lost if the app is closed or locked in the middle of a sale.
+  useEffect(() => {
+    if (!ready || !userId || !draftBranch || mode === 'done') return;
+    const id = setTimeout(() => {
+      if (isEmpty(cart)) {
+        if (!pending) void clearDraft();
+      } else void saveDraft({ v: 1, at: Date.now(), userId, branchId: draftBranch, cart, customer });
+    }, 400);
+    return () => clearTimeout(id);
+  }, [cart, customer, mode, ready, userId, draftBranch, pending]);
   const counters = useQuery({ queryKey: ['counters', me?.active_branch?.id], queryFn: () => listCounters(me!.active_branch!.id), enabled: !!me?.active_branch?.id && shiftQuery.data === null, staleTime: 0, retry: false });
   const counterList = counters.data ?? [];
   // The counter used last time is chosen again when it is free, so opening the day is usually one tap.
@@ -164,6 +206,9 @@ export default function SellScreen() {
   const [forced, setForced] = useState<{ amount: string; sig: string } | null>(null);
   const payTotal = serverTotal ? (forced && forced.sig === d.sig ? forced.amount : (d.totals?.final ?? serverTotal)) : undefined;
   const estimate = estimateSubtotal(cart);
+  // How many of each item are in the cart, counted once per change, not once per tile on screen.
+  const inCart = new Map<string, number>();
+  for (const l of cart) inCart.set(l.variantId, (inCart.get(l.variantId) ?? 0) + Number(l.quantity));
 
   function removeWithUndo(key: string, name: string) {
     const before = cart;
@@ -217,7 +262,11 @@ export default function SellScreen() {
   }
 
   function startPayment() {
-    saleKey.current = newIdempotencyKey(); // one key per payment attempt; reused if the same Confirm is retried
+    // A sale that never got its answer must be finished (or discarded) first: a second sale could double the first.
+    if (pending) {
+      setHidePending(false);
+      return;
+    }
     setForced(null);
     setReceived('');
     setReference('');
@@ -226,34 +275,62 @@ export default function SellScreen() {
     setMode('pay');
   }
 
+  /** The sale went through, or its record was replayed: show it and forget the unfinished-sale record. */
+  function sold(sale: SaleResult, lines: Cart, how: string, expectedDue: string) {
+    setResult(sale);
+    track('sale_completed', { items: itemCount(lines), method: how });
+    setMode('done');
+    haptics.success();
+    // The phone's own total (coupon, points, rounding) can differ from the shop's. When the shop's is higher, the difference was NOT taken:
+    // say so plainly while the customer is still at the counter, instead of leaving it as a small line on the receipt card.
+    if (compareMoney(sale.due_amount, expectedDue) > 0) {
+      const short = subMoney(sale.due_amount, expectedDue);
+      Alert.alert(t('Check the amount'), t('The shop’s total was {total}, more than the phone showed. {short} was not taken and is left on the account.', { total: formatBDT(sale.grand_total), short: formatBDT(short) }));
+    }
+    setPending(null);
+    void clearPending();
+    void clearDraft();
+    // Home, Stock and Customers show numbers this sale just changed.
+    for (const key of ['setup-count', 'home', 'stock', 'customers']) void queryClient.invalidateQueries({ queryKey: [key] });
+  }
+
   async function confirm() {
-    if (!ctx || !shift || !payTotal || !saleKey.current) return;
-    const plan = buildPayments({ choice: method, total: payTotal, payNow, reference, hasCustomer: !!customer });
+    // A request that got no answer is sent again exactly as it was, whatever the screen says now: the server answers with the original sale.
+    if (pending) return void finishPending(pending);
+    if (!ctx || !shift || !payTotal) return;
+    const plan = buildPayments({ choice: method, total: payTotal, payNow, reference: method === 'MOBILE' ? walletReference(wallet, reference) : reference, hasCustomer: !!customer });
     if (plan.problem) {
       setNotice(plan.problem);
       return;
     }
+    const args = { ...ctx, shiftId: shift.id, couponCode: d.couponCode, redeemPoints: d.points || undefined };
+    const how = plan.payments.length > 1 ? 'SPLIT' : (plan.payments[0]?.payment_method ?? 'NONE');
+    const record: PendingSale = { v: 1, key: newIdempotencyKey(), at: Date.now(), userId, ctx: args, cart, payments: plan.payments, total: payTotal, customerName: customer?.name ?? null };
     setBusy(true);
     setNotice(null);
     try {
+      await savePending(record).catch(() => undefined); // on the phone BEFORE it is sent
+      setPending(record);
       // The payment is at most what the server says the sale is worth: it refuses an overpayment, and change is not part of the sale.
-      const sale = await timed('confirm_sale', () => sell({ ...ctx, shiftId: shift.id, couponCode: d.couponCode, redeemPoints: d.points || undefined }, cart, plan.payments, saleKey.current!));
-      setResult(sale);
-      track('sale_completed', { items: itemCount(cart), method: plan.payments.length > 1 ? 'SPLIT' : (plan.payments[0]?.payment_method ?? 'NONE') });
-      setMode('done');
+      const sale = await timed('confirm_sale', () => sell(args, cart, plan.payments, record.key));
       if (method !== 'CREDIT') void SecureStore.setItemAsync('sortpi.lastpay', method);
-      haptics.success();
-      // Home, Stock and Customers show numbers this sale just changed.
-      for (const key of ['setup-count', 'home', 'stock', 'customers']) void queryClient.invalidateQueries({ queryKey: [key] });
+      if (method === 'MOBILE' && wallet) void SecureStore.setItemAsync('sortpi.wallet', wallet);
+      sold(sale, cart, how, plan.due);
     } catch (e) {
-      const said = totalFromRefusal(e, plan.payments.reduce((sum, p) => addMoney(sum, p.amount), '0'));
-      if (said) {
-        // The server's total is not what the phone worked out (rounding, or a rule the phone cannot read). Show it, and charge that.
-        setForced({ amount: said, sig: d.sig });
-        saleKey.current = newIdempotencyKey();
-        setNotice(t('The total is {amount}. Check it, then confirm again.', { amount: formatBDT(said) }));
+      if (mayHaveCommitted(e)) {
+        setNotice(describeSellError(e)); // the record stays: Confirm sends the very same sale again
       } else {
-        setNotice(describeSellError(e));
+        // The shop said no and wrote nothing, so there is nothing to repeat.
+        setPending(null);
+        void clearPending();
+        const said = totalFromRefusal(e, plan.payments.reduce((sum, p) => addMoney(sum, p.amount), '0'));
+        if (said) {
+          // The server's total is not what the phone worked out (rounding, or a rule the phone cannot read). Show it, and charge that.
+          setForced({ amount: said, sig: d.sig });
+          setNotice(t('The total is {amount}. Check it, then confirm again.', { amount: formatBDT(said) }));
+        } else {
+          setNotice(describeSellError(e));
+        }
       }
       haptics.warning();
     } finally {
@@ -261,12 +338,56 @@ export default function SellScreen() {
     }
   }
 
+  /** Send a recorded sale again, with its own key and body. */
+  async function finishPending(p: PendingSale) {
+    setBusy(true);
+    setNotice(null);
+    try {
+      const sale = await timed('confirm_sale', () => sell(p.ctx, p.cart, p.payments, p.key));
+      setCart(p.cart);
+      sold(sale, p.cart, p.payments.length > 1 ? 'SPLIT' : (p.payments[0]?.payment_method ?? 'NONE'), subMoney(p.total, p.payments.reduce((sum, x) => addMoney(sum, x.amount), '0')));
+    } catch (e) {
+      if (!mayHaveCommitted(e)) {
+        setPending(null);
+        void clearPending();
+      }
+      setNotice(describeSellError(e));
+      haptics.warning();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function discardPending() {
+    Alert.alert(t('Throw this sale away?'), t('Only do this if you looked in Sales and it is not there. If it is there, it was already made.'), [
+      { text: t('Cancel'), style: 'cancel' },
+      {
+        text: t('Throw it away'),
+        style: 'destructive',
+        onPress: () => {
+          setPending(null);
+          void clearPending();
+        },
+      },
+    ]);
+  }
+
   /** Put the cart aside for later: it is saved on the server, so any till of this shop can take it back. */
   async function putOnHold() {
     if (!ctx || isEmpty(cart) || busy) return;
     setBusy(true);
     try {
-      await holdCart(holdBody({ branchId: ctx.branchId, customerId: customer?.id, wholesale: customer?.wholesale, cart, now: Date.now() }));
+      const attempt = holdTry.current ?? { reference: holdReference(Date.now()), unanswered: false };
+      holdTry.current = attempt;
+      // A try that got no answer may still have reached the shop: look for it on the list before sending it a second time.
+      const already = attempt.unanswered ? (await heldCarts().catch(() => [] as HeldCart[])).some((h) => h.reference === attempt.reference) : false;
+      try {
+        if (!already) await holdCart(holdBody({ branchId: ctx.branchId, customerId: customer?.id, wholesale: customer?.wholesale, cart, now: Date.now(), reference: attempt.reference }));
+      } catch (e) {
+        // The shop keeps one cart per reference and says so (400 DUPLICATE_REFERENCE): an earlier try of THIS hold already went through.
+        if (!(e instanceof ApiError && e.code === 'DUPLICATE_REFERENCE')) throw e;
+      }
+      holdTry.current = null;
       setCart([]);
       setCustomer(null);
       setCartOpen(false);
@@ -274,6 +395,8 @@ export default function SellScreen() {
       haptics.success();
       showToast({ text: t('Cart put on hold') });
     } catch (e) {
+      if (holdTry.current) holdTry.current.unanswered = mayHaveCommitted(e);
+      if (!mayHaveCommitted(e)) holdTry.current = null;
       setNotice(describeSellError(e));
       haptics.warning();
     } finally {
@@ -283,14 +406,26 @@ export default function SellScreen() {
 
   async function takeBack(h: HeldCart) {
     setHeldBusy(h.id);
+    const before = cart;
+    const beforeCustomer = customer;
+    // The cart goes on the phone FIRST (the list already carries its lines). The shop deletes it as it hands it over, so a lost answer
+    // must not be able to lose it: the lines are already here. The customer comes back too, whatever the person may open in the app.
+    setCart(mergeHeld(cart, h.lines));
+    if (h.customerId && !customer) setCustomer({ id: h.customerId, name: h.customerName || t('Customer'), phone: '', wholesale: h.wholesale, balance: '0', creditLimit: '0' });
     try {
-      const got = await resumeHeld(h.id); // the server deletes it as it hands it over
-      setCart((c) => mergeHeld(c, got.lines));
-      if (got.customerId && !customer && canPickCustomer) setCustomer({ id: got.customerId, name: got.customerName || t('Customer'), phone: '', wholesale: got.wholesale, balance: '0', creditLimit: '0' });
+      await resumeHeld(h.id);
       setHeldOpen(false);
       haptics.tap();
     } catch (e) {
-      showToast({ text: describeSellError(e) });
+      if (mayHaveCommitted(e)) {
+        setHeldOpen(false);
+        showToast({ text: t('Your cart is back, but the shop did not confirm it. Look at the held carts before putting it on hold again.') });
+      } else {
+        // The shop said no (another till took it first): take the lines out again.
+        setCart(before);
+        setCustomer(beforeCustomer);
+        showToast({ text: describeSellError(e) });
+      }
     } finally {
       setHeldBusy(null);
       void heldQuery.refetch();
@@ -315,7 +450,7 @@ export default function SellScreen() {
     setResult(null);
     setMode('scan');
     setNotice(null);
-    saleKey.current = null;
+    void clearDraft();
     d.reset();
     setForced(null);
   }
@@ -372,8 +507,10 @@ export default function SellScreen() {
 
   // `received` is free text from the keyboard ("", ".", "12."): only a complete number is compared or used for change.
   const receivedOk = /^\d+(\.\d+)?$/.test(received);
-  const cashShort = method === 'CASH' && receivedOk && !!payTotal && compareMoney(received, payTotal) < 0;
-  const changeText = method === 'CASH' && receivedOk && !!payTotal && !cashShort ? formatBDT(changeDue(payTotal, received)) : null;
+  // Cash is judged against what is taken NOW (the whole total, or what a named customer pays now), not the full total.
+  const dueNow = payTotal ? amountDueNow(payTotal, payNow, !!customer) : undefined;
+  const cashShort = method === 'CASH' && receivedOk && !!dueNow && compareMoney(received, dueNow) < 0;
+  const changeText = method === 'CASH' && receivedOk && !!dueNow && !cashShort ? formatBDT(changeDue(dueNow, received)) : null;
 
   const totalNote = !serverTotal
     ? previewQuery.isError
@@ -417,7 +554,7 @@ export default function SellScreen() {
               {mode === 'scan' ? (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                   <Stepper icon="Minus" label={t('Fewer {name}', { name: l.name })} onPress={() => setCart((c) => changeQuantity(c, l.key, l.allowDecimal ? -0.5 : -1))} />
-                  <Tap accessibilityRole="button" accessibilityLabel={t('Change the amount of {name}', { name: l.name })} onPress={() => { setQtyKey(l.key); setQtyText(String(Number(l.quantity))); }} hitSlop={4} style={{ overflow: 'hidden', minWidth: 48, height: 40, paddingHorizontal: 8, borderRadius: 12, backgroundColor: theme.card, borderWidth: 1, borderColor: theme.border, alignItems: 'center', justifyContent: 'center' }}>
+                  <Tap accessibilityRole="button" accessibilityLabel={t('Change the amount of {name}', { name: l.name })} onPress={() => { setQtyKey(l.key); setQtyText(String(Number(l.quantity))); }} hitSlop={4} style={{ overflow: 'hidden', minWidth: 48, height: 44, paddingHorizontal: 8, borderRadius: 12, backgroundColor: theme.card, borderWidth: 1, borderColor: theme.border, alignItems: 'center', justifyContent: 'center' }}>
                     <Pop value={l.quantity}>
                       <ThemedText type="bodyMedium" style={{ textAlign: 'center' }}>
                         {Number(l.quantity)}
@@ -464,7 +601,7 @@ export default function SellScreen() {
   return (
     <View style={{ flex: 1 }}>
     <Screen topInset={false} keyboardGap={showBar ? barHeight + 40 : 24}>
-      <Stack.Screen options={{ headerRight: mode === 'scan' ? () => <HeaderAction title="Close the day" onPress={() => router.push('/end-shift')} /> : undefined }} />
+      <Stack.Screen options={{ headerRight: mode === 'scan' ? () => <HeaderAction title="Day Close" onPress={() => router.push('/end-shift')} /> : undefined }} />
       <SaleGuide mode={mode} cartEmpty={isEmpty(cart)} usesBarcodes={usesBarcodes} />
       {mode === 'scan' ? (
         <>
@@ -478,7 +615,7 @@ export default function SellScreen() {
           ) : null}
           <ItemPicker
             onPick={pickItem}
-            qtyOf={(id) => cart.filter((l) => l.variantId === id).reduce((n, l) => n + Number(l.quantity), 0)}
+            qtyOf={(id) => inCart.get(id) ?? 0}
             onCode={(c) => void onCode(c, false)}
             wholesale={!!customer?.wholesale}
             branchId={ctx?.branchId}
@@ -487,6 +624,7 @@ export default function SellScreen() {
         </>
       ) : null}
 
+      <UnfinishedSaleSheet pending={mode === 'scan' && !hidePending ? pending : null} busy={busy} onFinish={() => pending && void finishPending(pending)} onLater={() => setHidePending(true)} onDiscard={discardPending} notice={notice} />
       <PaperSheet saleId={printFor} onClose={() => setPrintFor(null)} />
       <ScannedAgainSheet item={mode === 'scan' ? again : null} inCart={again ? lastQuantity(cart, again) : null} onYes={() => { if (again) setCart((c) => addItem(c, again)); haptics.tap(); setAgain(null); }} onNo={() => setAgain(null)} />
       <ScanNoteSheet note={mode === 'scan' ? scanNote : null} canAdd={me?.permissions?.includes('product.create') ?? false} onAdd={(code) => { setScanNote(null); router.push({ pathname: '/add-product', params: { code, from: 'sell' } }); }} onDismiss={() => setScanNote(null)} />
@@ -577,11 +715,30 @@ export default function SellScreen() {
                 </Tap>
               ) : null}
               {customer && method !== 'CREDIT' ? <Field label="Customer pays now" value={payNow} onChangeText={setPayNow} keyboardType="decimal-pad" prefix="৳" hint="If it is less than the total, the rest is written on their account." /> : null}
+              {method === 'MOBILE' ? (
+                <View style={{ gap: 8 }}>
+                  <ThemedText type="smallMedium" themeColor="textSecondary">
+                    Which wallet?
+                  </ThemedText>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    {WALLETS.map((w) => {
+                      const on = wallet === w;
+                      return (
+                        <Tap key={w} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => setWallet(on ? null : w)} style={{ minHeight: 48, minWidth: 84, paddingHorizontal: 14, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: on ? theme.go : theme.inputBorder, backgroundColor: on ? theme.successSoft : theme.card }}>
+                          <ThemedText type="smallMedium" literal>
+                            {w}
+                          </ThemedText>
+                        </Tap>
+                      );
+                    })}
+                  </View>
+                </View>
+              ) : null}
               {method === 'CARD' || method === 'BANK' || method === 'MOBILE' ? <Field label="Transaction ID (optional)" value={reference} onChangeText={setReference} autoCapitalize="characters" placeholder="Transaction ID or approval code" /> : null}
               {method === 'CASH' ? (
                 <Field label="Cash received (optional)" value={received} onChangeText={setReceived} keyboardType="decimal-pad" hint={changeText ? t('Change to give: {amount}', { amount: changeText }) : 'Enter it to see the change.'} error={cashShort ? 'That is less than the total.' : undefined} />
               ) : null}
-              <Button title="Go back" variant="secondary" disabled={busy} onPress={() => setMode('scan')} />
+              <Button title="Go back" variant="secondary" disabled={busy || !!pending} onPress={() => setMode('scan')} />
             </View>
         </Card>
       ) : null}
@@ -592,6 +749,11 @@ export default function SellScreen() {
       <KeyboardStickyView offset={{ closed: 0, opened: BottomTabInset }} style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}>
       <Animated.View onLayout={(e) => setBottomBar(e.nativeEvent.layout.height)} entering={FadeInDown.duration(220)} style={{ paddingHorizontal: 16, paddingVertical: 12, backgroundColor: theme.card, borderTopWidth: 1, borderTopColor: theme.border }}>
         {/* A refusal (no stock, over the limit) is also said here: the notice at the top of the page is out of sight once the page is scrolled to Confirm. */}
+        {mode === 'pay' && pending && !busy ? (
+          <ThemedText type="caption" themeColor="textSecondary" style={{ paddingBottom: 8, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
+            {t('The last try got no answer. Confirm sends the same sale again; it cannot be charged twice.')}
+          </ThemedText>
+        ) : null}
         {mode === 'pay' && notice ? (
           <View accessibilityRole="alert" style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingBottom: 10, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
             <Icon name="TriangleAlert" size={18} color={theme.danger} />
@@ -603,7 +765,7 @@ export default function SellScreen() {
           <ThemedText type="caption" themeColor="textMuted">
             {mode === 'scan' ? t(itemCount(cart) === 1 ? 'Total · 1 item · tap to see' : 'Total · {n} items · tap to see', { n: itemCount(cart) }) : t('Total')}
           </ThemedText>
-          <ThemedText type="heading">{formatBDT((mode === 'pay' ? payTotal : undefined) ?? serverTotal ?? estimate)}</ThemedText>
+          <ThemedText type="heading">{formatBDT(pending && mode === 'pay' ? pending.total : ((mode === 'pay' ? payTotal : undefined) ?? serverTotal ?? estimate))}</ThemedText>
           {totalNote ? (
             <ThemedText type="caption" themeColor="textMuted" numberOfLines={1}>
               {totalNote}
@@ -613,7 +775,7 @@ export default function SellScreen() {
         {mode === 'scan' ? (
           <Button title="Take payment" variant="success" size="lg" disabled={!serverTotal} onPress={startPayment} style={{ minWidth: 168 }} />
         ) : (
-          <Button variant="success" title={method === 'CREDIT' ? 'Write on account' : 'Confirm'} size="lg" loading={busy} disabled={!payTotal || cashShort} onPress={confirm} style={{ minWidth: 168 }} />
+          <Button variant="success" title={method === 'CREDIT' ? 'Write on account' : 'Confirm'} size="lg" loading={busy} disabled={pending ? false : !payTotal || cashShort} onPress={confirm} style={{ minWidth: 168 }} />
         )}
         </View>
       </Animated.View>
@@ -700,9 +862,43 @@ function Pop({ value, children }: { value: string; children: React.ReactNode }) 
 function Stepper({ icon, label, onPress }: { icon: 'Minus' | 'Plus' | 'Trash2'; label: string; onPress: () => void }) {
   const theme = useTheme();
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} hitSlop={6} style={({ pressed }) => ({ width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: theme.inputBorder, alignItems: 'center', justifyContent: 'center', backgroundColor: pressed ? theme.backgroundSelected : 'transparent' })}>
+    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} hitSlop={6} style={({ pressed }) => ({ width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: theme.inputBorder, alignItems: 'center', justifyContent: 'center', backgroundColor: pressed ? theme.backgroundSelected : 'transparent' })}>
       <Icon name={icon} size={16} color={icon === 'Trash2' ? theme.danger : theme.textSecondary} />
     </Pressable>
+  );
+}
+
+/** A sale that was sent but never answered: finish it safely (the shop recognises it by its key) before starting another. */
+function UnfinishedSaleSheet({ pending, busy, notice, onFinish, onLater, onDiscard }: { pending: PendingSale | null; busy: boolean; notice: string | null; onFinish: () => void; onLater: () => void; onDiscard: () => void }) {
+  const theme = useTheme();
+  const t = useT();
+  // Keep the last record while the sheet slides away, so it does not go blank on the way out.
+  const [shown, setShown] = useState<PendingSale | null>(pending);
+  if (pending && pending !== shown) setShown(pending);
+  const p = pending ?? shown;
+  return (
+    <BottomSheet visible={pending !== null} onClose={onLater} title="A sale was not finished">
+      {p ? (
+        <View accessibilityRole="alert" style={{ gap: 14, paddingHorizontal: 16, paddingBottom: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <View style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.warningSoft }}>
+              <Icon name="TriangleAlert" size={20} color={theme.warning} />
+            </View>
+            <ThemedText type="body" themeColor="textSecondary" style={{ flex: 1 }}>
+              {t('A sale of {amount} was sent but the shop never answered. Finish it now: it cannot be charged twice.', { amount: formatBDT(p.total) })}
+            </ThemedText>
+          </View>
+          {notice ? (
+            <ThemedText type="smallMedium" literal style={{ color: theme.danger }}>
+              {notice}
+            </ThemedText>
+          ) : null}
+          <Button title="Finish this sale" size="lg" loading={busy} onPress={onFinish} />
+          <Button title="Decide later" variant="secondary" disabled={busy} onPress={onLater} />
+          <Button title="Throw it away" variant="secondary" disabled={busy} onPress={onDiscard} />
+        </View>
+      ) : null}
+    </BottomSheet>
   );
 }
 
