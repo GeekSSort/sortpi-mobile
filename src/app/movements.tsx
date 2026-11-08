@@ -69,7 +69,7 @@ export default function MovementsScreen() {
   );
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
-      <Stack.Screen options={{ title: t('Stock history') }} />
+      <Stack.Screen options={{ title: t('Stock Movements') }} />
       <FlatList
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"

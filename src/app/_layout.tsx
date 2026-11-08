@@ -12,6 +12,7 @@ import { SessionProvider, useSession } from '@/auth/session-provider';
 import { PrefsProvider, usePrefs } from '@/i18n/prefs';
 import { ConnectionBanner } from '@/components/connection-banner';
 import { useHeaderOptions } from '@/components/header-options';
+import { BackWithMenu, DrawerProvider } from '@/menu/drawer';
 import { ToastHost } from '@/components/toast-host';
 import { Colors } from '@/constants/theme';
 import { initAnalytics, useScreenTracking } from '@/lib/analytics';
@@ -41,7 +42,9 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <PrefsProvider>
           <SessionProvider>
-            <Gate />
+            <DrawerProvider>
+              <Gate />
+            </DrawerProvider>
           </SessionProvider>
         </PrefsProvider>
       </QueryClientProvider>
@@ -57,6 +60,8 @@ function Gate() {
   const { status } = useSession();
   const { ready, langChosen, t } = usePrefs();
   const header = useHeaderOptions();
+  // Pages carry the back arrow and the menu button together at the top left, where the drawer comes from; the pop-up forms do not.
+  const page = { ...header, headerLeft: () => <BackWithMenu /> };
 
   useEffect(() => {
     if (status !== 'booting') void SplashScreen.hideAsync();
@@ -68,51 +73,62 @@ function Gate() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={status === 'signedIn'}>
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="add-product" options={{ ...header, presentation: 'modal', title: t('Add an item') }} />
+        <Stack.Screen name="add-product" options={{ ...header, presentation: 'modal', title: t('Add Products') }} />
         <Stack.Screen name="add-customer" options={{ ...header, presentation: 'modal', title: t('New customer') }} />
-        <Stack.Screen name="end-shift" options={{ ...header, presentation: 'modal', title: t('Close the day') }} />
-        <Stack.Screen name="customer/[id]" options={{ ...header, title: t('Customer') }} />
-        <Stack.Screen name="sales" options={{ ...header, title: t('Sales') }} />
-        <Stack.Screen name="sale/[id]" options={{ ...header, title: t('Sale') }} />
-        <Stack.Screen name="suppliers" options={{ ...header, title: t('Suppliers') }} />
-        <Stack.Screen name="supplier/[id]" options={{ ...header, title: t('Supplier') }} />
+        <Stack.Screen name="end-shift" options={{ ...header, presentation: 'modal', title: t('Day Close') }} />
+        <Stack.Screen name="customer/[id]" options={{ ...page, title: t('Customer') }} />
+        <Stack.Screen name="sales" options={{ ...page, title: t('Invoice') }} />
+        <Stack.Screen name="sale/[id]" options={{ ...page, title: t('Sale') }} />
+        <Stack.Screen name="suppliers" options={{ ...page, title: t('Suppliers') }} />
+        <Stack.Screen name="supplier/[id]" options={{ ...page, title: t('Supplier') }} />
+        <Stack.Screen name="add-employee" options={{ ...header, presentation: 'modal', title: t('Add a person') }} />
+        <Stack.Screen name="add-branch" options={{ ...header, presentation: 'modal', title: t('Add Branch') }} />
+        <Stack.Screen name="add-warehouse" options={{ ...header, presentation: 'modal', title: t('Add Warehouse') }} />
+        <Stack.Screen name="edit-purchase" options={{ ...header, presentation: 'modal', title: t('Change purchase') }} />
+        <Stack.Screen name="add-counter" options={{ ...header, presentation: 'modal', title: t('Add Counter') }} />
+        <Stack.Screen name="add-role" options={{ ...header, presentation: 'modal', title: t('Add Role') }} />
+        <Stack.Screen name="add-user" options={{ ...header, presentation: 'modal', title: t('Add a person') }} />
         <Stack.Screen name="add-supplier" options={{ ...header, presentation: 'modal', title: t('New supplier') }} />
-        <Stack.Screen name="purchases" options={{ ...header, title: t('Purchases') }} />
-        <Stack.Screen name="purchase/[id]" options={{ ...header, title: t('Order') }} />
-        <Stack.Screen name="send-back/[id]" options={{ ...header, title: t('Return to supplier') }} />
-        <Stack.Screen name="kinds-brands" options={{ ...header, title: t('Kinds and brands') }} />
-        <Stack.Screen name="orders" options={{ ...header, title: t('Customer orders') }} />
-        <Stack.Screen name="order/[id]" options={{ ...header, title: t('Order') }} />
-        <Stack.Screen name="new-order" options={{ ...header, title: t('New order') }} />
-        <Stack.Screen name="quotations" options={{ ...header, title: t('Quotations') }} />
-        <Stack.Screen name="quotation/[id]" options={{ ...header, title: t('Quotation') }} />
-        <Stack.Screen name="new-quotation" options={{ ...header, title: t('New quotation') }} />
-        <Stack.Screen name="movements" options={{ ...header, title: t('Stock history') }} />
-        <Stack.Screen name="expiry" options={{ ...header, title: t('Expiry dates') }} />
-        <Stack.Screen name="transfers" options={{ ...header, title: t('Transfers') }} />
-        <Stack.Screen name="new-transfer" options={{ ...header, title: t('New transfer') }} />
-        <Stack.Screen name="transfer/[id]" options={{ ...header, title: t('Transfer') }} />
-        <Stack.Screen name="price-check" options={{ ...header, title: t('Check a price') }} />
-        <Stack.Screen name="shop-settings" options={{ ...header, title: t('Shop settings') }} />
-        <Stack.Screen name="payment-methods" options={{ ...header, title: t('Ways to pay') }} />
-        <Stack.Screen name="stock-types" options={{ ...header, title: t('Stock types') }} />
-        <Stack.Screen name="company" options={{ ...header, title: t('Shop details') }} />
-        <Stack.Screen name="coupons" options={{ ...header, title: t('Coupons') }} />
-        <Stack.Screen name="points" options={{ ...header, title: t('Customer points') }} />
-        <Stack.Screen name="plan" options={{ ...header, title: t('Your plan') }} />
-        <Stack.Screen name="team" options={{ ...header, title: t('Your team') }} />
-        <Stack.Screen name="access" options={{ ...header, title: t('Access') }} />
-        <Stack.Screen name="activity" options={{ ...header, title: t('Activity') }} />
-        <Stack.Screen name="reports" options={{ ...header, title: t('Reports') }} />
-        <Stack.Screen name="day-report" options={{ ...header, title: t('Day report') }} />
-        <Stack.Screen name="products" options={{ ...header, title: t('Your items') }} />
-        <Stack.Screen name="product/[id]" options={{ ...header, title: t('Item') }} />
-        <Stack.Screen name="edit-product/[id]" options={{ ...header, title: t('Edit item') }} />
-        <Stack.Screen name="stock-count" options={{ ...header, title: t('Count your stock') }} />
-        <Stack.Screen name="new-purchase" options={{ ...header, title: t('New purchase') }} />
-        <Stack.Screen name="money" options={{ ...header, title: t('Money in and out') }} />
+        <Stack.Screen name="purchases" options={{ ...page, title: t('Purchase History') }} />
+        <Stack.Screen name="purchase/[id]" options={{ ...page, title: t('Order') }} />
+        <Stack.Screen name="send-back/[id]" options={{ ...page, title: t('Return to supplier') }} />
+        <Stack.Screen name="kinds-brands" options={{ ...page, title: t('Categories & Brands') }} />
+        <Stack.Screen name="orders" options={{ ...page, title: t('Customer Orders') }} />
+        <Stack.Screen name="order/[id]" options={{ ...page, title: t('Order') }} />
+        <Stack.Screen name="new-order" options={{ ...page, title: t('New order') }} />
+        <Stack.Screen name="quotations" options={{ ...page, title: t('Quotations') }} />
+        <Stack.Screen name="quotation/[id]" options={{ ...page, title: t('Quotation') }} />
+        <Stack.Screen name="new-quotation" options={{ ...page, title: t('New quotation') }} />
+        <Stack.Screen name="movements" options={{ ...page, title: t('Stock Movements') }} />
+        <Stack.Screen name="expiry" options={{ ...page, title: t('Expiry') }} />
+        <Stack.Screen name="transfers" options={{ ...page, title: t('Transfers') }} />
+        <Stack.Screen name="new-transfer" options={{ ...page, title: t('New transfer') }} />
+        <Stack.Screen name="transfer/[id]" options={{ ...page, title: t('Transfer') }} />
+        <Stack.Screen name="price-check" options={{ ...page, title: t('Price Check') }} />
+        <Stack.Screen name="shop-settings" options={{ ...page, title: t('Settings') }} />
+        <Stack.Screen name="payment-methods" options={{ ...page, title: t('Ways to pay') }} />
+        <Stack.Screen name="stock-types" options={{ ...page, title: t('Stock types') }} />
+        <Stack.Screen name="company" options={{ ...page, title: t('Shop details') }} />
+        <Stack.Screen name="coupons" options={{ ...page, title: t('Coupons') }} />
+        <Stack.Screen name="points" options={{ ...page, title: t('Customer points') }} />
+        <Stack.Screen name="plan" options={{ ...page, title: t('Plan & billing') }} />
+        <Stack.Screen name="team" options={{ ...page, title: t('Employees') }} />
+        <Stack.Screen name="access" options={{ ...page, title: t('Users & Roles') }} />
+        <Stack.Screen name="activity" options={{ ...page, title: t('Activity Log') }} />
+        <Stack.Screen name="warehouses" options={{ ...page, title: t('Warehouses') }} />
+        <Stack.Screen name="counters" options={{ ...page, title: t('Counters') }} />
+        <Stack.Screen name="shifts" options={{ ...page, title: t('Shifts') }} />
+        <Stack.Screen name="payroll" options={{ ...page, title: t('Payroll') }} />
+        <Stack.Screen name="reports" options={{ ...page, title: t('Reports') }} />
+        <Stack.Screen name="day-report" options={{ ...page, title: t('Day report') }} />
+        <Stack.Screen name="products" options={{ ...page, title: t('Products List') }} />
+        <Stack.Screen name="product/[id]" options={{ ...page, title: t('Item') }} />
+        <Stack.Screen name="edit-product/[id]" options={{ ...page, title: t('Edit item') }} />
+        <Stack.Screen name="stock-count" options={{ ...page, title: t('Stock Count') }} />
+        <Stack.Screen name="new-purchase" options={{ ...page, title: t('New Purchase') }} />
+        <Stack.Screen name="money" options={{ ...page, title: t('Income & Expense') }} />
         <Stack.Screen name="add-money" options={{ ...header, presentation: 'modal', title: t('Add money') }} />
-        <Stack.Screen name="return/[id]" options={{ ...header, title: t('Take goods back') }} />
+        <Stack.Screen name="return/[id]" options={{ ...page, title: t('Return & Refunds') }} />
       </Stack.Protected>
       <Stack.Protected guard={status === 'signedOut' && !langChosen}>
         <Stack.Screen name="language" />

@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router/stack';
 
 import { useT } from '@/i18n/prefs';
+import { MenuButton } from '@/menu/drawer';
 
 import { useHeaderOptions } from './header-options';
 
@@ -10,7 +11,7 @@ export function TabStack({ title }: { title: string }) {
   const t = useT();
   return (
     <Stack screenOptions={header}>
-      <Stack.Screen name="index" options={{ title: t(title) }} />
+      <Stack.Screen name="index" options={{ title: t(title), headerLeft: () => <MenuButton /> }} />
     </Stack>
   );
 }

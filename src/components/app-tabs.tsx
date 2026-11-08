@@ -7,7 +7,7 @@ import { visibleTabs } from '@/auth/roles';
 import { Colors } from '@/constants/theme';
 
 /**
- * Home / Sell / Stock / Customers / More, each shown only to roles that can use it (see auth/roles.ts).
+ * Home / Sell / Stock / Customers, each shown only to roles that can use it (see auth/roles.ts).
  * SF Symbols on iOS, Material on Android: the bar itself stays native.
  */
 export default function AppTabs() {
@@ -40,7 +40,8 @@ export default function AppTabs() {
         <NativeTabs.Trigger.Label>{t('Customers')}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="person.2" md="group" />
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="more">
+      {/* More lives in the side menu now; the route stays for roles that have no other tab to land on. */}
+      <NativeTabs.Trigger name="more" hidden>
         <NativeTabs.Trigger.Label>{t('More')}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="ellipsis" md="more_horiz" />
       </NativeTabs.Trigger>

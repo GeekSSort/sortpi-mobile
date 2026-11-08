@@ -61,7 +61,7 @@ export default function ActivityScreen() {
   );
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
-      <Stack.Screen options={{ title: t('Activity') }} />
+      <Stack.Screen options={{ title: t('Activity Log') }} />
       <FlatList
         contentInsetAdjustmentBehavior="automatic"
         data={rows}

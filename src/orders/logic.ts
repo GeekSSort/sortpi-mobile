@@ -70,6 +70,12 @@ export function docProblem(o: { who: boolean; lines: DocLine[] }): string | null
   return null;
 }
 
+/** A saved line back into the form. The saved quantity always has 3 decimals, so a whole number is taken as a whole-number item. */
+export const lineFromSaved = (i: { variant_id: string; product_name: string; sku: string; quantity: string }): DocLine => {
+  const q = Number(i.quantity);
+  return { variantId: i.variant_id, name: i.product_name, sku: i.sku, unitShort: null, allowDecimal: !Number.isInteger(q), quantity: String(q) };
+};
+
 const lineBody = (l: DocLine) => ({ variant_id: l.variantId, quantity: parseMoney(l.quantity).toFixed(3) });
 
 /** The server prices everything: only what and how many are sent. */

@@ -88,7 +88,7 @@ export default function OrdersScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
-      <Stack.Screen options={{ title: t('Customer orders'), headerRight: canAdd ? () => <HeaderAction title="New" icon="Plus" onPress={() => router.push('/new-order')} /> : undefined }} />
+      <Stack.Screen options={{ title: t('Customer Orders'), headerRight: canAdd ? () => <HeaderAction title="New" icon="Plus" onPress={() => router.push('/new-order')} /> : undefined }} />
       <FlatList
         contentInsetAdjustmentBehavior="automatic"
         data={rows}

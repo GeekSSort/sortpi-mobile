@@ -4,7 +4,7 @@ import type { PurchaseStatus, StatusFilter, purchaseBody } from './logic';
 import type { returnBody } from './returns';
 
 /** The parts of an order the phone shows (checked on the OpenAPI file and the live local API). Money is text. */
-export type PurchaseItemRow = { id: string; variant: string; sku: string; product_name: string; variant_name: string; unit_short_name: string; unit_allow_decimal: boolean; quantity: string; received_quantity: string; outstanding: string; returned_quantity: string; returnable: string; unit_cost: string; line_total: string };
+export type PurchaseItemRow = { id: string; variant: string; tax_rate?: string; discount_amount?: string; batch_no?: string; expiry_date?: string | null; sku: string; product_name: string; variant_name: string; unit_short_name: string; unit_allow_decimal: boolean; quantity: string; received_quantity: string; outstanding: string; returned_quantity: string; returnable: string; unit_cost: string; line_total: string };
 export type Purchase = {
   id: string;
   reference_no: string;
@@ -41,6 +41,10 @@ export const getPurchase = (id: string) => api.get<Purchase>(`/purchases/${id}/`
 
 /** Makes a DRAFT: nothing moves, nothing is owed. One `idempotencyKey` per save. */
 export const createPurchase = (body: ReturnType<typeof purchaseBody>, idempotencyKey: string) => api.post<Purchase>('/purchases/', body, { idempotencyKey });
+/** Replaces the lines and details of a draft, or of a placed order nothing has arrived on (the books follow). Needs `purchase.update`. */
+export const updatePurchase = (id: string, body: Record<string, unknown>) => api.patch<Purchase>(`/purchases/${id}/`, body);
+/** Deletes a DRAFT (a placed order is cancelled instead). Needs `purchase.delete`. */
+export const deletePurchase = (id: string) => api.delete<void>(`/purchases/${id}/`);
 /** Places the order: the supplier is now owed. Stock does not move yet. */
 export const confirmPurchase = (id: string) => api.post<Purchase>(`/purchases/${id}/confirm/`);
 /** Everything still outstanding arrives: stock goes up, at the landed cost. (Omitting `lines` means all.) */

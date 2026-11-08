@@ -23,6 +23,8 @@ import { usePrefs } from '@/i18n/prefs';
 import { useTheme } from '@/hooks/use-theme';
 import { isWalkIn } from '@/sales/logic';
 import { formatBDT } from '@/lib/money';
+import { sameName } from '@/lib/names';
+import { MenuButton } from '@/menu/drawer';
 import { stockSummary } from '@/stock/api';
 import { formatQuantity } from '@/stock/status';
 
@@ -59,6 +61,7 @@ export default function HomeScreen() {
   return (
     <Screen>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <MenuButton />
         <Image source={require('@/assets/images/splash-icon.png')} style={{ width: 40, height: 40, borderRadius: 10 }} />
         <View style={{ flex: 1 }}>
           <ThemedText type="heading" literal>{me?.organization.name ?? 'SortPi'}</ThemedText>

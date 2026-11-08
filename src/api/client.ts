@@ -71,7 +71,7 @@ export type ClientOptions = {
 export function createApiClient(opts: ClientOptions) {
   const doFetch = opts.fetchImpl ?? fetch;
   const timeoutMs = opts.timeoutMs ?? 20_000;
-  let refreshInFlight: Promise<boolean> | null = null;
+  let refreshInFlight: Promise<RefreshResult> | null = null;
 
   function buildUrl(path: string, query?: RequestOptions['query']): string {
     const base = opts.baseUrl();
@@ -127,7 +127,10 @@ export function createApiClient(opts: ClientOptions) {
     }
 
     if (response.status === 401 && allowRefresh && !o.anonymous && body?.code === 'TOKEN_EXPIRED') {
-      if (await refreshOnce()) return send<T>(method, path, o, false);
+      const refreshed = await refreshOnce();
+      if (refreshed.ok) return send<T>(method, path, o, false);
+      // The refresh did not get through (connection, timeout, server trouble): say THAT, and stay signed in. Only a "no" from the server ended the session.
+      if (!refreshed.ended && refreshed.error) throw refreshed.error;
     }
     if (!response.ok || body?.success === false) {
       const code = body?.code ?? `HTTP_${response.status}`;
@@ -137,20 +140,26 @@ export function createApiClient(opts: ClientOptions) {
   }
 
   /** Ten parallel 401s cause one refresh. A rejected refresh (including REFRESH_TOKEN_REUSED) ends the session. */
-  function refreshOnce(): Promise<boolean> {
+  function refreshOnce(): Promise<RefreshResult> {
     if (refreshInFlight) return refreshInFlight;
-    refreshInFlight = (async () => {
+    refreshInFlight = (async (): Promise<RefreshResult> => {
       try {
         const { refresh } = await opts.tokens.get();
         if (!refresh) throw new ApiError(401, 'NO_REFRESH_TOKEN', 'Signed out.');
         const res = await send<{ access: string; refresh?: string }>('POST', '/auth/refresh', { body: { refresh }, anonymous: true }, false);
         if (!res.data?.access) throw new ApiError(401, 'BAD_REFRESH', 'Signed out.');
         await opts.tokens.set(res.data.access, res.data.refresh);
-        return true;
-      } catch {
-        await opts.tokens.clear();
-        opts.onSessionEnd?.();
-        return false;
+        return { ok: true };
+      } catch (e) {
+        // The server saying the refresh token is no good (expired, used twice, revoked) ends the session. A dropped connection, a timeout, a 5xx
+        // or a throttle does not: the person is still signed in, and the next request tries again. Wiping the tokens there would sign a cashier
+        // out in the middle of a sale, and they could not sign back in until the connection returned.
+        const definitive = e instanceof ApiError && (e.status === 400 || e.status === 401 || e.status === 403);
+        if (definitive) {
+          await opts.tokens.clear();
+          opts.onSessionEnd?.();
+        }
+        return { ok: false, ended: definitive, error: e instanceof ApiError ? e : undefined };
       } finally {
         refreshInFlight = null;
       }
@@ -174,4 +183,5 @@ export function createApiClient(opts: ClientOptions) {
     delete: <T>(path: string, o?: RequestOptions) => send<T>('DELETE', path, o ?? {}, true).then((e) => e.data as T),
   };
 }
+type RefreshResult = { ok: true } | { ok: false; ended: boolean; error?: ApiError };
 export type ApiClient = ReturnType<typeof createApiClient>;

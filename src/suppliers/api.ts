@@ -20,6 +20,10 @@ export const getSupplier = (id: string) => api.get<SupplierRow>(`/suppliers/${id
 export const supplierLedger = (id: string) => api.get<LedgerRow[]>(`/suppliers/${id}/ledger/`, { query: { limit: 15 } });
 /** Every code in use, to make the next one (the API needs a code and does not make one up). */
 export const supplierCodes = async (): Promise<string[]> => (await api.get<{ code: string }[]>('/suppliers/', { query: { limit: 200 } })).map((r) => r.code);
+/** Edit the fields sent; the balance is the ledger's and is never sent. Needs `supplier.update`. */
+export const updateSupplier = (id: string, body: unknown) => api.patch<SupplierRow>(`/suppliers/${id}/`, body);
+/** The server archives the supplier (purchases and payments stay). Needs `supplier.delete`. */
+export const deleteSupplier = (id: string) => api.delete<void>(`/suppliers/${id}/`);
 export const createSupplier = (body: unknown) => api.post<{ id: string }>('/suppliers/', body);
 
 /** One `idempotencyKey` per payment: tapping Save again after a dropped connection cannot pay twice. The amount is positive; the server posts it as a negative. */

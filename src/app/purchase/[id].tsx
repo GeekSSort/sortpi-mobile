@@ -21,7 +21,8 @@ import { usePrefs } from '@/i18n/prefs';
 import { haptics } from '@/lib/haptics';
 import { compareMoney, formatBDT } from '@/lib/money';
 import { dayChoice, dayWord } from '@/money/logic';
-import { cancelPurchase, confirmPurchase, getPurchase, payPurchase, receivePurchase, returnsOfPurchase } from '@/purchases/api';
+import { cancelPurchase, confirmPurchase, getPurchase, payPurchase, receivePurchase, returnsOfPurchase, deletePurchase } from '@/purchases/api';
+import { canDeleteDraft, canEditPurchase } from '@/purchases/edit';
 import { describePurchaseError, nextSteps, paymentProblem } from '@/purchases/logic';
 import { canSendBack } from '@/purchases/returns';
 import { itemName } from '@/sell/catalog-map';
@@ -39,6 +40,21 @@ export default function PurchaseScreen() {
   const purchase = useQuery({ queryKey: ['purchases', 'one', id], queryFn: () => getPurchase(id), enabled: !!id });
   const p = purchase.data;
   const steps = p ? nextSteps(p, me?.permissions) : null;
+  const drop = useMutation({
+    mutationFn: () => deletePurchase(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['purchases'] });
+      showToast({ text: t('Draft deleted.') });
+      router.back();
+    },
+    onError: () => showToast({ text: t('Could not delete the draft. Try again.') }),
+  });
+  function confirmDrop() {
+    Alert.alert(t('Delete this draft?'), t('Nothing was bought or owed yet, so nothing else changes.'), [
+      { text: t('Keep it'), style: 'cancel' },
+      { text: t('Yes, delete'), style: 'destructive', onPress: () => drop.mutate() },
+    ]);
+  }
   const sentBack = useQuery({ queryKey: ['purchases', 'returns', id], queryFn: () => returnsOfPurchase(id), enabled: !!p && p.status !== 'DRAFT' && p.status !== 'CANCELLED' });
 
   const [paying, setPaying] = useState(false);
@@ -230,6 +246,8 @@ export default function PurchaseScreen() {
               ) : null}
 
               {canSendBack(p, me?.permissions) ? <Button title="Return to supplier" variant="secondary" onPress={() => router.push({ pathname: '/send-back/[id]', params: { id: p.id } })} /> : null}
+              {p && canEditPurchase(p, me?.permissions) ? <Button title="Change this purchase" variant="secondary" onPress={() => router.push({ pathname: '/edit-purchase', params: { id: p.id } })} /> : null}
+              {p && canDeleteDraft(p, me?.permissions) ? <Button title="Delete this draft" variant="secondary" loading={drop.isPending} onPress={confirmDrop} /> : null}
               {steps?.cancel ? <Button title="Cancel this order" variant="secondary" disabled={step.isPending} onPress={() => ask('cancel')} /> : null}
             </>
           ) : null}

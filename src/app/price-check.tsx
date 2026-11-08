@@ -77,7 +77,7 @@ export default function PriceCheckScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
-      <Stack.Screen options={{ title: t('Check a price') }} />
+      <Stack.Screen options={{ title: t('Price Check') }} />
       <ScrollView contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: Spacing.three, padding: Spacing.three, paddingBottom: BottomTabInset + Spacing.four, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
         {usesBarcodes ? <Scanner onCode={(c) => ask(c, true)} paused={busy} height={200} /> : null}
         <Field label="Barcode or item code" value={typed} onChangeText={setTyped} autoCapitalize="characters" autoCorrect={false} returnKeyType="search" onSubmitEditing={() => ask(typed, false)} />

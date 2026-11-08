@@ -16,7 +16,8 @@ import { formatBDT, addMoney, compareMoney } from '@/lib/money';
 import { itemName } from '@/sell/catalog-map';
 import { METHOD_LABEL } from '@/sales/logic';
 
-import type { KindRow, ProductRow, TenderRow } from './api';
+import type { KindRow, ProductRow, TenderRow, WriteOffRow } from './api';
+import type { StockRow } from '@/stock/api';
 import { dailyBars, margin, pnlLines, topN, type PnL } from './logic';
 
 type Q = { isPending: boolean; isError: boolean; refetch: () => unknown };
@@ -282,6 +283,84 @@ export function Dues({ rows, kind }: { rows: Due[]; kind: 'customer' | 'supplier
           {t('and {n} more', { n: owed.length - 5 })}
         </ThemedText>
       ) : null}
+    </View>
+  );
+}
+
+/** Sales per cashier or per branch, as bars against the biggest. */
+export function ByPerson({ rows }: { rows: { id: string; name: string; sale_count: number; revenue: string }[] }) {
+  const theme = useTheme();
+  const { t } = usePrefs();
+  if (rows.length === 0) return <ThemedText type="small" themeColor="textMuted">Nothing was sold in this time.</ThemedText>;
+  const max = rows.reduce((m, r) => (compareMoney(r.revenue, m) > 0 ? r.revenue : m), '0');
+  return (
+    <View style={{ gap: Spacing.three }}>
+      {rows.map((r) => (
+        <View key={r.id} style={{ gap: 6 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: Spacing.two }}>
+            <ThemedText type="smallMedium" style={{ flex: 1 }} numberOfLines={1} literal>
+              {r.name}
+            </ThemedText>
+            <ThemedText type="smallMedium" literal>
+              {money(r.revenue)}
+            </ThemedText>
+          </View>
+          <View style={{ height: 10, borderRadius: 5, backgroundColor: theme.border, overflow: 'hidden' }}>
+            <View style={{ width: `${compareMoney(max, '0') > 0 ? Math.round((Number(r.revenue) / Number(max)) * 100) : 0}%`, height: 10, backgroundColor: theme.brand }} />
+          </View>
+          <ThemedText type="caption" themeColor="textMuted" literal>
+            {t('{n} sales', { n: r.sale_count })}
+          </ThemedText>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/** Stock lost or corrected in the time: what, why, and what it cost. A negative cost is stock that was found. */
+export function WrittenOff({ rows }: { rows: WriteOffRow[] }) {
+  const theme = useTheme();
+  const { t } = usePrefs();
+  if (rows.length === 0) return <ThemedText type="small" themeColor="textMuted">No stock was written off in this time.</ThemedText>;
+  return (
+    <View style={{ gap: Spacing.three }}>
+      {topN(rows, 8).map((r, i) => {
+        const found = compareMoney(r.loss, '0') < 0;
+        return (
+          <View key={`${r.reference_no}-${i}`} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: Spacing.two }}>
+            <View style={{ flex: 1 }}>
+              <ThemedText type="smallMedium" numberOfLines={1} literal>
+                {itemName(r.product_name, r.variant_name)}
+              </ThemedText>
+              <ThemedText type="caption" themeColor="textMuted" numberOfLines={1} literal>
+                {`${r.date} · ${r.reason || r.reference_no} · ${Number(r.quantity)}`}
+              </ThemedText>
+            </View>
+            <ThemedText type="smallMedium" literal style={{ color: found ? theme.success : undefined }}>
+              {found ? `${t('Found')} ${money(r.loss.replace('-', ''))}` : money(r.loss)}
+            </ThemedText>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+/** Items at or below their reorder level, the least left first. */
+export function RunningOut({ rows }: { rows: StockRow[] }) {
+  if (rows.length === 0) return <ThemedText type="small" themeColor="textMuted">Nothing is running out.</ThemedText>;
+  return (
+    <View style={{ gap: Spacing.three }}>
+      {rows.map((r) => (
+        <View key={r.id} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: Spacing.two }}>
+          <ThemedText type="smallMedium" style={{ flex: 1 }} numberOfLines={1} literal>
+            {itemName(r.product_name, r.variant_name)}
+          </ThemedText>
+          <ThemedText type="smallMedium" literal>
+            {`${Number(r.available)} / ${Number(r.reorder_level)}`}
+          </ThemedText>
+        </View>
+      ))}
     </View>
   );
 }

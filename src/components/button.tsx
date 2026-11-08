@@ -34,7 +34,7 @@ export function Button({ title, variant = 'primary', size = 'md', loading, disab
   // A press shrinks the button a touch and springs back, so a tap is felt before anything else happens.
   const [pressed, setPressed] = useState(false);
   const scale = useSharedValue(1);
-  const spring = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const spring = useAnimatedStyle(() => ({ transform: [{ scale: scale.get() }] }));
   return (
     <SpringPressable
       accessibilityRole="button"
@@ -44,11 +44,11 @@ export function Button({ title, variant = 'primary', size = 'md', loading, disab
       onPress={onPress}
       onPressIn={() => {
         setPressed(true);
-        scale.value = withSpring(0.97, { damping: 20, stiffness: 400 });
+        scale.set(withSpring(0.97, { damping: 20, stiffness: 400 }));
       }}
       onPressOut={() => {
         setPressed(false);
-        scale.value = withSpring(1, { damping: 12, stiffness: 300 });
+        scale.set(withSpring(1, { damping: 12, stiffness: 300 }));
       }}
       style={[
         {

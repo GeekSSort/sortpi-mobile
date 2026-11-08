@@ -1,5 +1,5 @@
-import { useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, Switch, View } from 'react-native';
 import { KeyboardAvoidingView, KeyboardAwareScrollView } from 'react-native-keyboard-controller';
@@ -12,22 +12,30 @@ import { Icon } from '@/components/icons/icon';
 import { Notice } from '@/components/notice';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
-import { createCustomer } from '@/customers/api';
-import { buildCustomerRequest, validateNewCustomer, type CustomerErrors } from '@/customers/logic';
+import { SkeletonRows } from '@/components/skeleton';
+import { createCustomer, getCustomer, updateCustomer, type CustomerRow } from '@/customers/api';
+import { buildCustomerPatch, buildCustomerRequest, validateNewCustomer, type CustomerErrors } from '@/customers/logic';
 import { useTheme } from '@/hooks/use-theme';
 import { useT } from '@/i18n/prefs';
 import { showToast } from '@/ui/toast';
 
-/** Add a customer: name and phone, an optional credit limit, and whether they buy at wholesale prices. */
+/** Add a customer, or edit one (`?id=`): name and phone, an optional credit limit, and whether they buy at wholesale prices. */
 export default function AddCustomerScreen() {
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const one = useQuery({ queryKey: ['customers', 'one', id], queryFn: () => getCustomer(id as string), enabled: !!id });
+  if (id && !one.data) return <View style={{ flex: 1 }}>{one.isPending ? <SkeletonRows count={3} /> : null}</View>;
+  return <CustomerForm customer={one.data} />;
+}
+
+function CustomerForm({ customer }: { customer?: CustomerRow }) {
   const theme = useTheme();
   const t = useT();
   const router = useRouter();
   const qc = useQueryClient();
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [wholesale, setWholesale] = useState(false);
-  const [creditLimit, setCreditLimit] = useState('');
+  const [name, setName] = useState(customer?.name ?? '');
+  const [phone, setPhone] = useState(customer?.phone ?? '');
+  const [wholesale, setWholesale] = useState(customer?.customer_type === 'WHOLESALE');
+  const [creditLimit, setCreditLimit] = useState(customer && Number(customer.credit_limit) > 0 ? String(Number(customer.credit_limit)) : '');
   const [errors, setErrors] = useState<CustomerErrors>({});
   const [failure, setFailure] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -40,18 +48,20 @@ export default function AddCustomerScreen() {
     if (Object.keys(found).length) return;
     setBusy(true);
     try {
-      await createCustomer(buildCustomerRequest(form));
+      if (customer) await updateCustomer(customer.id, buildCustomerPatch(form));
+      else await createCustomer(buildCustomerRequest(form));
       await qc.invalidateQueries({ queryKey: ['customers'] });
-      showToast({ text: t('Customer added: {name}', { name: name.trim() }) });
+      showToast({ text: customer ? t('Saved: {name}', { name: name.trim() }) : t('Customer added: {name}', { name: name.trim() }) });
       router.back();
     } catch (e) {
-      setFailure(e instanceof ApiError && e.status === 403 ? 'You are not allowed to add customers.' : e instanceof ApiError && e.message ? e.message : 'Could not save the customer. Try again.');
+      setFailure(e instanceof ApiError && e.status === 403 ? customer ? 'You are not allowed to change customers.' : 'You are not allowed to add customers.' : e instanceof ApiError && e.message ? e.message : 'Could not save the customer. Try again.');
       setBusy(false);
     }
   }
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
+      <Stack.Screen options={{ title: customer ? t('Edit Customer') : t('Add Customer') }} />
       <SafeAreaView edges={['bottom']} style={{ flex: 1 }}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
           <KeyboardAwareScrollView bottomOffset={24} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three }} keyboardShouldPersistTaps="handled">

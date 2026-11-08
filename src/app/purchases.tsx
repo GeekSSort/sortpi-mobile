@@ -96,7 +96,7 @@ export default function PurchasesScreen() {
           ) : search.trim() || status !== 'ALL' ? (
             <EmptyState icon="Search" title="No orders match that" hint="Try another word, or show all orders." action={{ title: 'Show all', onPress: () => { setSearch(''); setStatus('ALL'); } }} />
           ) : (
-            <EmptyState icon="Package" title="No orders yet" hint="When you buy goods from a supplier, write the order here." action={canAdd ? { title: 'New purchase', onPress: () => router.push('/new-purchase') } : undefined} />
+            <EmptyState icon="Package" title="No orders yet" hint="When you buy goods from a supplier, write the order here." action={canAdd ? { title: 'New Purchase', onPress: () => router.push('/new-purchase') } : undefined} />
           )
         }
         ListFooterComponent={list.isFetchingNextPage ? <ActivityIndicator color={theme.brand} style={{ margin: Spacing.three }} /> : undefined}

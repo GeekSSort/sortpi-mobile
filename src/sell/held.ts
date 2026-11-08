@@ -12,9 +12,10 @@ export type HeldCart = { id: string; reference: string; customerId: string | nul
 
 export const holdReference = (now: number) => `HOLD-${String(now).slice(-8)}`;
 
-export function holdBody(o: { branchId: string; customerId?: string | null; wholesale?: boolean; cart: Cart; now: number }) {
+export function holdBody(o: { branchId: string; customerId?: string | null; wholesale?: boolean; cart: Cart; now: number; reference?: string }) {
   return {
-    reference: holdReference(o.now),
+    // The same reference on every try of the same hold, so an unanswered try can be found on the shop's list before it is repeated.
+    reference: o.reference ?? holdReference(o.now),
     branch: o.branchId,
     ...(o.customerId ? { customer: o.customerId } : {}),
     cart_data: {

@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 
 import { useSession } from '@/auth/session-provider';
+import { useDebounced } from '@/lib/use-debounced';
 import { ActionSheet } from '@/components/action-sheet';
 import { EmptyState } from '@/components/empty-state';
 import { HeaderAction } from '@/components/header-action';
@@ -31,19 +32,24 @@ export default function CustomersScreen() {
   const router = useRouter();
   const { me } = useSession();
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounced(search); // the list asks the shop once the typing pauses, not on every letter
   const [owes, setOwes] = useState(false);
   const [picked, setPicked] = useState<CustomerRow | null>(null);
   // Home's "Customers owe you" tile lands here already filtered.
   const params = useLocalSearchParams<{ owes?: string; n?: string }>();
-  useEffect(() => {
+  // Adjusted while rendering, when the tile that sent us here sends something new (not in an effect, which would render twice).
+  const [seenTile, setSeenTile] = useState<string | null>(null);
+  const tile = `${params.owes ?? ''}|${params.n ?? ''}`;
+  if (seenTile !== tile) {
+    setSeenTile(tile);
     if (params.owes === '1') setOwes(true);
-  }, [params.owes, params.n]);
+  }
   const canAdd = me?.permissions?.includes('customer.create') ?? false;
 
   const summary = useQuery({ queryKey: ['customers', 'summary'], queryFn: customerSummary, staleTime: 30_000 });
   const list = useInfiniteQuery({
-    queryKey: ['customers', 'list', search.trim(), owes],
-    queryFn: ({ pageParam }) => listCustomers({ search, owes, page: pageParam }),
+    queryKey: ['customers', 'list', debouncedSearch.trim(), owes],
+    queryFn: ({ pageParam }) => listCustomers({ search: debouncedSearch, owes, page: pageParam }),
     initialPageParam: 1,
     getNextPageParam: (last) => last.nextPage,
   });
@@ -116,7 +122,7 @@ function Row({ row, onPress, onLongPress }: { row: CustomerRow; onPress: () => v
           {row.name}
         </ThemedText>
         <ThemedText type="caption" themeColor="textMuted" numberOfLines={1}>
-          {row.code}{row.phone ? ` · ${row.phone}` : ''}{row.customer_type === 'WHOLESALE' ? ' · Wholesale' : ''}
+          {row.code}{row.phone ? ` · ${row.phone}` : ''}{row.customer_type === 'WHOLESALE' ? ' · Wholesale' : ''}{row.is_active ? '' : ` · ${t('Inactive')}`}
         </ThemedText>
       </View>
       <View style={{ alignItems: 'flex-end' }}>

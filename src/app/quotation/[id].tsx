@@ -137,6 +137,7 @@ export default function QuotationScreen() {
           {q.status === 'SENT' ? <Notice kind="info">This quotation is on the till. Open the Sell tab and tap the held carts to sell it.</Notice> : null}
           {q.expired ? <Notice>This quotation is past its last day, so it cannot be sent to the till.</Notice> : null}
 
+          {steps?.cancel ? <Button title="Change this quotation" variant="secondary" onPress={() => router.push({ pathname: '/new-quotation', params: { id } })} /> : null}
           {steps?.send ? <Button title="Send it to the till" variant="success" size="lg" loading={send.isPending} disabled={cancel.isPending} onPress={() => send.mutate()} /> : null}
           {steps?.cancel ? <Button title="Cancel this quotation" variant="secondary" loading={cancel.isPending} disabled={send.isPending} onPress={askCancel} /> : null}
           {q.status === 'SENT' ? <Button title="Go to the Sell tab" onPress={() => router.navigate('/sell')} /> : null}

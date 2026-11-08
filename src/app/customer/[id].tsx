@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef, useState, type ComponentRef } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,7 +14,8 @@ import { Notice } from '@/components/notice';
 import { showToast } from '@/ui/toast';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
-import { getCustomer, recordPayment } from '@/customers/api';
+import { deleteCustomer, getCustomer, recordPayment, updateCustomer } from '@/customers/api';
+import { ManageActions } from '@/components/manage-actions';
 import { amountDue, creditLeft, PAYMENT_METHODS, paymentProblem, type PaymentMethod } from '@/customers/logic';
 import { useTheme } from '@/hooks/use-theme';
 import { useT } from '@/i18n/prefs';
@@ -27,7 +28,25 @@ export default function CustomerScreen() {
   const t = useT();
   const qc = useQueryClient();
   const { me } = useSession();
+  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const perms = me?.permissions ?? [];
+  const remove = useMutation({
+    mutationFn: () => deleteCustomer(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['customers'] });
+      showToast({ text: t('Customer deleted.') });
+    },
+    onError: () => showToast({ text: t('Could not delete the customer. Try again.') }),
+  });
+  const reopen = useMutation({
+    mutationFn: () => updateCustomer(id, { is_active: true }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['customers'] });
+      showToast({ text: t('Switched on.') });
+    },
+    onError: () => showToast({ text: t('Could not switch it on. Try again.') }),
+  });
   const canPay = me?.permissions?.includes('customer.payment') ?? false;
   const customer = useQuery({ queryKey: ['customers', 'one', id], queryFn: () => getCustomer(id) });
   const [paying, setPaying] = useState(false);
@@ -121,6 +140,7 @@ export default function CustomerScreen() {
                   </View>
                 </View>
               ) : null}
+              <ManageActions noun="customer" active={c.is_active} onActivate={() => reopen.mutate()} canEdit={perms.includes('customer.update')} canDelete={perms.includes('customer.delete')} busy={remove.isPending || reopen.isPending} onEdit={() => router.push({ pathname: '/add-customer', params: { id } })} onDelete={() => remove.mutate()} />
               {pay.isSuccess && !paying ? <Notice kind="info">{"Payment recorded. It is kept on the customer's account."}</Notice> : null}
             </>
           ) : null}

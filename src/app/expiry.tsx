@@ -50,7 +50,7 @@ export default function ExpiryScreen() {
   if (untracked) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.canvas }}>
-        <Stack.Screen options={{ title: t('Expiry dates') }} />
+        <Stack.Screen options={{ title: t('Expiry') }} />
         <EmptyState icon="CheckCircle" title="Your shop does not track expiry dates" hint="Only shops that sell medicine or food use this page." />
       </View>
     );
@@ -101,7 +101,7 @@ export default function ExpiryScreen() {
   );
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
-      <Stack.Screen options={{ title: t('Expiry dates') }} />
+      <Stack.Screen options={{ title: t('Expiry') }} />
       <FlatList
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"

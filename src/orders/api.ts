@@ -41,6 +41,8 @@ export const countOrders = async (q: { status?: OrderStatus; due?: 'overdue' | '
 export const getOrder = (id: string) => api.get<CustomerOrder>(`/customer-orders/${id}/`);
 /** Takes an order. Needs `sale.create`. Not idempotent on the server: the screen guards a retry. */
 export const createOrder = (body: ReturnType<typeof orderBody>) => api.post<CustomerOrder>('/customer-orders/', body);
+/** Replaces the lines, date and note of an open order (the server re-prices it). Needs `sale.create`. */
+export const updateOrder = (id: string, body: ReturnType<typeof orderBody>) => api.patch<CustomerOrder>(`/customer-orders/${id}/`, body);
 /**
  * Money now, held as the customer's credit. Needs `sale.create`. Checked live: a repeated call takes a SECOND deposit even with the
  * same Idempotency-Key, so none is sent and the screen reads the order again before any retry.
@@ -60,6 +62,8 @@ export const getQuote = (id: string) => api.get<Quotation>(`/quotations/${id}/`)
 export const createQuote = (body: ReturnType<typeof quoteBody>) => api.post<Quotation>('/quotations/', body);
 /** What the server would charge, before anything is saved. Needs `sale.create`. */
 export const previewQuote = (body: Pick<ReturnType<typeof quoteBody>, 'items'> & { customer_name?: string }) => api.post<{ subtotal: string; tax_amount: string; grand_total: string }>('/quotations/preview/', body);
+/** Replaces the lines, terms and customer of an OPEN quotation (QUOTATION_NOT_OPEN otherwise). Needs `sale.create`. */
+export const updateQuote = (id: string, body: ReturnType<typeof quoteBody>) => api.patch<Quotation>(`/quotations/${id}/`, body);
 export const cancelQuote = (id: string) => api.post<Quotation>(`/quotations/${id}/cancel/`);
 /** Puts it on the till as a held cart; the shop resumes it from the Sell tab. One time only (QUOTATION_NOT_OPEN after). */
 export const sendQuoteToTill = (id: string) => api.post<Quotation>(`/quotations/${id}/send-to-till/`);

@@ -67,11 +67,10 @@ export default function AddProductScreen() {
 
   // Most shelves sell by the piece, so start there. A unit carried over from the last product wins.
   const units = useQuery({ queryKey: ['units', 'default'], queryFn: () => listUnits(), staleTime: 5 * 60_000 });
-  useEffect(() => {
-    if (unit || !units.data) return;
+  if (!unit && units.data) {
     const piece = units.data.find((u) => /^(piece|pcs?)\b/i.test(u.name));
-    if (piece) setUnit(piece);
-  }, [units.data, unit]);
+    if (piece) setUnit(piece); // chosen while rendering, once the list is here
+  }
 
   async function save() {
     const form = { barcode, name, categoryId: category?.id ?? '', unitId: unit?.id ?? '', price, sku, costPrice: canSeeCost ? costPrice : '', wholesalePrice, mrp, reorderLevel };

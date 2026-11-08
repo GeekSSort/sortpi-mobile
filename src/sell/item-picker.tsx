@@ -1,3 +1,4 @@
+import { looksLikeCode } from './code-input';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
@@ -46,12 +47,13 @@ export function ItemPicker({ onPick, qtyOf, onCode, wholesale, branchId, scan }:
   // The browse list holds only what is on the shelf; a search also finds finished items (marked), so "do we have it?" gets an answer.
   const isOut = (it: CatalogItem) => it.stock !== null && Number(it.stock) <= 0;
 
-  /** Enter on a keyed code: one match is taken; no match and no spaces is tried as an exact barcode or SKU (so a typed or Bluetooth-scanned code still works). */
+  /** Enter on what was typed: a code (barcode or SKU) is looked up exactly; with words, one match on screen is taken. */
   function submit() {
     const q = text.trim();
     if (!q) return;
-    if (items.length === 1) onPick(items[0]);
-    else if (items.length === 0 && !/\s/.test(q)) onCode(q);
+    // A scanner's code plus Enter arrives before the search below has even started: look the code up exactly, now, not in the list on screen.
+    if (looksLikeCode(q)) onCode(q);
+    else if (items.length === 1) onPick(items[0]);
     setText('');
   }
 

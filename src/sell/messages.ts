@@ -21,6 +21,10 @@ export function describeSellError(error: unknown): string {
       return 'Somebody else is using that counter. Pick another one.';
     case 'SHIFT_ALREADY_OPEN':
       return 'You already have the day open on this phone.';
+    case 'DUPLICATE_REFERENCE':
+      return 'This cart was already put on hold.';
+    case 'SALE_ALREADY_CANCELLED':
+      return 'This sale was already cancelled.';
     case 'PERMISSION_DENIED':
       return 'You do not have permission to do that.';
     case 'IDEMPOTENCY_KEY_REUSED':

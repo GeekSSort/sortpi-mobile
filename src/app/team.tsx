@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, Linking, StyleSheet, View } from 'react-native';
+import { Alert, FlatList, Linking, StyleSheet, View } from 'react-native';
 
 import { useSession } from '@/auth/session-provider';
 import { ActionSheet } from '@/components/action-sheet';
@@ -19,7 +19,8 @@ import { usePrefs } from '@/i18n/prefs';
 import { haptics } from '@/lib/haptics';
 import { localDateISO } from '@/lib/dates';
 import { Pill } from '@/products/variant-card';
-import { attendanceOn, checkIn, checkOut, listStaff } from '@/team/api';
+import { HeaderAction } from '@/components/header-action';
+import { attendanceOn, checkIn, checkOut, deleteEmployee, listStaff } from '@/team/api';
 import { byPerson, checkInBody, checkOutBody, clock12, describeTeamError, fullName, nextSteps, presence, tally, type Attendance, type Presence, type Staff } from '@/team/logic';
 import { showToast } from '@/ui/toast';
 
@@ -35,6 +36,25 @@ export default function TeamScreen() {
   const staff = useQuery({ queryKey: ['team', 'staff'], queryFn: listStaff, enabled: allowed });
   const day = useQuery({ queryKey: ['team', 'day', today], queryFn: () => attendanceOn(today), enabled: allowed });
   const [picked, setPicked] = useState<Staff | null>(null);
+  const router = useRouter();
+  const qc = useQueryClient();
+  const canAdd = perms?.includes('hrm.create') ?? false;
+  const canEdit = perms?.includes('hrm.update') ?? false;
+  const canRemove = perms?.includes('hrm.delete') ?? false;
+  const remove = useMutation({
+    mutationFn: (who: Staff) => deleteEmployee(who.id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['team'] });
+      showToast({ text: t('Removed from your team.') });
+    },
+    onError: (e) => showToast({ text: t(describeTeamError(e)) }),
+  });
+  function confirmRemove(who: Staff) {
+    Alert.alert(t('Remove {name}?', { name: fullName(who) }), t('They are taken off your team and out of the lists. This cannot be undone here.'), [
+      { text: t('Keep'), style: 'cancel' },
+      { text: t('Yes, remove'), style: 'destructive', onPress: () => remove.mutate(who) },
+    ]);
+  }
 
   const mark = useMutation({
     mutationFn: (a: { kind: 'in' | 'absent' | 'out'; who: Staff }) => (a.kind === 'out' ? checkOut(checkOutBody(a.who.id)) : checkIn(checkInBody(a.who.id, { absent: a.kind === 'absent' }))),
@@ -74,7 +94,7 @@ export default function TeamScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
-      <Stack.Screen options={{ title: t('Your team') }} />
+      <Stack.Screen options={{ title: t('Employees'), headerRight: canAdd ? () => <HeaderAction title="Add" icon="Plus" onPress={() => router.push('/add-employee')} /> : undefined }} />
       <FlatList
         contentInsetAdjustmentBehavior="automatic"
         data={people}
@@ -92,6 +112,8 @@ export default function TeamScreen() {
           ...(steps?.checkIn && picked ? [{ title: t('Mark in now'), icon: 'CheckCircle' as IconName, onPress: () => mark.mutate({ kind: 'in', who: picked }) }] : []),
           ...(steps?.checkOut && picked ? [{ title: t('Mark out now'), icon: 'LogOut' as IconName, onPress: () => mark.mutate({ kind: 'out', who: picked }) }] : []),
           ...(steps?.absent && picked ? [{ title: t('Mark absent'), icon: 'X' as IconName, onPress: () => mark.mutate({ kind: 'absent', who: picked }) }] : []),
+          ...(picked && canEdit ? [{ title: t('Edit details'), icon: 'Pencil' as IconName, onPress: () => { const id = picked.id; setPicked(null); router.push({ pathname: '/add-employee', params: { id } }); } }] : []),
+          ...(picked && canRemove ? [{ title: t('Remove from team'), icon: 'Cancel' as IconName, onPress: () => { const who = picked; setPicked(null); confirmRemove(who); } }] : []),
           ...(picked?.phone ? [{ title: t('Call {phone}', { phone: picked.phone }), icon: 'Phone' as IconName, onPress: () => void Linking.openURL(`tel:${picked.phone}`) }] : []),
         ]}
         onClose={() => setPicked(null)}

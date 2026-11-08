@@ -97,3 +97,12 @@ test('every refusal has a plain sentence', () => {
   assert.match(say('NETWORK_ERROR'), /Check the list/);
   assert.equal(say('NEW_CODE'), 'raw');
 });
+
+import { lineFromSaved } from './logic.ts';
+
+test('a saved line goes back into the form with its quantity as a plain number', () => {
+  const whole = lineFromSaved({ variant_id: 'v', product_name: 'Tea', sku: 'T-1', quantity: '3.000' });
+  assert.equal(whole.quantity, '3');
+  assert.equal(whole.allowDecimal, false);
+  assert.equal(lineFromSaved({ variant_id: 'v', product_name: 'Rice', sku: 'R', quantity: '2.500' }).allowDecimal, true);
+});
