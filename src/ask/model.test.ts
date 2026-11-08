@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { billsAnswer, duesAnswer, notAllowed, notUnderstood, paymentsAnswer, pctChange, priceAnswer, profitAnswer, salesAnswer, stockListAnswer, stockOfAnswer, SUGGESTION_WORDS, topAnswer } from './model.ts';
+import { askWhich, billsAnswer, duesAnswer, itemSalesAnswer, rankedAnswer, notAllowed, notUnderstood, paymentsAnswer, pctChange, priceAnswer, profitAnswer, salesAnswer, stockListAnswer, stockOfAnswer, SUGGESTION_WORDS, topAnswer } from './model.ts';
 import { INTENTS } from './intents.ts';
 
 test('percent change compares with before, and says nothing when before was zero', () => {
@@ -59,4 +59,13 @@ test('a question is allowed only with a permission that opens its screen', async
   assert.equal(allowed('due_amount', undefined), false);
   assert.equal(allowed('bills_today', ['sale.view_own']), true);
   for (const i of INTENTS) assert.equal(typeof allowed(i.id, []), 'boolean');
+});
+
+test('item sales add up the matching lines, and say so when nothing matched', () => {
+  const a = itemSalesAnswer({ name: 'water', matches: [{ name: 'Water 1L', sold: '10.000', revenue: '300.00' }, { name: 'Water 2L', sold: '5.000', revenue: '250.00' }] });
+  assert.equal(a.stats?.[0].value, '15');
+  assert.equal(String(a.lead.params?.amount).includes('550'), true);
+  assert.equal(itemSalesAnswer({ name: 'tea', matches: [] }).lead.text, 'No sales of "{name}" in this time.');
+  assert.equal(askWhich('item').action.ask, 'sales_today');
+  assert.equal(rankedAnswer({ title: 'x', lead: { text: 'y' }, rows: [], route: '/reports', action: 'View reports' }).action.route, '/reports');
 });

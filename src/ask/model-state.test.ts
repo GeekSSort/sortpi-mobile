@@ -1,32 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { INTENTS, productNameIn } from './intents.ts';
+import { productNameIn } from './intents.ts';
 import { MODEL } from './model-spec.ts';
 import { isComplete, megabytes, percent, spaceNeeded, startGate, stateFromDisk } from './model-state.ts';
-import { buildPrompt, GRAMMAR, parsePick } from './pick.ts';
-
-test('the grammar allows every intent and "none", nothing else', () => {
-  for (const i of INTENTS) assert.ok(GRAMMAR.includes(`"${i.id}"`), i.id);
-  assert.ok(GRAMMAR.includes('"none"'));
-  assert.equal(GRAMMAR.split('|').length, INTENTS.length + 1);
-});
-
-test('a reply is accepted only if it is exactly an id', () => {
-  assert.equal(parsePick('low_stock'), 'low_stock');
-  assert.equal(parsePick(' sales_today\n'), 'sales_today');
-  assert.equal(parsePick('none'), 'none');
-  assert.equal(parsePick('Sure! low_stock'), null);
-  assert.equal(parsePick(''), null);
-  assert.equal(parsePick('drop table'), null);
-});
-
-test('the prompt lists every intent, closes the thinking block and clips a long question', () => {
-  const p = buildPrompt('x'.repeat(500));
-  for (const i of INTENTS) assert.ok(p.includes(i.id));
-  assert.ok(p.endsWith('<think>\n\n</think>\n\n'));
-  assert.ok(p.length < 4000);
-});
 
 test('the item name is what is left of the question', () => {
   assert.equal(productNameIn('coca cola dam koto'), 'coca cola');

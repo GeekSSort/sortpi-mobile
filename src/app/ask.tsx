@@ -5,12 +5,13 @@ import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AnswerCard } from '@/ask/answer-card';
-import { answerFor, answerIntent } from '@/ask/fetch';
-import { matchIntent, productNameIn, type IntentId } from '@/ask/intents';
-import { modelUsable, pickIntent } from '@/ask/llm';
+import { answerFor, answerIntent, runPlan } from '@/ask/fetch';
+import { matchIntent, type IntentId } from '@/ask/intents';
+import { modelUsable, planQuestion } from '@/ask/llm';
 import { logMiss } from '@/ask/miss-log';
 import { SUGGESTION_WORDS, type Answer } from '@/ask/model';
 import { loadModelState, useModelState } from '@/ask/model-store';
+import { describePlan } from '@/ask/plan';
 import { useSession } from '@/auth/session-provider';
 import { Button } from '@/components/button';
 import { Icon } from '@/components/icons/icon';
@@ -22,7 +23,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
 
 /** What the shop says back. Each one is a message in the conversation, so earlier answers stay where they are. */
-type Reply = { kind: 'thinking' } | { kind: 'answer'; answer: Answer; heard?: IntentId } | { kind: 'pick'; options: IntentId[] } | { kind: 'error'; question: string; intent?: IntentId };
+type Reply = { kind: 'thinking' } | { kind: 'answer'; answer: Answer; heard?: string } | { kind: 'pick'; options: IntentId[] } | { kind: 'error'; question: string; intent?: IntentId };
 type Message = { id: number; from: 'me'; text: string } | { id: number; from: 'shop'; reply: Reply };
 
 const STARTERS: IntentId[] = ['sales_today', 'low_stock', 'top_products', 'due_amount'];
@@ -59,11 +60,9 @@ export default function AskScreen() {
         const m = matchIntent(shown);
         if (m.kind !== 'intent') {
           void logMiss(shown, m.kind);
-          // The word matcher was not sure: if the helper model is on this phone, let it pick which question this means.
-          const pick = (await modelUsable()) ? await pickIntent(shown) : null;
-          const name = productNameIn(shown);
-          const needsName = pick === 'product_price' || pick === 'product_stock';
-          if (pick && pick !== 'none' && !(needsName && !name)) return settle(theirs, { kind: 'answer', answer: await answerIntent(pick, name || undefined, perms), heard: pick });
+          // The word matcher was not sure: if the helper model is on this phone, let it turn the sentence into a lookup.
+          const plan = (await modelUsable()) ? await planQuestion(shown) : null;
+          if (plan && plan !== 'none') return settle(theirs, { kind: 'answer', answer: await runPlan(plan, perms), heard: describePlan(plan, t) });
           if (m.kind === 'unsure') return settle(theirs, { kind: 'pick', options: m.suggestions });
         }
         const answer = await answerFor(m, perms);
@@ -72,7 +71,7 @@ export default function AskScreen() {
         settle(theirs, { kind: 'error', question: shown, intent });
       }
     },
-    [perms, settle],
+    [perms, settle, t],
   );
 
   return (
@@ -154,7 +153,7 @@ function ShopReply({ reply, onPick, onRetry, onAsk }: { reply: Reply; onPick: (i
     );
   return (
     <View style={{ gap: Spacing.one }}>
-      {reply.heard ? <ThemedText type="small" themeColor="textMuted" literal>{`${t('I understood this as')}: ${SUGGESTION_WORDS[reply.heard]}`}</ThemedText> : null}
+      {reply.heard ? <ThemedText type="small" themeColor="textMuted" literal>{`${t('I understood this as')}: ${reply.heard}`}</ThemedText> : null}
       <AnswerCard a={reply.answer} onAsk={onAsk} />
     </View>
   );

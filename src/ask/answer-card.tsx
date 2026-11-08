@@ -23,6 +23,7 @@ export function AnswerCard({ a, onAsk }: { a: Answer; onAsk: (intent: NonNullabl
   return (
     <Card accessibilityLiveRegion="polite" style={{ gap: Spacing.three }}>
       <ThemedText type="heading">{t(a.title)}</ThemedText>
+      {a.when ? <ThemedText type="small" themeColor="textMuted" literal>{t(a.when)}</ThemedText> : null}
       <ThemedText type="body" literal>{t(a.lead.text, a.lead.params)}</ThemedText>
       {a.stats?.length ? (
         <View style={{ flexDirection: 'row', gap: Spacing.two }}>

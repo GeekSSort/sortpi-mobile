@@ -11,7 +11,7 @@ export type AskAction = { label: string; route: string | null; ask?: IntentId };
 export type Say = { text: string; params?: Record<string, string | number> };
 
 /** Everything an answer card can show. Every number comes from the shop's data; nothing here is written by a model. */
-export type Answer = { title: string; lead: Say; stats?: Stat[]; bars?: Bar[]; rows?: AskRow[]; alert?: { tone: 'warn' | 'bad'; text: Say }; action: AskAction };
+export type Answer = { title: string; when?: string; lead: Say; stats?: Stat[]; bars?: Bar[]; rows?: AskRow[]; alert?: { tone: 'warn' | 'bad'; text: Say }; action: AskAction };
 
 const money = (v: string) => formatBDT(v, { dp: 0 });
 
@@ -57,10 +57,10 @@ export function topAnswer(rows: { name: string; sold: string; revenue: string }[
   };
 }
 
-export function billsAnswer(rows: { invoice: string; time: string; total: string; due: string }[]): Answer {
+export function billsAnswer(rows: { invoice: string; time: string; total: string; due: string }[], title = 'Bills today'): Answer {
   return {
-    title: 'Bills today',
-    lead: rows.length ? { text: '{n} bills today.', params: { n: rows.length } } : { text: 'There are no bills today.' },
+    title,
+    lead: rows.length ? { text: '{n} bills.', params: { n: rows.length } } : { text: 'There are no bills.' },
     rows: rows.map((r) => ({ primary: r.invoice, secondary: r.time, value: money(r.total), tone: compareMoney(r.due, '0') > 0 ? 'bad' : undefined })),
     action: { label: 'View all bills', route: '/sales' },
   };
@@ -87,11 +87,11 @@ export function paymentsAnswer(rows: { label: string; amount: string }[]): Answe
   };
 }
 
-export function profitAnswer(o: { profit: string; revenue: string }): Answer {
+export function profitAnswer(o: { profit: string; revenue: string; title?: string }): Answer {
   const loss = compareMoney(o.profit, '0') < 0;
   return {
-    title: 'Profit today',
-    lead: { text: loss ? 'You lost {amount} today.' : 'You kept {amount} today.', params: { amount: money(o.profit.replace('-', '')) } },
+    title: o.title ?? 'Profit today',
+    lead: { text: loss ? 'You lost {amount}.' : 'You kept {amount}.', params: { amount: money(o.profit.replace('-', '')) } },
     stats: [{ label: 'Sold', value: money(o.revenue) }, { label: loss ? 'Lost' : 'You keep', value: money(o.profit.replace('-', '')), tone: loss ? 'bad' : 'good' }],
     action: { label: 'View reports', route: '/reports' },
   };
@@ -128,3 +128,27 @@ export const SUGGESTION_WORDS: Record<IntentId, string> = {
 
 export const notUnderstood = (): Answer => ({ title: 'I can only answer about your shop', lead: { text: 'Ask about sales, bills, stock, prices or who owes you.' }, action: { label: 'Ajker bill koto?', route: null, ask: 'sales_today' } });
 export const notAllowed = (): Answer => ({ title: 'Not allowed', lead: { text: 'You may not see that. Ask the owner.' }, action: { label: 'Ajker bill koto?', route: null, ask: 'sales_today' } });
+
+/** A short ranked list with a sentence on top: sales per category, per cashier, per branch, or one customer's balance. */
+export function rankedAnswer(o: { title: string; lead: Say; rows: AskRow[]; stats?: Stat[]; route: string; action: string }): Answer {
+  return { title: o.title, lead: o.lead, stats: o.stats, rows: o.rows, action: { label: o.action, route: o.route } };
+}
+
+/** What one item sold: the total first, then the lines that matched the name. */
+export function itemSalesAnswer(o: { name: string; matches: { name: string; sold: string; revenue: string }[] }): Answer {
+  const sold = o.matches.reduce((n, m) => addMoney(n, m.sold), '0');
+  const revenue = o.matches.reduce((n, m) => addMoney(n, m.revenue), '0');
+  return {
+    title: 'Sales of one item',
+    lead: o.matches.length ? { text: '{n} sold for {amount}.', params: { n: qty(sold), amount: money(revenue) } } : { text: 'No sales of "{name}" in this time.', params: { name: o.name } },
+    stats: o.matches.length ? [{ label: 'Sold', value: qty(sold) }, { label: 'Total', value: money(revenue), tone: 'good' }] : undefined,
+    rows: o.matches.slice(0, 5).map((m) => ({ primary: m.name, secondary: `× ${qty(m.sold)}`, value: money(m.revenue) })),
+    action: { label: 'View reports', route: '/reports' },
+  };
+}
+
+export const askWhich = (what: 'item' | 'name'): Answer => ({
+  title: what === 'item' ? 'Which item?' : 'Which customer?',
+  lead: { text: what === 'item' ? 'Tell me the item name, for example: Coca cola dam koto?' : 'Tell me the customer name, for example: Karim er baki koto?' },
+  action: { label: 'Ajker bill koto?', route: null, ask: 'sales_today' },
+});
