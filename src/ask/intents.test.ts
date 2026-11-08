@@ -81,3 +81,25 @@ test('"pani koy botte" is a stock question about water, in Banglish and in Bangl
   assert.deepEqual(itemSearchTerms('coca cola'), ['coca cola']);
   assert.deepEqual(itemSearchTerms(''), []);
 });
+
+test('the same question in many spellings and both scripts means the same thing', () => {
+  const cases: [string, string][] = [
+    ['ajker bill koto', 'sales_today'], ['ajkr bil kto', 'sales_today'], ['ajkerr bill kotoo?', 'sales_today'], ['AJKER BILL KOTO???', 'sales_today'],
+    ['আজকের বিল কত', 'sales_today'], ['ajke koto bikri', 'sales_today'], ['ajker bikry koto', 'sales_today'], ['আজকের বিক্রি কত?', 'sales_today'],
+    ['gotokal koto sale', 'sales_yesterday'], ['gotokaler bikri koto', 'sales_yesterday'],
+    ['stock kom ki ase', 'low_stock'], ['stok kom ki ache', 'low_stock'],
+    ['কোন মাল শেষ', 'out_of_stock'], ['kon mal sesh hoye geche', 'out_of_stock'],
+    ['baki koto', 'due_amount'], ['customer er dhar koto', 'due_amount'],
+    ['labh koto hoyeche', 'profit_today'], ['ajker cash koto', 'payments_today'],
+  ];
+  for (const [q, want] of cases) {
+    const m = matchIntent(q);
+    assert.equal(m.kind === 'intent' ? m.intent : m.kind, want, q);
+  }
+});
+
+test('a product word that sounds like a function word is still a product ("cola" is not "kal")', () => {
+  const m = matchIntent('coca cola dam koto');
+  assert.equal(m.kind === 'intent' && m.intent, 'product_price');
+  assert.equal(m.kind === 'intent' && m.product, 'coca cola');
+});

@@ -2,6 +2,8 @@
  * Shop owners type Bangla in English letters ("Banglish") and spell it however it sounds, or write it in Bangla script. Before matching,
  * every word is turned into one agreed spelling, so "ajkr bil kto", "আজকের বিল কত" and "ajker bill koto" all become the same text.
  */
+import { fold, normalizeText, skeleton } from './text.ts';
+
 const WORDS: Record<string, string[]> = {
   ajker: ['ajkr', 'ajke', 'aj', 'ajk', 'aajker', 'ajkerr', 'আজকের', 'আজ', 'today', 'todays', "today's"],
   gotokal: ['gotokal', 'gotokaler', 'kal', 'kalker', 'kaler', 'গতকাল', 'গতকালের', 'কাল', 'কালকের', 'yesterday', 'yesterdays'],
@@ -27,19 +29,44 @@ const WORDS: Record<string, string[]> = {
   taka: ['tk', 'taka', 'টাকা', 'cash', 'ক্যাশ'],
 };
 const LOOKUP: Record<string, string> = {};
+/** Spelling families: the folded form of every known variant, or null when two different words fold to the same thing (then it is not used). */
+const FOLDED = new Map<string, string | null>();
+const SKELETONS = new Map<string, string | null>();
+const remember = (map: Map<string, string | null>, key: string, canonical: string) => {
+  if (!map.has(key)) map.set(key, canonical);
+  else if (map.get(key) !== canonical) map.set(key, null);
+};
 for (const [canonical, variants] of Object.entries(WORDS)) {
-  for (const v of variants) LOOKUP[v.toLowerCase()] = canonical;
-  LOOKUP[canonical] = canonical;
+  for (const v of [canonical, ...variants]) {
+    LOOKUP[normalizeText(v)] = canonical; // the same Unicode form the question is cleaned into
+    if (v.includes(' ')) continue; // a phrase is not one word
+    remember(FOLDED, fold(v), canonical);
+    if (skeleton(v).length >= 3) remember(SKELETONS, skeleton(v), canonical);
+  }
 }
 
-/** Lower case, drop punctuation (keeping Bangla letters and marks), fold each word to its agreed spelling. */
+/** One word to its agreed spelling: as listed, else the same sound spelt another way, else the same consonants (only when that is unambiguous). */
+function canonicalWord(word: string): string {
+  const w = word.replace(/([aeiou])\1+$/, '$1'); // "kotoo", "bikrii": stretched for emphasis
+  const exact = LOOKUP[w];
+  if (exact) return exact;
+  // Short words are only taken when listed: folded, "cola" would sound like "kal". Longer words are safe to match by sound.
+  const f = fold(w);
+  const folded = f.length >= 4 ? FOLDED.get(f) : undefined;
+  if (folded) return folded;
+  if (w.length >= 5) {
+    const k = skeleton(w);
+    const bySkeleton = k.length >= 3 ? SKELETONS.get(k) : undefined;
+    if (bySkeleton) return bySkeleton;
+  }
+  return w;
+}
+
+/** Clean the text (Unicode, digits, punctuation, case) and fold each word to its agreed spelling. */
 export function normalizeBanglish(text: string): string {
-  const cleaned = text.toLowerCase().replace(/[^\p{L}\p{M}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+  const cleaned = normalizeText(text);
   if (!cleaned) return '';
-  return cleaned
-    .split(' ')
-    .map((w) => LOOKUP[w] ?? w)
-    .join(' ');
+  return cleaned.split(' ').map(canonicalWord).join(' ');
 }
 
 /** Words that say what is being asked but are not a thing's name. What is left over in a question is the item the person means. */
