@@ -65,3 +65,6 @@ export function matchIntent(input: string): Match {
   const suggestions = [...new Set(found.filter((f) => 1 - (f.score ?? 1) >= 0.45 && topicShared(f.item.text, words)).map((f) => f.item.intent))].slice(0, 3);
   return suggestions.length ? { kind: 'unsure', confidence, suggestions } : { kind: 'unsupported', confidence };
 }
+
+/** The item name left in a question once the question words are taken out ("coca cola dam koto" gives "coca cola"); empty when there is none. */
+export const productNameIn = (input: string): string => nameWords(normalizeBanglish(input)).join(' ');

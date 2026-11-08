@@ -1,0 +1,63 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+
+import { INTENTS, productNameIn } from './intents.ts';
+import { MODEL } from './model-spec.ts';
+import { isComplete, megabytes, percent, spaceNeeded, startGate, stateFromDisk } from './model-state.ts';
+import { buildPrompt, GRAMMAR, parsePick } from './pick.ts';
+
+test('the grammar allows every intent and "none", nothing else', () => {
+  for (const i of INTENTS) assert.ok(GRAMMAR.includes(`"${i.id}"`), i.id);
+  assert.ok(GRAMMAR.includes('"none"'));
+  assert.equal(GRAMMAR.split('|').length, INTENTS.length + 1);
+});
+
+test('a reply is accepted only if it is exactly an id', () => {
+  assert.equal(parsePick('low_stock'), 'low_stock');
+  assert.equal(parsePick(' sales_today\n'), 'sales_today');
+  assert.equal(parsePick('none'), 'none');
+  assert.equal(parsePick('Sure! low_stock'), null);
+  assert.equal(parsePick(''), null);
+  assert.equal(parsePick('drop table'), null);
+});
+
+test('the prompt lists every intent, closes the thinking block and clips a long question', () => {
+  const p = buildPrompt('x'.repeat(500));
+  for (const i of INTENTS) assert.ok(p.includes(i.id));
+  assert.ok(p.endsWith('<think>\n\n</think>\n\n'));
+  assert.ok(p.length < 4000);
+});
+
+test('the item name is what is left of the question', () => {
+  assert.equal(productNameIn('coca cola dam koto'), 'coca cola');
+  assert.equal(productNameIn('ajker bill koto'), '');
+});
+
+test('a download is blocked in the order a person can fix: memory, space, then data', () => {
+  const ok = { freeBytes: 5e9, ramBytes: 8e9, onWifi: true, partialBytes: 0 };
+  assert.equal(startGate(ok), 'ok');
+  assert.equal(startGate({ ...ok, ramBytes: 2e9 }), 'low_memory');
+  assert.equal(startGate({ ...ok, freeBytes: 1.2e9 }), 'no_space');
+  assert.equal(startGate({ ...ok, onWifi: false }), 'mobile_data');
+  assert.equal(startGate({ ...ok, ramBytes: null }), 'ok'); // unknown memory: let it try, loading still checks
+  // a half-finished file needs only the rest
+  assert.equal(startGate({ ...ok, freeBytes: 0.9e9, partialBytes: 600e6 }), 'ok');
+  assert.ok(spaceNeeded(0) > MODEL.bytes);
+});
+
+test('only the exact published size counts as complete', () => {
+  assert.equal(isComplete(MODEL.bytes), true);
+  assert.equal(isComplete(MODEL.bytes - 1), false);
+  assert.equal(isComplete(MODEL.bytes + 1), false);
+  assert.deepEqual(stateFromDisk(null), { kind: 'absent' });
+  assert.deepEqual(stateFromDisk(MODEL.bytes), { kind: 'ready' });
+  assert.deepEqual(stateFromDisk(500), { kind: 'paused', received: 500 });
+  assert.equal(stateFromDisk(MODEL.bytes + 5).kind, 'failed');
+});
+
+test('progress is whole percent and never past the ends', () => {
+  assert.equal(percent(0), 0);
+  assert.equal(percent(MODEL.bytes / 2), 50);
+  assert.equal(percent(MODEL.bytes * 2), 100);
+  assert.equal(megabytes(MODEL.bytes), 1107);
+});
