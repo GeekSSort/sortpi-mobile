@@ -47,11 +47,20 @@ jobs:
 
       # android/ is generated from app.json and is not in git.
       - run: npx expo prebuild --platform android --no-install
+      # services.gradle.org is sometimes slow or answers 504; the wrapper's default 10 s read limit then fails the whole release.
+      # Give the download two minutes, and try the build up to three times (only a failed download is retried in practice).
       - name: Build the release APK
         working-directory: android
         env:
           NODE_ENV: production
-        run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
+        run: |
+          sed -i 's/^networkTimeout=.*/networkTimeout=120000/' gradle/wrapper/gradle-wrapper.properties
+          for attempt in 1 2 3; do
+            ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a,armeabi-v7a && exit 0
+            echo "Build attempt $attempt failed"
+            sleep 20
+          done
+          exit 1
 
       - name: Release notes
         id: notes
