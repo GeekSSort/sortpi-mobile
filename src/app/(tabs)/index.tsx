@@ -29,7 +29,6 @@ import { stockSummary } from '@/stock/api';
 import { formatQuantity } from '@/stock/status';
 
 /** The shop at a glance, in plain words: today's takings, who owes, what is running out, the week, the latest sales. */
-const sameName = (a?: string | null, b?: string | null) => !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
 
 export default function HomeScreen() {
   const router = useRouter();

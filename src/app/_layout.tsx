@@ -9,6 +9,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 import { SessionProvider, useSession } from '@/auth/session-provider';
+import { LocalProvider } from '@/local/provider';
 import { PrefsProvider, usePrefs } from '@/i18n/prefs';
 import { ConnectionBanner } from '@/components/connection-banner';
 import { useHeaderOptions } from '@/components/header-options';
@@ -42,9 +43,11 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <PrefsProvider>
           <SessionProvider>
-            <DrawerProvider>
-              <Gate />
-            </DrawerProvider>
+            <LocalProvider>
+              <DrawerProvider>
+                <Gate />
+              </DrawerProvider>
+            </LocalProvider>
           </SessionProvider>
         </PrefsProvider>
       </QueryClientProvider>

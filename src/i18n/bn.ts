@@ -2183,4 +2183,9 @@ export const bn: Record<string, string> = {
   'Could not load the commission.': 'কমিশন আনা যায়নি।',
   'No sales in this time': 'এই সময়ে কোনো বিক্রি নেই',
   'Pick a longer time.': 'আরও বড় সময় বেছে নিন।',
+  'Shop on this phone': 'এই ফোনে দোকানের তথ্য',
+  'Updated {time} · {n} items': '{time}-এ নতুন করা · {n}টি মাল',
+  'Not downloaded yet': 'এখনো নামানো হয়নি',
+  'Update': 'নতুন করুন',
+  'The shop on this phone could not be updated. It will try again.': 'এই ফোনের দোকানের তথ্য নতুন করা যায়নি। আবার চেষ্টা করবে।',
 };
