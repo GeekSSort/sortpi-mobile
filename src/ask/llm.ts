@@ -30,7 +30,7 @@ function release(): void {
 export async function planQuestion(question: string, shop: ShopContext = {}): Promise<Plan | typeof NONE | null> {
   try {
     if (idle) clearTimeout(idle);
-    loaded ??= initLlama({ model: modelPath().replace(/^file:\/\//, ''), n_ctx: 2048, n_gpu_layers: 0, use_mlock: false });
+    loaded ??= initLlama({ model: modelPath().replace(/^file:\/\//, ''), n_ctx: 1024, n_gpu_layers: 0, use_mlock: false, use_mmap: true });
     const ctx = await loaded;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<null>((resolve) => {

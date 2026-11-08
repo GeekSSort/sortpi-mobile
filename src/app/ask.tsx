@@ -41,6 +41,7 @@ export default function AskScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
   const next = useRef(1);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
+  const input = useRef<ComponentRef<typeof TextInput>>(null);
   const perms = me?.permissions;
   const category = (me?.organization as { category?: { code?: string; name?: string; features?: string[] } } | undefined)?.category;
   const features = category?.features;
@@ -58,6 +59,7 @@ export default function AskScreen() {
       const mine = next.current++;
       const theirs = next.current++;
       setText('');
+      input.current?.focus(); // keep the keyboard up so the next question can be typed straight away
       setMessages((all) => [...all, { id: mine, from: 'me', text: shown }, { id: theirs, from: 'shop', reply: { kind: 'thinking' } }]);
       const business = category?.code ?? null;
       try {
@@ -136,6 +138,9 @@ export default function AskScreen() {
         </ScrollView>
         <View style={{ flexDirection: 'row', gap: Spacing.two, alignItems: 'center', padding: Spacing.three, borderTopWidth: 1, borderTopColor: theme.border, backgroundColor: theme.card }}>
           <TextInput
+            ref={input}
+            autoFocus
+            submitBehavior="submit"
             value={text}
             onChangeText={setText}
             onSubmitEditing={() => void ask(text)}

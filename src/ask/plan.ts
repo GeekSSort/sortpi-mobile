@@ -74,16 +74,16 @@ export const GRAMMAR = grammarFor(TOOLS);
 
 const EXAMPLES: [string, Plan | null][] = [
   ['ajker bill koto', { tool: 'sales_total', period: 'today', item: '', name: '' }],
-  ['gotokal pani koto bikri hoyeche', { tool: 'item_sales', period: 'yesterday', item: 'water', name: '' }],
-  ['ei mashe kon category beshi bikri', { tool: 'sales_by_category', period: 'month', item: '', name: '' }],
-  ['karim er baki koto', { tool: 'customer_balance', period: 'today', item: '', name: 'karim' }],
   ['pani koy botte', { tool: 'stock_of', period: 'today', item: 'water', name: '' }],
+  ['gotokal pani koto bikri hoyeche', { tool: 'item_sales', period: 'yesterday', item: 'water', name: '' }],
+  ['karim er baki koto', { tool: 'customer_balance', period: 'today', item: '', name: 'karim' }],
+  ['ei mashe kon category beshi bikri', { tool: 'sales_by_category', period: 'month', item: '', name: '' }],
   ['coca cola dam koto', { tool: 'price_of', period: 'today', item: 'coca cola', name: '' }],
-  ['ajke kon cashier koto sale korse', { tool: 'sales_by_cashier', period: 'today', item: '', name: '' }],
-  ['gotokal ke ke kinse', { tool: 'bills', period: 'yesterday', item: '', name: '' }],
   ['oshudher meyad kobe sesh hobe', { tool: 'expiring_soon', period: 'today', item: '', name: '' }],
   ['sonar dam ajke koto', { tool: 'metal_rates', period: 'today', item: '', name: '' }],
   ['ei soptahe kon order dite hobe', { tool: 'orders_due', period: 'week', item: '', name: '' }],
+  ['ajke kon cashier koto sale korse', { tool: 'sales_by_cashier', period: 'today', item: '', name: '' }],
+  ['gotokal ke ke kinse', { tool: 'bills', period: 'yesterday', item: '', name: '' }],
   ['weather kemon', null],
 ];
 const json = (p: Plan | null) => (p ? JSON.stringify(p) : JSON.stringify({ tool: NONE, period: 'today', item: '', name: '' }));
@@ -115,7 +115,9 @@ export function buildPrompt(question: string, c: ShopContext = {}): string {
   const tools = c.tools ?? TOOLS;
   const ids = new Set(tools.map((t) => t.id));
   const menu = tools.map((t) => `${t.id}: ${t.meaning}`).join('\n');
-  const shots = EXAMPLES.filter(([, p]) => !p || ids.has(p.tool)).map(([e, p]) => `Q: ${e}\nA: ${json(p)}`).join('\n');
+  // Every token of the prompt is read again on each question, so it stays short: six worked examples that fit this shop, then the refusal.
+  const fit = EXAMPLES.filter(([, p]) => p && ids.has(p.tool)).slice(0, 6);
+  const shots = [...fit, ...EXAMPLES.filter(([, p]) => !p)].map(([e, p]) => `Q: ${e}\nA: ${json(p)}`).join('\n');
   const profile = profileText(c);
   const system = `A shopkeeper in Bangladesh types a question to their shop app, in Bangla, English or Banglish (Bangla in English letters), often misspelt. Turn it into one lookup. Answer with JSON only.\n${profile ? profile + '\n' : ''}${RULES}\nLookups:\n${menu}\n${shots}`;
   return `<|im_start|>system\n${system}<|im_end|>\n<|im_start|>user\n${question.trim().slice(0, 200)}<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n`;
