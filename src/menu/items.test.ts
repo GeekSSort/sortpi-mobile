@@ -9,7 +9,7 @@ test('a person sees only what their permissions allow', () => {
   assert.deepEqual(visibleMenu(MENU, ['sale.view_own'], '', same).map((i) => i.id), ['sales']);
   assert.ok(visibleMenu(MENU, ['pos.access'], '', same).every((i) => i.id !== 'pos')); // the till needs both codes
   assert.deepEqual(visibleMenu(MENU, undefined, '', same), []);
-  assert.equal(visibleMenu(MENU, MENU.flatMap((i) => i.needs), '', same).length, MENU.length);
+  assert.equal(visibleMenu(MENU, MENU.flatMap((i) => i.needs), '', same, MENU.flatMap((i) => (i.trade ? [i.trade] : []))).length, MENU.length);
 });
 
 test('an item that needs every permission is hidden when one is missing', () => {
@@ -28,4 +28,12 @@ test('search matches the English or the translated words, in any case', () => {
 test('groups keep their order and empty ones are dropped', () => {
   const g = groupMenu(visibleMenu(MENU, ['product.create', 'sale.view'], '', same));
   assert.deepEqual(g.map((x) => x.group), ['dashboard', 'inventory', 'sales']);
+});
+
+test('a row of one trade shows only in shops whose trade has it', () => {
+  const all = MENU.flatMap((i) => i.needs);
+  const ids = (trades?: string[]) => visibleMenu(MENU, all, '', same, trades).map((i) => i.id);
+  assert.equal(ids().includes('expiry'), false);
+  assert.equal(ids(['modal']).includes('expiry'), false);
+  assert.equal(ids(['expiry']).includes('expiry'), true);
 });

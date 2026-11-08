@@ -8,7 +8,8 @@ import type { IconName } from '../components/icons/icon.tsx';
  */
 export type MenuGroup = 'dashboard' | 'inventory' | 'stocks' | 'sales' | 'crm' | 'purchases' | 'warehouse' | 'finance' | 'reports' | 'hrm' | 'roles' | 'branches' | 'settings';
 /** `needs` is any of these permissions, or every one of them when `all` is set (the money list needs both sides of the books). */
-export type MenuItem = { id: string; group: MenuGroup; title: string; hint: string; icon: IconName; route: Href; needs: string[]; all?: boolean };
+/** `trade` is a feature of the shop's trade (`me.organization.category.features`, like the web's `tradeFeature`): the row is hidden in shops whose trade lacks it. */
+export type MenuItem = { id: string; group: MenuGroup; title: string; hint: string; icon: IconName; route: Href; needs: string[]; all?: boolean; trade?: string };
 
 export const GROUP_TITLE: Record<MenuGroup, string> = { dashboard: 'Dashboard', inventory: 'Inventory', stocks: 'Stocks', sales: 'Sales & POS', crm: 'CRM', purchases: 'Purchases', warehouse: 'Warehouse', finance: 'Finance', reports: 'Reports', hrm: 'HRM', roles: 'Roles & Permissions', branches: 'Branches', settings: 'Settings' };
 /** The icon at the head of each group, as the web sidebar gives each section its own. */
@@ -20,9 +21,10 @@ export const MENU: MenuItem[] = [
   { id: 'products', group: 'inventory', title: 'Products List', hint: 'See and change prices and offers', icon: 'Package', route: '/products', needs: ['product.view'] },
   { id: 'add-product', group: 'inventory', title: 'Add Products', hint: 'Put a new item in your shop', icon: 'Plus', route: '/add-product', needs: ['product.create'] },
   { id: 'kinds-brands', group: 'inventory', title: 'Categories & Brands', hint: 'Group your items and see what is unused', icon: 'Tag', route: '/kinds-brands', needs: ['category.view', 'brand.view'] },
+  { id: 'discounts', group: 'inventory', title: 'Discount', hint: 'The offers running now', icon: 'Percent', route: '/discounts', needs: ['product.view'] },
   { id: 'stock-levels', group: 'stocks', title: 'Stock Levels', hint: 'What is on the shelves now', icon: 'Layers', route: '/stock', needs: ['product.view', 'inventory.view'] },
   { id: 'movements', group: 'stocks', title: 'Stock Movements', hint: 'Every time an item came in, went out or was corrected', icon: 'History', route: '/movements', needs: ['inventory.view_movements'] },
-  { id: 'expiry', group: 'stocks', title: 'Expiry', hint: 'What has expired and what is about to', icon: 'TriangleAlert', route: '/expiry', needs: ['inventory.view'] },
+  { id: 'expiry', group: 'stocks', title: 'Expiry', hint: 'What has expired and what is about to', icon: 'TriangleAlert', route: '/expiry', needs: ['inventory.view'], trade: 'expiry' },
   { id: 'pos', group: 'sales', title: 'POS', hint: 'Sell with the camera or by search', icon: 'ScanLine', route: '/sell', needs: ['pos.access', 'sale.create'], all: true },
   { id: 'sales', group: 'sales', title: 'Invoice', hint: 'Find any sale and share the receipt', icon: 'Receipt', route: '/sales', needs: ['sale.view', 'sale.view_own'] },
   { id: 'returns', group: 'sales', title: 'Return & Refunds', hint: 'Open the sale, then tap “Return & Refunds”', icon: 'Undo', route: '/sales', needs: ['sale.refund'] },
@@ -31,9 +33,13 @@ export const MENU: MenuItem[] = [
   { id: 'quotations', group: 'sales', title: 'Quotations', hint: 'Give a customer a price before they buy', icon: 'Quote', route: '/quotations', needs: ['sale.view'] },
   { id: 'orders', group: 'sales', title: 'Customer Orders', hint: 'Things customers will collect later', icon: 'ShoppingBag', route: '/orders', needs: ['sale.view'] },
   { id: 'customers', group: 'crm', title: 'Customers', hint: 'Your customers and what they owe', icon: 'Users', route: '/customers', needs: ['customer.view'] },
+  { id: 'price-groups', group: 'crm', title: 'Price Groups', hint: 'Customers who get an agreed percent off', icon: 'Percent', route: '/price-groups', needs: ['customer.view'] },
+  { id: 'refills', group: 'crm', title: 'Refills', hint: 'Customers about to run out', icon: 'History', route: '/refills', needs: ['customer.view'], trade: 'refill' },
   { id: 'add-customer', group: 'crm', title: 'Add Customer', hint: 'Save a name and phone number', icon: 'Users', route: '/add-customer', needs: ['customer.create'] },
   { id: 'new-purchase', group: 'purchases', title: 'New Purchase', hint: 'Write down goods you bought', icon: 'Plus', route: '/new-purchase', needs: ['purchase.create'] },
+  { id: 'old-invoices', group: 'purchases', title: 'Old Invoices', hint: 'Supplier bills from before SortPi', icon: 'Receipt', route: '/old-invoices', needs: ['purchase.view'] },
   { id: 'purchases', group: 'purchases', title: 'Purchase History', hint: 'Order, receive and pay for goods', icon: 'Truck', route: '/purchases', needs: ['purchase.view'] },
+  { id: 'supplier-returns', group: 'purchases', title: 'Supplier Returns', hint: 'Goods you sent back to suppliers', icon: 'Undo', route: '/supplier-returns', needs: ['purchase.view'] },
   { id: 'suppliers', group: 'purchases', title: 'Suppliers', hint: 'See what you owe each supplier and pay them', icon: 'Store', route: '/suppliers', needs: ['supplier.view'] },
   { id: 'warehouses', group: 'warehouse', title: 'Warehouses', hint: 'The places you keep stock', icon: 'Warehouse', route: '/warehouses', needs: ['warehouse.view'] },
   { id: 'transfers', group: 'warehouse', title: 'Transfers', hint: 'Goods sent between your branches or shelves', icon: 'ArrowUpRight', route: '/transfers', needs: ['inventory.transfer'] },
@@ -57,10 +63,11 @@ export const MENU: MenuItem[] = [
 ];
 
 /** What this person may open, matched against what they typed in the words they see (`tr` translates a title or hint). */
-export function visibleMenu(items: MenuItem[], permissions: string[] | undefined, query: string, tr: (text: string) => string): MenuItem[] {
+export function visibleMenu(items: MenuItem[], permissions: string[] | undefined, query: string, tr: (text: string) => string, trades?: readonly string[]): MenuItem[] {
   const q = query.trim().toLowerCase();
   return items
     .filter((i) => (i.all ? i.needs.every((p) => permissions?.includes(p)) : i.needs.some((p) => permissions?.includes(p))))
+    .filter((i) => !i.trade || !!trades?.includes(i.trade))
     .filter((i) => !q || [i.title, tr(i.title), tr(i.hint)].some((s) => s.toLowerCase().includes(q)));
 }
 

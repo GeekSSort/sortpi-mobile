@@ -23,7 +23,8 @@ export function TaskList({ onNavigate, compact = false }: { onNavigate?: () => v
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState<MenuGroup[]>([]);
   const searching = query.trim().length > 0;
-  const found = visibleMenu(MENU, me?.permissions, query, t);
+  const trades = (me?.organization as { category?: { features?: string[] } } | undefined)?.category?.features;
+  const found = visibleMenu(MENU, me?.permissions, query, t, trades);
 
   return (
     <>
