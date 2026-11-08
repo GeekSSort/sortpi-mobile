@@ -1,9 +1,9 @@
 // Makes training data for a small model that turns a Bangla / Banglish question into a lookup plan.
 //   node --experimental-strip-types tools/ask/gen.ts [--n 30000] [--seed 1]
-// Writes tools/ask/out/train.jsonl and valid.jsonl ({prompt, completion} pairs) and prints what is in them. The output folder is not committed.
+// Writes tools/ask/out/train.jsonl and valid.jsonl (chat messages: shop, question, plan) and prints what is in them. The output folder is not committed.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { buildCompactPrompt, TOOLS, type Period } from '../../src/ask/plan.ts';
+import { compactSystem, TOOLS, type Period } from '../../src/ask/plan.ts';
 import { NAMES, PERIODS, REFUSE, SHAPES, SHOPS, type Shop } from './lexicon.ts';
 import { mulberry32, noisy, pick, type Rng } from './noise.ts';
 
@@ -16,7 +16,7 @@ const OUT = fileURLToPath(new URL('./out/', import.meta.url));
 const isValid = (shape: string, text: string): boolean => [...`${shape}|${text}`].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7) % 10 === 0;
 
 const none = { tool: 'none', period: 'today', item: '', name: '' } as const;
-type Row = { split: 'train' | 'valid'; prompt: string; completion: string; tool: string; trade: string; q: string };
+type Row = { split: 'train' | 'valid'; system: string; plan: string; tool: string; trade: string; q: string };
 const rows: Row[] = [];
 
 function fill(text: string, shop: Shop, period: Period | null) {
@@ -58,16 +58,16 @@ for (let k = 0; k < N; k += 1) {
     plan = tools.has(shape.tool) ? { tool: shape.tool, period: says ?? (shape.tool === 'orders_due' ? 'week' : 'today'), item: f.item, name: f.name } : { ...none };
   }
   const split = isValid(shapeId, text) ? 'valid' : 'train';
-  rows.push({ split, prompt: buildCompactPrompt(q, ctx), completion: `${JSON.stringify(plan)}<|im_end|>`, tool: plan.tool, trade: shop.trade, q });
+  rows.push({ split, system: compactSystem(ctx), plan: JSON.stringify(plan), tool: plan.tool, trade: shop.trade, q });
 }
 
 mkdirSync(OUT, { recursive: true });
-for (const s of ['train', 'valid'] as const) writeFileSync(`${OUT}${s}.jsonl`, rows.filter((r) => r.split === s).map((r) => JSON.stringify({ prompt: r.prompt, completion: r.completion })).join('\n') + '\n');
-writeFileSync(`${OUT}samples.txt`, rows.slice(0, 80).map((r) => `${r.trade.padEnd(11)} ${r.q.padEnd(48)} -> ${r.completion.replace('<|im_end|>', '')}`).join('\n') + '\n');
+for (const s of ['train', 'valid'] as const) writeFileSync(`${OUT}${s}.jsonl`, rows.filter((r) => r.split === s).map((r) => JSON.stringify({ messages: [{ role: 'system', content: r.system }, { role: 'user', content: r.q }, { role: 'assistant', content: r.plan }] })).join('\n') + '\n');
+writeFileSync(`${OUT}samples.txt`, rows.slice(0, 80).map((r) => `${r.trade.padEnd(11)} ${r.q.padEnd(48)} -> ${r.plan}`).join('\n') + '\n');
 
 const count = <T,>(xs: T[], f: (x: T) => string) => xs.reduce<Record<string, number>>((m, x) => ((m[f(x)] = (m[f(x)] ?? 0) + 1), m), {});
 const train = rows.filter((r) => r.split === 'train');
-const promptChars = Math.round(rows.reduce((n, r) => n + r.prompt.length, 0) / rows.length);
+const promptChars = Math.round(rows.reduce((n, r) => n + r.system.length + r.q.length + 60, 0) / rows.length);
 console.log(`${rows.length} examples: ${train.length} train, ${rows.length - train.length} valid (sentence shapes never shared).`);
 console.log(`average prompt ${promptChars} characters (about ${Math.round(promptChars / 3.6)} tokens); the prompted model reads about 2300.`);
 console.log('by lookup:', JSON.stringify(count(rows, (r) => r.tool)));

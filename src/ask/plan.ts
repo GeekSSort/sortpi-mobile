@@ -129,10 +129,13 @@ export function buildPrompt(question: string, c: ShopContext = {}): string {
  * The short prompt for a model that has been fine-tuned on this task: it already knows what each lookup means, so only the shop and the
  * lookups it may use are named. About a tenth of the length of `buildPrompt`, which is what makes a fine-tuned model quick.
  */
-export function buildCompactPrompt(question: string, c: ShopContext = {}): string {
+export const compactSystem = (c: ShopContext = {}): string => {
   const tools = c.tools ?? TOOLS;
-  const shop = [c.business ? `shop: ${c.business}` : '', c.features?.length ? `features: ${c.features.join(',')}` : '', `tools: ${tools.map((t) => t.id).join(',')}`].filter(Boolean).join('\n');
-  return `<|im_start|>system\n${shop}<|im_end|>\n<|im_start|>user\n${question.trim().slice(0, 200)}<|im_end|>\n<|im_start|>assistant\n`;
+  return [c.business ? `shop: ${c.business}` : '', c.features?.length ? `features: ${c.features.join(',')}` : '', `tools: ${tools.map((t) => t.id).join(',')}`].filter(Boolean).join('\n');
+};
+
+export function buildCompactPrompt(question: string, c: ShopContext = {}): string {
+  return `<|im_start|>system\n${compactSystem(c)}<|im_end|>\n<|im_start|>user\n${question.trim().slice(0, 200)}<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n`;
 }
 
 const clean = (s: unknown): string => (typeof s === 'string' ? s.replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 40) : '');
