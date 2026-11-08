@@ -17,6 +17,7 @@ const WAIT_MS = 30_000;
 /** The model is used only when it is fully downloaded and the phone has the memory for it. */
 export async function modelUsable(): Promise<boolean> {
   if (Device.totalMemory !== null && Device.totalMemory < MODEL.minRamBytes) return false;
+  if (Device.supportedCpuArchitectures && !Device.supportedCpuArchitectures.some((a) => a.includes('64'))) return false;
   return (await loadModelState()).kind === 'ready';
 }
 

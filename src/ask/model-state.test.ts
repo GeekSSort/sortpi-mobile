@@ -16,6 +16,8 @@ test('a download is blocked in the order a person can fix: memory, space, then d
   assert.equal(startGate({ ...ok, ramBytes: 2e9 }), 'low_memory');
   assert.equal(startGate({ ...ok, freeBytes: 1.2e9 }), 'no_space');
   assert.equal(startGate({ ...ok, onWifi: false }), 'mobile_data');
+  assert.equal(startGate({ ...ok, arm64: false }), 'unsupported');
+  assert.equal(startGate({ ...ok, arm64: true }), 'ok');
   assert.equal(startGate({ ...ok, ramBytes: null }), 'ok'); // unknown memory: let it try, loading still checks
   // a half-finished file needs only the rest
   assert.equal(startGate({ ...ok, freeBytes: 0.9e9, partialBytes: 600e6 }), 'ok');

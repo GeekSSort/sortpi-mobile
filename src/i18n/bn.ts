@@ -2317,4 +2317,5 @@ export const bn: Record<string, string> = {
   'Stock value': 'স্টকের দাম',
   'There is no stock yet.': 'এখনও কোনো স্টক নেই।',
   '{n} items, {units} units in stock.': 'স্টকে {n}টি মাল, মোট {units}টি।',
+  'This phone is too old for the helper. Ask still works without it.': 'এই ফোন সহায়কটার জন্য খুব পুরোনো। এটা ছাড়াও জিজ্ঞেস করা কাজ করবে।',
 };

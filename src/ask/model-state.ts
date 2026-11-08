@@ -1,13 +1,14 @@
 import { MODEL } from './model-spec.ts';
 
 /** Why a download should not start yet, in the order a person can fix them. */
-export type Gate = 'ok' | 'low_memory' | 'no_space' | 'mobile_data';
+export type Gate = 'ok' | 'unsupported' | 'low_memory' | 'no_space' | 'mobile_data';
 
 const GB = 1_000_000_000;
 /** A download needs the file plus room to spare, so the phone is not left with no space at all. */
 export const spaceNeeded = (partialBytes: number): number => Math.max(0, MODEL.bytes - partialBytes) + 0.3 * GB;
 
-export function startGate(o: { freeBytes: number; ramBytes: number | null; onWifi: boolean; partialBytes: number }): Gate {
+export function startGate(o: { freeBytes: number; ramBytes: number | null; onWifi: boolean; partialBytes: number; arm64?: boolean }): Gate {
+  if (o.arm64 === false) return 'unsupported'; // the model's native code is built for 64-bit phones only
   if (o.ramBytes !== null && o.ramBytes < MODEL.minRamBytes) return 'low_memory';
   if (o.freeBytes < spaceNeeded(o.partialBytes)) return 'no_space';
   if (!o.onWifi) return 'mobile_data';

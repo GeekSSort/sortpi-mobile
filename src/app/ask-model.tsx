@@ -32,7 +32,7 @@ export default function AskModelScreen() {
   async function begin() {
     const g = await checkGate();
     setGate(g);
-    if (g === 'low_memory' || g === 'no_space') return;
+    if (g === 'unsupported' || g === 'low_memory' || g === 'no_space') return;
     if (g === 'mobile_data') {
       Alert.alert(t('You are on mobile data'), t('This uses about {n} MB of your data. Download anyway?', { n: SIZE }), [
         { text: t('Cancel'), style: 'cancel' },
@@ -72,6 +72,7 @@ export default function AskModelScreen() {
       <ThemedText type="body">A small helper on your phone can understand more ways of asking. It is about 1.1 GB, downloaded once, and then works with no internet.</ThemedText>
       <ThemedText type="small" themeColor="textMuted">It only understands your question. The numbers always come from your shop.</ThemedText>
 
+      {gate === 'unsupported' ? <Notice>This phone is too old for the helper. Ask still works without it.</Notice> : null}
       {gate === 'low_memory' ? <Notice>This phone does not have enough memory for the helper. Ask still works without it.</Notice> : null}
       {gate === 'no_space' ? <Notice>{t('Not enough space. Free up about {n} MB and try again.', { n: megabytes(spaceNeeded(received)) })}</Notice> : null}
       {s.kind === 'failed' ? <Notice>{s.why === 'damaged' ? 'The file was not complete, so it was removed. Download it again.' : 'The download stopped. Check the internet and continue.'}</Notice> : null}

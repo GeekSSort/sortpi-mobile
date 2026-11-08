@@ -39,6 +39,7 @@ export async function checkGate(): Promise<Gate> {
     ramBytes: Device.totalMemory,
     onWifi: net?.type === Network.NetworkStateType.WIFI || net?.type === Network.NetworkStateType.ETHERNET,
     partialBytes: (await sizeOnDisk()) ?? 0,
+    arm64: Device.supportedCpuArchitectures ? Device.supportedCpuArchitectures.some((a) => a.includes('64')) : undefined,
   });
 }
 
