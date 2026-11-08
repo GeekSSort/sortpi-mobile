@@ -24,6 +24,9 @@ SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30_000 } } });
 
+/** Where the router starts when nothing says otherwise: the tabs (Home first), never a screen that happens to sort or be declared first. */
+export const unstable_settings = { anchor: '(tabs)' };
+
 export default function RootLayout() {
   // Not at module level: the build also loads this file in Node (to list the routes), where there is no Firebase app.
   useEffect(() => {
