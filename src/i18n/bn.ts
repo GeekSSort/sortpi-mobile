@@ -2254,4 +2254,5 @@ export const bn: Record<string, string> = {
   'Continue download': 'ডাউনলোড চালিয়ে যান',
   'Delete the helper': 'সহায়কটা মুছুন',
   'Make answers smarter': 'উত্তর আরও বুদ্ধিমান করুন',
+  'Ask me about your shop in Banglish, English or Bangla. Sales, bills, stock, prices or who owes you.': 'আপনার দোকান সম্পর্কে বাংলা, ইংরেজি বা বাংলিশে জিজ্ঞেস করুন। বিক্রি, বিল, স্টক, দাম বা কে বাকি রেখেছে।',
 };

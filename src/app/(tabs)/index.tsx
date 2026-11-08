@@ -3,7 +3,6 @@ import { Image } from 'expo-image';
 import { Redirect, useRouter } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { SUGGESTION_WORDS } from '@/ask/model';
 import { landingTab } from '@/auth/roles';
 import { useSession } from '@/auth/session-provider';
 import { Button } from '@/components/button';
@@ -77,8 +76,6 @@ export default function HomeScreen() {
       </View>
 
       {canSell ? <Button title="Start selling" size="lg" onPress={() => router.push('/sell')} trailing={<Icon name="ArrowRight" size={20} color="#fff" />} /> : null}
-
-      <AskBar />
 
       <SetupChecklist />
 
@@ -239,33 +236,6 @@ function WeekChart({ days, lang }: { days: DayTotal[]; lang: 'en' | 'bn' }) {
           <ThemedText key={d.date} type="caption" themeColor={i === days.length - 1 ? 'brandText' : 'textMuted'} style={{ flex: 1, textAlign: 'center' }} numberOfLines={1}>
             {WEEKDAYS[lang][d.weekday]}
           </ThemedText>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-/** One tap opens the question screen; the three chips ask the most common questions straight away. */
-function AskBar() {
-  const router = useRouter();
-  const theme = useTheme();
-  const { t } = usePrefs();
-  const chips = [
-    { label: 'Sales today', q: SUGGESTION_WORDS.sales_today },
-    { label: 'Running low', q: SUGGESTION_WORDS.low_stock },
-    { label: 'Best sellers', q: SUGGESTION_WORDS.top_products },
-  ];
-  return (
-    <View style={{ gap: Spacing.two }}>
-      <Tap accessibilityRole="search" accessibilityLabel={t('Ask your shop')} onPress={() => router.push('/ask')} style={{ minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, borderRadius: Radius.lg, borderCurve: 'continuous', borderWidth: 1.5, borderColor: theme.border, backgroundColor: theme.card }}>
-        <Icon name="Search" size={20} color={theme.textMuted} />
-        <ThemedText type="body" themeColor="textMuted" literal>{`${t('Ask your shop')}: ${t('Ajker bill koto?')}`}</ThemedText>
-      </Tap>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two }}>
-        {chips.map((c) => (
-          <Tap key={c.label} accessibilityRole="button" onPress={() => router.push({ pathname: '/ask', params: { q: c.q } })} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 16, borderRadius: Radius.full, backgroundColor: theme.brandSoft, borderWidth: 1.5, borderColor: theme.brandSoftBorder }}>
-            <ThemedText type="smallMedium" style={{ color: theme.brandText }}>{c.label}</ThemedText>
-          </Tap>
         ))}
       </View>
     </View>
