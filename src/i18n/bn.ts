@@ -2311,4 +2311,5 @@ export const bn: Record<string, string> = {
   'Delete the saved questions': 'রাখা প্রশ্নগুলো মুছুন',
   'Delete the saved questions?': 'রাখা প্রশ্নগুলো মুছবেন?',
   '{n} questions will be removed from this phone.': 'এই ফোন থেকে {n}টি প্রশ্ন মুছে যাবে।',
+  'Thinking…': 'ভাবছি…',
 };

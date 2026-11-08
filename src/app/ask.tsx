@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AnswerCard } from '@/ask/answer-card';
 import { answerFor, answerIntent, runPlan } from '@/ask/fetch';
 import { matchIntent, type IntentId } from '@/ask/intents';
-import { modelUsable, planQuestion } from '@/ask/llm';
+import { modelNotNeededSoon, modelUsable, planQuestion, warmUpModel } from '@/ask/llm';
 import { keepQuestion, markQuestion } from '@/ask/log-app';
 import type { Verdict } from '@/ask/question-log';
 import { SUGGESTION_WORDS, type Answer } from '@/ask/model';
@@ -49,6 +49,20 @@ export default function AskScreen() {
   useEffect(() => {
     queueMicrotask(() => void loadModelState());
   }, []);
+
+  // Get the model ready while the person is still reading the screen, and let it go soon after they leave.
+  useEffect(() => {
+    let here = true;
+    void (async () => {
+      if (!(await modelUsable())) return;
+      const words = await ownWords();
+      if (here) await warmUpModel({ business: category?.name, features, words, tools: toolsFor(features, perms) });
+    })();
+    return () => {
+      here = false;
+      modelNotNeededSoon();
+    };
+  }, [category?.name, features, perms]);
 
   const settle = useCallback((id: number, reply: Reply) => setMessages((all) => all.map((m) => (m.id === id && m.from === 'shop' ? { ...m, reply } : m))), []);
 
@@ -166,6 +180,7 @@ function ShopReply({ reply, onPick, onRetry, onAsk, onRate }: { reply: Reply; on
   if (reply.kind === 'thinking')
     return (
       <Bubble from="shop">
+        <ThemedText type="small" themeColor="textMuted">Thinking…</ThemedText>
         <SkeletonRows count={2} />
       </Bubble>
     );
