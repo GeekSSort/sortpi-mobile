@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { nameWords, normalizeBanglish } from './banglish.ts';
-import { matchIntent, type Match } from './intents.ts';
+import { matchIntent, productNameIn, type Match } from './intents.ts';
 
 const intentOf = (m: Match) => (m.kind === 'intent' ? m.intent : m.kind);
 
@@ -115,4 +115,28 @@ test('"kal" means yesterday unless the sentence looks ahead, and "nogod" shows h
   assert.equal(m.kind === 'intent' && m.intent, 'payments_today');
   const n = matchIntent('নগদ কত');
   assert.equal(n.kind === 'intent' && n.intent, 'payments_today');
+});
+
+test('short commands, the way people really speak, show the plain picture of a topic', () => {
+  const want = (q: string, intent: string) => {
+    const m = matchIntent(q);
+    assert.equal(m.kind === 'intent' ? m.intent : m.kind, intent, q);
+  };
+  for (const q of ['stock dekhao', 'stock', 'mot stock', 'stock koto', 'stock er hisab dekhao', 'amar stock dekhao', 'stock dao', 'স্টক দেখাও', 'মোট স্টক কত', 'sob stock dekhi', 'stock value koto', 'stock e koto taka mal ase', 'dokaner mal koto ase']) want(q, 'stock_summary');
+  want('bikri dekhao', 'sales_today');
+  want('ajker bikri dekhao', 'sales_today');
+  want('baki dekhao', 'due_amount');
+  want('labh dekhao', 'profit_today');
+  want('ajker bill dekhao', 'bills_today');
+  // a word that says more than "show" or "total" keeps its own meaning
+  want('stock kom ki ase', 'low_stock');
+  want('stock sesh', 'out_of_stock');
+  const named = matchIntent('coca cola stock dekhao');
+  assert.equal(named.kind === 'intent' && named.intent, 'product_stock');
+  assert.equal(named.kind === 'intent' && named.product, 'coca cola');
+});
+
+test('"mot" and "dao" are no longer taken for item names', () => {
+  assert.equal(productNameIn('mot stock'), '');
+  assert.equal(productNameIn('stock dao'), '');
 });

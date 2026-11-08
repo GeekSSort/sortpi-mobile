@@ -122,7 +122,7 @@ export const startSellingAnswer = (): Answer => ({ title: 'Start selling', lead:
 
 /** For a question that was not understood: the nearest questions to tap, never a guess. */
 export const SUGGESTION_WORDS: Record<IntentId, string> = {
-  sales_today: 'Ajker bill koto?', sales_yesterday: 'Gotokal koto bikri?', sales_week: 'Ei soptaher bikri koto?', low_stock: 'Stock kom ki ase?', out_of_stock: 'Kon mal sesh?', top_products: 'Kon mal beshi bikri?',
+  sales_today: 'Ajker bill koto?', sales_yesterday: 'Gotokal koto bikri?', sales_week: 'Ei soptaher bikri koto?', stock_summary: 'Stock dekhao', low_stock: 'Stock kom ki ase?', out_of_stock: 'Kon mal sesh?', top_products: 'Kon mal beshi bikri?',
   bills_today: 'Ajker bill gulo dekhao', due_amount: 'Customer der baki koto?', supplier_due: 'Supplier ke koto dite hobe?', profit_today: 'Ajker labh koto?', payments_today: 'Ajker cash koto?', product_price: 'Coca cola dam koto?', product_stock: 'Coca cola ase ki?', start_selling: 'Bikri korbo',
 };
 
@@ -180,5 +180,22 @@ export function ordersDueAnswer(rows: { who: string; ref: string; due: string; b
     lead: total === 0 ? { text: 'No orders are due.' } : { text: '{n} orders are due or overdue.', params: { n: total } },
     rows: rows.map((r) => ({ primary: r.who, secondary: `${r.ref} · ${r.due}`, value: money(r.balance), tone: Number(r.balance) > 0 ? ('warn' as const) : undefined })),
     action: { label: 'View orders', route: '/orders' },
+  };
+}
+
+/** The whole stock at a glance: how many items, how many units, what it is worth (only for people who may see cost), and what needs attention. */
+export function stockSummaryAnswer(o: { lines: number; units: string; value?: string; low: number; out: number }): Answer {
+  return {
+    title: 'Stock',
+    lead: o.lines === 0 ? { text: 'There is no stock yet.' } : { text: '{n} items, {units} units in stock.', params: { n: o.lines, units: qty(o.units) } },
+    stats: [
+      { label: 'Items', value: String(o.lines) },
+      { label: 'Units', value: qty(o.units) },
+      ...(o.value !== undefined ? [{ label: 'Stock value', value: money(o.value), tone: 'good' as const }] : []),
+      { label: 'Running low', value: String(o.low), tone: o.low > 0 ? ('warn' as const) : ('good' as const) },
+      { label: 'Finished', value: String(o.out), tone: o.out > 0 ? ('bad' as const) : ('good' as const) },
+    ],
+    alert: o.out > 0 ? { tone: 'bad', text: { text: '{n} items are finished.', params: { n: o.out } } } : o.low > 0 ? { tone: 'warn', text: { text: '{n} items are running low.', params: { n: o.low } } } : undefined,
+    action: { label: 'View stock', route: '/stock' },
   };
 }

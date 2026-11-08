@@ -2312,4 +2312,9 @@ export const bn: Record<string, string> = {
   'Delete the saved questions?': 'রাখা প্রশ্নগুলো মুছবেন?',
   '{n} questions will be removed from this phone.': 'এই ফোন থেকে {n}টি প্রশ্ন মুছে যাবে।',
   'Thinking…': 'ভাবছি…',
+  // --- ask: stock summary
+  'Units': 'পরিমাণ',
+  'Stock value': 'স্টকের দাম',
+  'There is no stock yet.': 'এখনও কোনো স্টক নেই।',
+  '{n} items, {units} units in stock.': 'স্টকে {n}টি মাল, মোট {units}টি।',
 };

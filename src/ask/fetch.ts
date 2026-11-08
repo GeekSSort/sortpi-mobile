@@ -10,7 +10,7 @@ import type { Sale } from '@/sales/api';
 import { soldInRange } from '@/home/api';
 import { listSales } from '@/sales/api';
 import { searchCatalog } from '@/sell/catalog';
-import { listStock } from '@/stock/api';
+import { listStock, stockSummary } from '@/stock/api';
 import { itemName } from '@/sell/catalog-map';
 
 import { itemSearchTerms } from './banglish';
@@ -18,7 +18,7 @@ import { allowed } from './allowed';
 import { resolveCustomerNames, resolveItemNames } from './shop-vocab';
 import { missingInput, PERIOD_LABEL, toolAllowed, toolOffered, type Plan } from './plan';
 import type { IntentId, Match } from './intents';
-import { askWhich, billsAnswer, duesAnswer, expiryAnswer, itemSalesAnswer, metalRatesAnswer, ordersDueAnswer, notAllowed, notUnderstood, paymentsAnswer, priceAnswer, profitAnswer, rankedAnswer, salesAnswer, startSellingAnswer, stockListAnswer, stockOfAnswer, topAnswer, type Answer } from './model';
+import { askWhich, billsAnswer, duesAnswer, expiryAnswer, itemSalesAnswer, metalRatesAnswer, ordersDueAnswer, notAllowed, notUnderstood, paymentsAnswer, priceAnswer, profitAnswer, rankedAnswer, salesAnswer, stockSummaryAnswer, startSellingAnswer, stockListAnswer, stockOfAnswer, topAnswer, type Answer } from './model';
 
 const money = (v: string) => formatBDT(v, { dp: 0 });
 const toLine = (r: { product_name: string; variant_name: string; available: string; reorder_level: string; unit_short_name: string | null }) => ({ name: itemName(r.product_name, r.variant_name), available: r.available, reorder: r.reorder_level, unit: r.unit_short_name });
@@ -77,6 +77,10 @@ export async function answerIntent(intent: IntentId, product: string | undefined
         if (rows.length >= 5) break;
       }
       return stockOfAnswer(product ?? '', rows.slice(0, 5).map((r) => ({ name: itemName(r.product_name, r.variant_name), stock: r.available, unit: r.unit_short_name, reorder: r.reorder_level })));
+    }
+    case 'stock_summary': {
+      const k = await stockSummary(false);
+      return stockSummaryAnswer({ lines: k.lines, units: k.units, value: k.stock_value, low: k.low_stock, out: k.out_of_stock });
     }
     case 'start_selling': return startSellingAnswer();
   }
@@ -158,6 +162,7 @@ export async function runPlan(plan: Plan, perms: readonly string[] | undefined, 
       }
       return rankedAnswer({ title: 'One customer', lead: rows.length ? { text: '{name} owes {amount}.', params: { name: rows[0].name, amount: money(rows[0].current_balance) } } : { text: 'No customer matches "{name}".', params: { name: plan.name } }, rows: rows.map((c) => ({ primary: c.name, secondary: c.phone || undefined, value: money(c.current_balance), tone: Number(c.current_balance) > 0 ? ('bad' as const) : ('good' as const) })), route: '/customers', action: 'View customers' });
     }
+    case 'stock_summary': return answerIntent('stock_summary', undefined, perms);
     case 'stock_low': return answerIntent('low_stock', undefined, perms);
     case 'stock_out': return answerIntent('out_of_stock', undefined, perms);
     case 'stock_of': return answerIntent('product_stock', plan.item, perms);

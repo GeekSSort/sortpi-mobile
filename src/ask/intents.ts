@@ -5,13 +5,13 @@ import { normalizeText } from './text.ts';
 
 export type IntentId =
   | 'sales_today' | 'sales_yesterday' | 'sales_week' | 'low_stock' | 'out_of_stock' | 'top_products' | 'bills_today'
-  | 'due_amount' | 'supplier_due' | 'profit_today' | 'payments_today' | 'product_price' | 'product_stock' | 'start_selling';
+  | 'due_amount' | 'supplier_due' | 'profit_today' | 'payments_today' | 'product_price' | 'product_stock' | 'start_selling' | 'stock_summary';
 
 export type Intent = { id: IntentId; examples: string[] };
 
 /** What a person can ask, with a dozen ways to ask it: Banglish, misspelt, Bangla script and English. The matcher learns nothing; this list is the knowledge. */
 export const INTENTS: Intent[] = [
-  { id: 'sales_today', examples: ['ajker bill koto', 'ajker sale koto', 'ajke koto bikri', 'ajkr bil kto', 'aj koto bikri hoyeche', 'ajker hisab koto', 'today sales', 'আজকের বিক্রি কত', 'ajker total sale', 'ajker bikri', 'aj koto taka sale', 'ajker bikri koto taka', 'sales today', 'ajker sale'] },
+  { id: 'sales_today', examples: ['ajker bikri dekhao', 'ajker sale dekhao', 'ajker hisab dekhao', 'aj er bikri dekhi', 'ajker bill koto', 'ajker sale koto', 'ajke koto bikri', 'ajkr bil kto', 'aj koto bikri hoyeche', 'ajker hisab koto', 'today sales', 'আজকের বিক্রি কত', 'ajker total sale', 'ajker bikri', 'aj koto taka sale', 'ajker bikri koto taka', 'sales today', 'ajker sale'] },
   { id: 'sales_yesterday', examples: ['gotokal koto bikri', 'kal koto sale hoyechilo', 'gotokaler bill koto', 'yesterday sales', 'গতকালের বিক্রি কত', 'kalker hisab koto', 'gotokal er sale', 'gotokaler bikri'] },
   { id: 'sales_week', examples: ['ei soptaher bikri koto', 'week sale koto', '7 diner bikri', 'soptahe koto sale', 'last 7 days sales', 'এই সপ্তাহে বিক্রি কত', 'soptaher sale koto', 'weekly sales'] },
   { id: 'low_stock', examples: ['stock kom ki ase', 'kon kon mal kom', 'stock kom', 'kon product kom hoye ashche', 'low stock', 'কোন মাল কম', 'ki ki kinte hobe', 'kom stock ki ki', 'reorder lagbe ki', 'kon mal kom ase'] },
@@ -22,6 +22,7 @@ export const INTENTS: Intent[] = [
   { id: 'supplier_due', examples: ['supplier ke koto dite hobe', 'supplier baki', 'mahajon ke koto dibo', 'ami koto dibo', 'supplier due', 'সাপ্লায়ারকে কত দিতে হবে', 'supplier der baki koto'] },
   { id: 'profit_today', examples: ['ajker labh koto', 'profit koto', 'ajke koto labh', 'লাভ কত', 'today profit', 'ajker profit', 'labh koto hoyeche'] },
   { id: 'payments_today', examples: ['ajker nogod koto', 'nagad koto ajke', 'নগদ কত', 'ajker nagad ar cash koto', 'cash koto ajke', 'bkash koto', 'kon payment method beshi', 'ajker cash', 'ajker taka koto ashche', 'payment koto ajke', 'ajker payment'] },
+  { id: 'stock_summary', examples: ['stock dekhao', 'mot stock koto', 'মোট স্টক কত', 'stock er hisab dekhao', 'total stock', 'sob mal koto ase', 'stock value koto', 'amar stock dekhao', 'dokaner stock koto', 'stock e koto taka mal ase', 'স্টক দেখাও'] },
   { id: 'start_selling', examples: ['bikri korbo', 'sell korbo', 'bill korbo', 'new sale', 'বিক্রি করব', 'notun bill', 'sale suru'] },
 ];
 
@@ -55,10 +56,27 @@ export function asksAboutTomorrow(input: string): boolean {
   return words.some((w) => BARE_KAL.has(w)) && words.some((w) => FUTURE.has(w));
 }
 
+
+/**
+ * People do not ask "what is the total of my stock"; they say "stock dekhao". A command, or "koto", with one topic word and nothing else
+ * (no item name, no "low", no "finished") means the plain picture of that topic. Words that only mean "show", "my", "total" or "now" are dropped first.
+ */
+const FILLER = new Set(['dekhao', 'koto', 'ki', 'ase', 'er', 'e', 'ta', 'ke', 'total', 'my', 'ar', 'ki', 'ekta', 'ekhon']);
+const BARE: Record<string, IntentId> = { stock: 'stock_summary', product: 'stock_summary', sale: 'sales_today', bill: 'bills_today', baki: 'due_amount', profit: 'profit_today', taka: 'payments_today' };
+const STOCK_EXTRAS = new Set(['stock', 'product', 'bill', 'hisab', 'taka', 'value', 'price']);
+export function bareTopic(norm: string): IntentId | null {
+  const content = norm.split(' ').filter((w) => w && !FILLER.has(w));
+  if (content.length === 0) return null;
+  if (content.includes('stock') || content.includes('product')) return content.every((w) => STOCK_EXTRAS.has(w)) ? 'stock_summary' : null; // "stock kom" and "stock sesh" are other questions
+  return content.length === 1 ? (BARE[content[0]] ?? null) : null;
+}
+
 export function matchIntent(input: string): Match {
   if (asksAboutTomorrow(input)) return { kind: 'unsupported', confidence: 0 };
   const norm = normalizeBanglish(input);
   if (!norm) return { kind: 'unsupported', confidence: 0 };
+  const bare = bareTopic(norm);
+  if (bare) return { kind: 'intent', intent: bare, confidence: 1 };
   const words = tokens(norm);
   const name = nameWords(norm).join(' ');
   if (name) {

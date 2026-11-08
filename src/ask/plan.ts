@@ -9,7 +9,7 @@ export const PERIOD_LABEL: Record<Period, string> = { today: 'Today', yesterday:
 
 export type ToolId =
   | 'sales_total' | 'sales_by_day' | 'top_products' | 'item_sales' | 'sales_by_category' | 'sales_by_payment' | 'sales_by_cashier' | 'sales_by_branch' | 'profit'
-  | 'bills' | 'customer_dues' | 'supplier_dues' | 'customer_balance' | 'stock_low' | 'stock_out' | 'stock_of' | 'price_of' | 'start_selling'
+  | 'bills' | 'customer_dues' | 'supplier_dues' | 'customer_balance' | 'stock_summary' | 'stock_low' | 'stock_out' | 'stock_of' | 'price_of' | 'start_selling'
   | 'expiring_soon' | 'expired_stock' | 'metal_rates' | 'orders_due';
 
 /** `features` limits a lookup to shops of a trade that has it (any one of them); no `features` means every shop. */
@@ -29,6 +29,7 @@ export const TOOLS: Tool[] = [
   { id: 'customer_dues', label: 'Customers owe you', meaning: 'who owes the shop money (baki)', needs: ['report.finance'] },
   { id: 'supplier_dues', label: 'You owe suppliers', meaning: 'what the shop owes suppliers', needs: ['report.finance'] },
   { id: 'customer_balance', label: 'One customer', meaning: 'what ONE named customer owes', needs: ['customer.view'], input: 'name' },
+  { id: 'stock_summary', label: 'Stock', meaning: 'the whole stock at a glance: items, units, value, low, finished (stock dekhao, mot stock)', needs: ['product.view', 'inventory.view'] },
   { id: 'stock_low', label: 'Running low', meaning: 'items running low', needs: ['product.view', 'inventory.view'] },
   { id: 'stock_out', label: 'Finished', meaning: 'items that are finished (zero stock)', needs: ['product.view', 'inventory.view'] },
   { id: 'stock_of', label: 'Stock of one item', meaning: 'how many of ONE named item are in stock', needs: ['product.view', 'inventory.view'], input: 'item' },
@@ -74,6 +75,7 @@ export const GRAMMAR = grammarFor(TOOLS);
 
 const EXAMPLES: [string, Plan | null][] = [
   ['ajker bill koto', { tool: 'sales_total', period: 'today', item: '', name: '' }],
+  ['stock dekhao', { tool: 'stock_summary', period: 'today', item: '', name: '' }],
   ['pani koy botte', { tool: 'stock_of', period: 'today', item: 'water', name: '' }],
   ['gotokal pani koto bikri hoyeche', { tool: 'item_sales', period: 'yesterday', item: 'water', name: '' }],
   ['karim er baki koto', { tool: 'customer_balance', period: 'today', item: '', name: 'karim' }],

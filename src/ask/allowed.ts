@@ -8,6 +8,7 @@ const NEEDS: Record<IntentId, string[]> = {
   low_stock: ['product.view', 'inventory.view'],
   out_of_stock: ['product.view', 'inventory.view'],
   product_stock: ['product.view', 'inventory.view'],
+  stock_summary: ['product.view', 'inventory.view'],
   product_price: ['product.view', 'inventory.view', 'pos.access'],
   top_products: ['report.sales'],
   bills_today: ['sale.view', 'sale.view_own'],

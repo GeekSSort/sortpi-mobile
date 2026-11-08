@@ -8,7 +8,8 @@ const WORDS: Record<string, string[]> = {
   ajker: ['ajkr', 'ajke', 'aj', 'ajk', 'aajker', 'ajkerr', 'আজকের', 'আজ', 'today', 'todays', "today's"],
   gotokal: ['gotokal', 'gotokaler', 'kal', 'kalker', 'kaler', 'গতকাল', 'গতকালের', 'কাল', 'কালকের', 'yesterday', 'yesterdays'],
   week: ['soptah', 'soptahe', 'soptaher', 'shoptah', 'saptah', 'saptaher', 'সপ্তাহ', 'সপ্তাহে', 'সপ্তাহের', 'weekly', 'week'],
-  bill: ['bil', 'bills', 'bils', 'invoice', 'invoices', 'hisab', 'hishab', 'hisaab', 'বিল', 'হিসাব', 'ইনভয়েস'],
+  bill: ['bil', 'bills', 'bils', 'invoice', 'invoices', 'বিল', 'ইনভয়েস'],
+  hisab: ['hishab', 'hisaab', 'hisap', 'হিসাব', 'হিসেব', 'khata', 'খাতা'],
   sale: ['sales', 'sell', 'selling', 'bikri', 'bikry', 'bikkri', 'bikrir', 'বিক্রি', 'বিক্রয়', 'বিক্রির'],
   koto: ['kto', 'kata', 'kt', 'koto', 'kotto', 'how', 'কত', 'কতো', 'কি পরিমাণ'],
   koyta: ['koita', 'koyta', 'koyti', 'kotogulo', 'koy', 'koi', 'koyti', 'কয়টা', 'কয়টি', 'কতটি', 'কতগুলো', 'কয়', 'কয়টাই', 'how many'],
@@ -25,7 +26,10 @@ const WORDS: Record<string, string[]> = {
   top: ['shera', 'sera', 'best', 'beshi', 'besi', 'sobcheye', 'sobchye', 'shobcheye', 'সেরা', 'বেশি', 'সবচেয়ে'],
   ase: ['ache', 'achhe', 'asey', 'আছে', 'আছে কি', 'available'],
   ki: ['kii', 'ke', 'কি', 'কী', 'what', 'which'],
-  dekhao: ['dekhaw', 'dekhan', 'show', 'dekhi', 'দেখাও', 'দেখান', 'দেখি'],
+  dekhao: ['dekhaw', 'dekhan', 'show', 'dekhi', 'দেখাও', 'দেখান', 'দেখি', 'dao', 'den', 'dein', 'bolo', 'bolen', 'janao', 'janan', 'dekhaben', 'dekhaiyen', 'দাও', 'দিন', 'বলো', 'বলুন', 'বলেন', 'জানাও', 'জানান', 'tell', 'give', 'list'],
+  total: ['mot', 'mote', 'moto', 'sob', 'sab', 'sobkichu', 'sorbomot', 'total', 'all', 'sum', 'মোট', 'সব', 'সবকিছু', 'সর্বমোট', 'ekun', 'মোটের'],
+  my: ['amar', 'amader', 'apnar', 'apner', 'dokaner', 'dokan', 'shop', 'ekhon', 'ekhono', 'current', 'now', 'present', 'আমার', 'আমাদের', 'আপনার', 'দোকানের', 'দোকান', 'এখন', 'এখনকার', 'এখনও', 'বর্তমান'],
+  value: ['value', 'worth', 'দামের'],
   taka: ['tk', 'taka', 'টাকা', 'cash', 'ক্যাশ'],
 };
 const LOOKUP: Record<string, string> = {};
@@ -70,7 +74,7 @@ export function normalizeBanglish(text: string): string {
 }
 
 /** Words that say what is being asked but are not a thing's name. What is left over in a question is the item the person means. */
-const NOT_A_NAME = new Set(['unit', 'ajker', 'gotokal', 'week', 'bill', 'sale', 'koto', 'koyta', 'stock', 'low', 'out', 'price', 'product', 'baki', 'customer', 'supplier', 'profit', 'top', 'ase', 'ki', 'dekhao', 'taka', 'er', 'ta', 'te', 'ke', 'tar', 'dite', 'hobe', 'hoy', 'hoyeche', 'ache', 'a', 'the', 'is', 'of', 'me', 'amar', 'ekta', 'ek']);
+const NOT_A_NAME = new Set(['hisab', 'total', 'my', 'value', 'unit', 'ajker', 'gotokal', 'week', 'bill', 'sale', 'koto', 'koyta', 'stock', 'low', 'out', 'price', 'product', 'baki', 'customer', 'supplier', 'profit', 'top', 'ase', 'ki', 'dekhao', 'taka', 'er', 'ta', 'te', 'ke', 'tar', 'dite', 'hobe', 'hoy', 'hoyeche', 'ache', 'a', 'the', 'is', 'of', 'me', 'amar', 'ekta', 'ek']);
 
 /** The words of a question that name an item ("coca cola"), after the question words are taken away. */
 export function nameWords(normalized: string): string[] {

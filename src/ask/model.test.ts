@@ -82,3 +82,13 @@ test('trade answers: expiry, metal rates and orders due', async () => {
   assert.equal(ordersDueAnswer([], 0).lead.text, 'No orders are due.');
   assert.equal(ordersDueAnswer([{ who: 'Karim', ref: 'ORD-1', due: '2026-11-10', balance: '500' }], 1).rows?.[0].tone, 'warn');
 });
+
+test('the stock summary shows value only when the server gave it, and flags what needs attention', async () => {
+  const { stockSummaryAnswer } = await import('./model.ts');
+  const a = stockSummaryAnswer({ lines: 40, units: '1200.000', value: '85000.00', low: 3, out: 2 });
+  assert.equal(a.stats?.length, 5);
+  assert.equal(a.alert?.tone, 'bad');
+  assert.equal(stockSummaryAnswer({ lines: 40, units: '1200.000', low: 3, out: 0 }).stats?.length, 4);
+  assert.equal(stockSummaryAnswer({ lines: 40, units: '1200.000', low: 3, out: 0 }).alert?.tone, 'warn');
+  assert.equal(stockSummaryAnswer({ lines: 0, units: '0', low: 0, out: 0 }).lead.text, 'There is no stock yet.');
+});
