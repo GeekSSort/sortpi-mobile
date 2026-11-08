@@ -15,7 +15,6 @@ import { listCategories } from '@/catalog/api';
 import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
 import { formatBDT } from '@/lib/money';
-import { showToast } from '@/ui/toast';
 
 import { browseCatalog, searchCatalog } from './catalog';
 import type { CatalogItem } from './catalog-map';
@@ -103,7 +102,7 @@ export function ItemPicker({ onPick, qtyOf, onCode, wholesale, branchId, scan }:
               key={it.variantId}
               accessibilityRole="button"
               accessibilityLabel={`${it.name}, ${formatBDT(it.price)}${n > 0 ? `, ${t('{n} in the cart', { n })}` : ''}`}
-              onPress={() => (out ? showToast({ text: t('This item is finished.') }) : onPick(it))}
+              onPress={() => onPick(it)} // a finished item still goes in: the branch setting decides at the till, and the server says no if it must
               style={{ flexBasis: '48%', flexGrow: 1, minHeight: 76, padding: Spacing.three, gap: 4, borderRadius: Radius.lg, borderCurve: 'continuous', opacity: out ? 0.55 : 1, backgroundColor: n > 0 ? theme.successSoft : theme.card, borderWidth: n > 0 ? 2 : 1, borderColor: n > 0 ? theme.positive : theme.border }}>
               <ThemedText type="smallMedium" numberOfLines={2} literal>
                 {it.name}

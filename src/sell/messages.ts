@@ -5,7 +5,7 @@ export function describeSellError(error: unknown): string {
   if (!(error instanceof ApiError)) return 'Something went wrong. Try again.';
   switch (error.code) {
     case 'INSUFFICIENT_STOCK':
-      return 'Not enough stock for one of the items. Nothing was sold.';
+      return 'Not enough stock for one of the items. Nothing was sold. To sell goods that are finished, a manager can turn on “Allow selling more than is in stock” in Shop settings.';
     case 'NO_PRICE_DEFINED':
       return 'One item has no price in this branch. Ask your manager to set it.';
     case 'NO_OPEN_SHIFT':

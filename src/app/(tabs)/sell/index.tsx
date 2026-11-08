@@ -32,6 +32,7 @@ import { useDiscounts } from '@/sell/use-discounts';
 import { SaleGuide } from '@/sell/sale-guide';
 import type { PickedCustomer } from '@/sell/customers';
 import { buildPayments, type PayChoice } from '@/sell/payment';
+import { PaperSheet } from '@/sell/paper-sheet';
 import { receiptText } from '@/sell/receipt';
 import { haptics } from '@/lib/haptics';
 import { showToast } from '@/ui/toast';
@@ -41,7 +42,7 @@ import { currentShift, dropHeld, listCounters, heldCarts, holdCart, loadSellCont
 import { defaultCounter } from '@/sell/counters';
 import { holdBody, mergeHeld, type HeldCart } from '@/sell/held';
 import { HeldSheet } from '@/sell/held-sheet';
-import { addItem, changeDue, changeQuantity, setQuantity, estimateSubtotal, isEmpty, itemCount, lineEstimate, removeLine, type Cart, type CartLine, type PaymentMethod } from '@/sell/cart';
+import { addItem, changeDue, changeQuantity, setQuantity, estimateSubtotal, isEmpty, itemCount, lastQuantity, lineEstimate, lineKey, removeLine, type Cart, type CartLine, type PaymentMethod, type ScannedItem } from '@/sell/cart';
 import { SwipeToRemove } from '@/components/swipe-to-remove';
 import { useCameraPermissions } from 'expo-camera';
 import { useUsesBarcodes } from '@/sell/use-barcodes';
@@ -49,6 +50,7 @@ import { toCartItem, type CatalogItem } from '@/sell/catalog-map';
 import { ItemPicker } from '@/sell/item-picker';
 import { takePendingItem } from '@/sell/pending';
 import { setBottomBar, useBottomBar } from '@/ui/bottom-bar';
+import { ApiError } from '@/api/client';
 import { describeSellError, LOOKUP_FAILED_TITLE, NOT_IN_CATALOGUE_TITLE, notInCatalogueText } from '@/sell/messages';
 import { Tap } from '@/components/tap';
 
@@ -75,6 +77,13 @@ export default function SellScreen() {
   const [mode, setMode] = useState<Mode>('scan');
   const [notice, setNotice] = useState<string | null>(null);
   const [scanNote, setScanNote] = useState<ScanNote | null>(null);
+  // An item scanned a second time waits here for a yes, so a camera that lingers on one packet cannot add it twice by accident.
+  const [again, setAgain] = useState<ScannedItem | null>(null);
+  const [printFor, setPrintFor] = useState<string | null>(null);
+  const cartRef = useRef(cart);
+  useEffect(() => {
+    cartRef.current = cart;
+  }, [cart]);
   // The camera opens by itself only where it is already allowed; otherwise the scan button next to the search box opens it.
   const [cameraPermission] = useCameraPermissions();
   const [cameraChoice, setCameraChoice] = useState<boolean | null>(null);
@@ -170,12 +179,15 @@ export default function SellScreen() {
   }
 
   async function onCode(code: string, scanned = true) {
-    if (!ctx || looking.current || scanNote || mode !== 'scan') return;
+    if (!ctx || looking.current || scanNote || again || mode !== 'scan') return;
     looking.current = true;
     setScanNote(null);
     try {
       const item = await timed('scan_lookup', () => lookupBarcode(code, ctx.branchId));
-      if (item) {
+      if (item && scanned && lastQuantity(cartRef.current, item) !== null) {
+        Vibration.vibrate([0, 60, 50, 60]);
+        setAgain(item);
+      } else if (item) {
         setCart((c) => addItem(c, item));
         haptics.tap();
       } else {
@@ -365,7 +377,9 @@ export default function SellScreen() {
 
   const totalNote = !serverTotal
     ? previewQuery.isError
-      ? 'This price is a guess. We could not check it just now.'
+      ? previewQuery.error instanceof ApiError && previewQuery.error.code === 'INSUFFICIENT_STOCK'
+        ? describeSellError(previewQuery.error)
+        : 'This price is a guess. We could not check it just now.'
       : 'Checking the price…'
     : previewQuery.data && Number(previewQuery.data.tax_amount) > 0
       ? t('Includes tax {amount}', { amount: formatBDT(previewQuery.data.tax_amount) })
@@ -454,7 +468,7 @@ export default function SellScreen() {
       <SaleGuide mode={mode} cartEmpty={isEmpty(cart)} usesBarcodes={usesBarcodes} />
       {mode === 'scan' ? (
         <>
-          {usesBarcodes && showCamera ? <Scanner onCode={(c) => void onCode(c)} paused={scanNote !== null} /> : null}
+          {usesBarcodes && showCamera ? <Scanner onCode={(c) => void onCode(c)} paused={scanNote !== null || again !== null} /> : null}
           {canHold && heldCount > 0 ? (
             <Tap accessibilityRole="button" accessibilityLabel={t('Carts on hold')} onPress={() => setHeldOpen(true)} style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, borderRadius: Radius.md, backgroundColor: theme.warningSoft, borderWidth: 1, borderColor: theme.warning }}>
               <Icon name="Pause" size={20} color={theme.warning} />
@@ -473,6 +487,8 @@ export default function SellScreen() {
         </>
       ) : null}
 
+      <PaperSheet saleId={printFor} onClose={() => setPrintFor(null)} />
+      <ScannedAgainSheet item={mode === 'scan' ? again : null} inCart={again ? lastQuantity(cart, again) : null} onYes={() => { if (again) setCart((c) => addItem(c, again)); haptics.tap(); setAgain(null); }} onNo={() => setAgain(null)} />
       <ScanNoteSheet note={mode === 'scan' ? scanNote : null} canAdd={me?.permissions?.includes('product.create') ?? false} onAdd={(code) => { setScanNote(null); router.push({ pathname: '/add-product', params: { code, from: 'sell' } }); }} onDismiss={() => setScanNote(null)} />
       {notice ? <Notice>{notice}</Notice> : null}
 
@@ -507,6 +523,7 @@ export default function SellScreen() {
               {customer ? t('{amount} left on {name} account', { amount: formatBDT(result.due_amount), name: customer.name }) : t('{amount} left on the account', { amount: formatBDT(result.due_amount) })}
             </ThemedText>
           ) : null}
+          <Button title="Print receipt" onPress={() => setPrintFor(result.id)} style={{ alignSelf: 'stretch', marginTop: 8 }} />
           <Button
             title="Share receipt"
             variant="secondary"
@@ -686,6 +703,34 @@ function Stepper({ icon, label, onPress }: { icon: 'Minus' | 'Plus' | 'Trash2'; 
     <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} hitSlop={6} style={({ pressed }) => ({ width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: theme.inputBorder, alignItems: 'center', justifyContent: 'center', backgroundColor: pressed ? theme.backgroundSelected : 'transparent' })}>
       <Icon name={icon} size={16} color={icon === 'Trash2' ? theme.danger : theme.textSecondary} />
     </Pressable>
+  );
+}
+
+/** A second scan of something already in the cart asks first: one accidental re-read should never change a sale. */
+function ScannedAgainSheet({ item, inCart, onYes, onNo }: { item: ScannedItem | null; inCart: string | null; onYes: () => void; onNo: () => void }) {
+  const theme = useTheme();
+  const t = useT();
+  // Keep the last item while the sheet slides away, so it does not go blank on the way out.
+  const [shown, setShown] = useState<ScannedItem | null>(item);
+  if (item && item !== shown) setShown(item);
+  const it = item ?? shown;
+  return (
+    <BottomSheet visible={item !== null} onClose={onNo} title="Scanned again">
+      {it ? (
+        <View accessibilityRole="alert" style={{ gap: 14, paddingHorizontal: 16, paddingBottom: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <View style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.warningSoft }}>
+              <Icon name="TriangleAlert" size={20} color={theme.warning} />
+            </View>
+            <ThemedText type="body" themeColor="textSecondary" style={{ flex: 1 }}>
+              {t('{name} is already in the cart ({n}). Add one more?', { name: it.name, n: String(Number(inCart ?? '1')) })}
+            </ThemedText>
+          </View>
+          <Button title="Yes, add one more" size="lg" onPress={onYes} trailing={<Icon name="Plus" size={20} color={theme.onBrand} />} />
+          <Button title="No, it was a mistake" variant="secondary" onPress={onNo} />
+        </View>
+      ) : null}
+    </BottomSheet>
   );
 }
 

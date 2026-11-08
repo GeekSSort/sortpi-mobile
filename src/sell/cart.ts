@@ -40,6 +40,12 @@ export function addItem(cart: Cart, item: ScannedItem): Cart {
   return [...cart, { ...item, key, quantity: '1' }];
 }
 
+/** How many of this item are already in the cart (a decimal string), or null when it is not there yet. */
+export function lastQuantity(cart: Cart, item: Pick<ScannedItem, 'variantId' | 'unitId'>): string | null {
+  const key = lineKey(item.variantId, item.unitId);
+  return cart.find((l) => l.key === key)?.quantity ?? null;
+}
+
 /** A quantity of zero or less removes the line. */
 export function setQuantity(cart: Cart, key: string, quantity: string): Cart {
   if (parseMoney(quantity).lte(0)) return cart.filter((l) => l.key !== key);
