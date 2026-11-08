@@ -92,6 +92,8 @@ function Gate() {
         <Stack.Screen name="add-transfer" options={{ ...header, presentation: 'modal', title: t('Move money') }} />
         <Stack.Screen name="add-regular-payment" options={{ ...header, presentation: 'modal', title: t('Add Regular Payment') }} />
         <Stack.Screen name="new-old-invoice" options={{ ...header, presentation: 'modal', title: t('Old Invoice') }} />
+        <Stack.Screen name="give-free" options={{ ...header, presentation: 'modal', title: t('Give goods free') }} />
+        <Stack.Screen name="record-production" options={{ ...header, presentation: 'modal', title: t('Record production') }} />
         <Stack.Screen name="add-supplier" options={{ ...header, presentation: 'modal', title: t('New supplier') }} />
         <Stack.Screen name="purchases" options={{ ...page, title: t('Purchase History') }} />
         <Stack.Screen name="purchase/[id]" options={{ ...page, title: t('Order') }} />
@@ -130,6 +132,13 @@ function Gate() {
         <Stack.Screen name="discounts" options={{ ...page, title: t('Discount') }} />
         <Stack.Screen name="supplier-returns" options={{ ...page, title: t('Supplier Returns') }} />
         <Stack.Screen name="old-invoices" options={{ ...page, title: t('Old Invoices') }} />
+        <Stack.Screen name="free-issues" options={{ ...page, title: t('Free Issues') }} />
+        <Stack.Screen name="production" options={{ ...page, title: t('Production') }} />
+        <Stack.Screen name="seasons" options={{ ...page, title: t('Seasons') }} />
+        <Stack.Screen name="metal-rates" options={{ ...page, title: t('Metal Rates') }} />
+        <Stack.Screen name="serials" options={{ ...page, title: t('Serial Numbers') }} />
+        <Stack.Screen name="barcode-labels" options={{ ...page, title: t('Barcode Labels') }} />
+        <Stack.Screen name="notifications" options={{ ...page, title: t('Notifications') }} />
         <Stack.Screen name="shifts" options={{ ...page, title: t('Shifts') }} />
         <Stack.Screen name="payroll" options={{ ...page, title: t('Payroll') }} />
         <Stack.Screen name="reports" options={{ ...page, title: t('Reports') }} />

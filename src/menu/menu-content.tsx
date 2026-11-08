@@ -24,6 +24,7 @@ export function TaskList({ onNavigate, compact = false }: { onNavigate?: () => v
   const [open, setOpen] = useState<MenuGroup[]>([]);
   const searching = query.trim().length > 0;
   const trades = (me?.organization as { category?: { features?: string[] } } | undefined)?.category?.features;
+  const code = (me?.organization as { category?: { code?: string } } | undefined)?.category?.code ?? '';
   const found = visibleMenu(MENU, me?.permissions, query, t, trades);
 
   return (
@@ -44,7 +45,7 @@ export function TaskList({ onNavigate, compact = false }: { onNavigate?: () => v
         if (only) {
           return (
             <Group key={g.group} tight>
-              <Row compact icon={only.icon} title={only.title} onPress={go(only)} />
+              <Row compact icon={only.icon} title={only.tradeTitle?.[code] ?? only.title} onPress={go(only)} />
             </Group>
           );
         }
@@ -59,7 +60,7 @@ export function TaskList({ onNavigate, compact = false }: { onNavigate?: () => v
               onPress={() => setOpen((o) => (o.includes(g.group) ? o.filter((x) => x !== g.group) : [...o, g.group]))}
               trailing={<Icon name={expanded ? 'ChevronDown' : 'ChevronRight'} size={18} color={theme.textMuted} />}
             />
-            {expanded ? g.items.map((i) => <Row key={i.id} compact indent icon={i.icon} title={i.title} onPress={go(i)} />) : null}
+            {expanded ? g.items.map((i) => <Row key={i.id} compact indent icon={i.icon} title={i.tradeTitle?.[code] ?? i.title} onPress={go(i)} />) : null}
           </Group>
         );
       })}

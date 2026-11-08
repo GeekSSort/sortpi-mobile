@@ -9,7 +9,7 @@ import type { IconName } from '../components/icons/icon.tsx';
 export type MenuGroup = 'dashboard' | 'inventory' | 'stocks' | 'sales' | 'crm' | 'purchases' | 'warehouse' | 'finance' | 'reports' | 'hrm' | 'roles' | 'branches' | 'settings';
 /** `needs` is any of these permissions, or every one of them when `all` is set (the money list needs both sides of the books). */
 /** `trade` is a feature of the shop's trade (`me.organization.category.features`, like the web's `tradeFeature`): the row is hidden in shops whose trade lacks it. */
-export type MenuItem = { id: string; group: MenuGroup; title: string; hint: string; icon: IconName; route: Href; needs: string[]; all?: boolean; trade?: string };
+export type MenuItem = { id: string; group: MenuGroup; title: string; hint: string; icon: IconName; route: Href; needs: string[]; all?: boolean; trade?: string; tradeTitle?: Record<string, string> };
 
 export const GROUP_TITLE: Record<MenuGroup, string> = { dashboard: 'Dashboard', inventory: 'Inventory', stocks: 'Stocks', sales: 'Sales & POS', crm: 'CRM', purchases: 'Purchases', warehouse: 'Warehouse', finance: 'Finance', reports: 'Reports', hrm: 'HRM', roles: 'Roles & Permissions', branches: 'Branches', settings: 'Settings' };
 /** The icon at the head of each group, as the web sidebar gives each section its own. */
@@ -25,6 +25,13 @@ export const MENU: MenuItem[] = [
   { id: 'stock-levels', group: 'stocks', title: 'Stock Levels', hint: 'What is on the shelves now', icon: 'Layers', route: '/stock', needs: ['product.view', 'inventory.view'] },
   { id: 'movements', group: 'stocks', title: 'Stock Movements', hint: 'Every time an item came in, went out or was corrected', icon: 'History', route: '/movements', needs: ['inventory.view_movements'] },
   { id: 'expiry', group: 'stocks', title: 'Expiry', hint: 'What has expired and what is about to', icon: 'TriangleAlert', route: '/expiry', needs: ['inventory.view'], trade: 'expiry' },
+  { id: 'free-issues', group: 'stocks', title: 'Free Issues', tradeTitle: { fabric: 'Free Modals' }, hint: 'Goods you gave away', icon: 'Gift', route: '/free-issues', needs: ['inventory.adjust'], trade: 'modal' },
+  { id: 'labels', group: 'stocks', title: 'Barcode Labels', hint: 'Print price labels with a barcode', icon: 'Tag', route: '/barcode-labels', needs: ['product.view'] },
+  { id: 'serials', group: 'stocks', title: 'Serial Numbers', hint: 'Find a serial number and its warranty', icon: 'ScanLine', route: '/serials', needs: ['inventory.view'], trade: 'serial' },
+  { id: 'production', group: 'stocks', title: 'Production', hint: 'What you made and what it used', icon: 'Package', route: '/production', needs: ['inventory.view'], trade: 'production' },
+  { id: 'combos', group: 'stocks', title: 'Combo Packs', hint: 'Gift sets made up from stock', icon: 'Gift', route: { pathname: '/production', params: { combo: '1' } }, needs: ['inventory.view'], trade: 'combo' },
+  { id: 'seasons', group: 'stocks', title: 'Seasons', hint: 'Mark a whole season down', icon: 'Tag', route: '/seasons', needs: ['product.view'], trade: 'season' },
+  { id: 'metal-rates', group: 'stocks', title: 'Metal Rates', hint: "Today's price of a gram", icon: 'Cash', route: '/metal-rates', needs: ['product.view'], trade: 'metal_rate' },
   { id: 'pos', group: 'sales', title: 'POS', hint: 'Sell with the camera or by search', icon: 'ScanLine', route: '/sell', needs: ['pos.access', 'sale.create'], all: true },
   { id: 'sales', group: 'sales', title: 'Invoice', hint: 'Find any sale and share the receipt', icon: 'Receipt', route: '/sales', needs: ['sale.view', 'sale.view_own'] },
   { id: 'returns', group: 'sales', title: 'Return & Refunds', hint: 'Open the sale, then tap “Return & Refunds”', icon: 'Undo', route: '/sales', needs: ['sale.refund'] },
@@ -58,6 +65,7 @@ export const MENU: MenuItem[] = [
   { id: 'access', group: 'roles', title: 'Users & Roles', hint: 'Who can use the app, and what they may do', icon: 'ShieldCheck', route: '/access', needs: ['user.view', 'role.view', 'branch.view'] },
   { id: 'activity', group: 'roles', title: 'Activity Log', hint: 'What happened in your shop, and who did it', icon: 'Activity', route: '/activity', needs: ['audit.view'] },
   { id: 'branches', group: 'branches', title: 'Branches', hint: 'Your shops and their details', icon: 'Store', route: { pathname: '/access', params: { tab: 'branches' } }, needs: ['branch.view'] },
+  { id: 'notifications', group: 'settings', title: 'Notifications', hint: 'Messages from your shop', icon: 'Bell', route: '/notifications', needs: ['notification.view'] },
   { id: 'shop-settings', group: 'settings', title: 'Settings', hint: 'VAT, discount, daily target, ways to pay', icon: 'Sliders', route: '/shop-settings', needs: ['settings.view'] },
   { id: 'plan', group: 'settings', title: 'Plan & billing', hint: 'Your SortPi plan, what you use, and how to move up', icon: 'CreditCard', route: '/plan', needs: ['billing.view'] },
 ];
