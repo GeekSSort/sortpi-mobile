@@ -1,5 +1,6 @@
 import { CameraView, useCameraPermissions, type BarcodeType } from 'expo-camera';
 import { useFocusEffect } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Linking, Pressable, Vibration, View } from 'react-native';
 
@@ -12,6 +13,9 @@ import { useTheme } from '@/hooks/use-theme';
 import { useT } from '@/i18n/prefs';
 
 /** QR plus the 1D codes shops use (the web label printer draws EAN-13/UPC/EAN-8, else Code 128). */
+/** Which camera the person last used is remembered, so someone who scans with the front camera does not switch it every time. */
+const FACING_KEY = 'scan.facing';
+
 const TYPES: BarcodeType[] = ['qr', 'ean13', 'ean8', 'upc_a', 'upc_e', 'code128', 'code39'];
 
 type Props = { onCode: (code: string) => void; paused?: boolean; height?: number };
@@ -21,6 +25,17 @@ export function Scanner({ onCode, paused = false, height = 220 }: Props) {
   const theme = useTheme();
   const [permission, requestPermission] = useCameraPermissions();
   const [torch, setTorch] = useState(false);
+  const [facing, setFacing] = useState<'back' | 'front'>('back');
+  useEffect(() => {
+    void SecureStore.getItemAsync(FACING_KEY).then((v) => v === 'front' && setFacing('front')).catch(() => undefined);
+  }, []);
+  function flip() {
+    const next = facing === 'back' ? 'front' : 'back';
+    setFacing(next);
+    setTorch(false); // the front camera has no torch
+    setMountKey((k) => k + 1);
+    void SecureStore.setItemAsync(FACING_KEY, next).catch(() => undefined);
+  }
   const last = useRef<{ code: string; at: number }>({ code: '', at: 0 });
 
   // The preview can stay black the first time a screen opens, or after the app comes back from the background.
@@ -65,13 +80,18 @@ export function Scanner({ onCode, paused = false, height = 220 }: Props) {
 
   return (
     <View style={{ height, borderRadius: Radius.lg, overflow: 'hidden', backgroundColor: '#000' }}>
-      {focused ? <CameraView key={mountKey} style={{ flex: 1 }} facing="back" enableTorch={torch} barcodeScannerSettings={{ barcodeTypes: TYPES }} onBarcodeScanned={paused ? undefined : handle} /> : null}
+      {focused ? <CameraView key={mountKey} style={{ flex: 1 }} facing={facing} enableTorch={torch && facing === 'back'} barcodeScannerSettings={{ barcodeTypes: TYPES }} onBarcodeScanned={paused ? undefined : handle} /> : null}
       <View pointerEvents="none" style={{ position: 'absolute', inset: 0, alignItems: 'center', justifyContent: 'center' }}>
         <View style={{ width: '70%', height: '55%', borderRadius: Radius.md, borderWidth: 2, borderColor: 'rgba(255,255,255,0.85)' }} />
       </View>
-      <Pressable accessibilityRole="button" accessibilityLabel={t(torch ? 'Turn torch off' : 'Turn torch on')} onPress={() => setTorch((t) => !t)} style={{ position: 'absolute', top: 10, right: 10, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' }}>
+      <Pressable accessibilityRole="button" accessibilityLabel={t(facing === 'back' ? 'Use front camera' : 'Use back camera')} onPress={flip} style={{ position: 'absolute', top: 10, right: facing === 'back' ? 58 : 10, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name="FlipCamera" size={20} color="#fff" />
+      </Pressable>
+      {facing === 'back' ? (
+        <Pressable accessibilityRole="button" accessibilityLabel={t(torch ? 'Turn torch off' : 'Turn torch on')} onPress={() => setTorch((t) => !t)} style={{ position: 'absolute', top: 10, right: 10, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' }}>
         <Icon name={torch ? 'FlashlightOff' : 'Flashlight'} size={20} color="#fff" />
       </Pressable>
+      ) : null}
     </View>
   );
 }

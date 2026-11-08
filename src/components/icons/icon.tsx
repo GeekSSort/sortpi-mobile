@@ -65,6 +65,7 @@ const symbols = {
   TriangleAlert: { ios: 'exclamationmark.triangle', android: 'warning' },
   WifiOff: { ios: 'wifi.slash', android: 'wifi_off' },
   X: { ios: 'xmark', android: 'close' },
+  FlipCamera: { ios: 'arrow.triangle.2.circlepath.camera', android: 'flip_camera_android' },
   Chat: { ios: 'bubble.left.and.bubble.right.fill', android: 'chat' },
   Send: { ios: 'paperplane.fill', android: 'send' },
 } satisfies Record<string, { ios: SFSymbol; android: AndroidSymbol }>;
