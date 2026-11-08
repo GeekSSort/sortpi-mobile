@@ -17,6 +17,11 @@ const NEEDS: Record<IntentId, string[]> = {
   profit_today: ['sale.view_profit'],
   payments_today: ['report.sales'],
   start_selling: ['pos.access'],
+  customer_balance: ['customer.view'],
+  metal_rates: ['product.view', 'inventory.view'],
+  expiring_soon: ['inventory.view'],
+  expired_stock: ['inventory.view'],
+  orders_due: ['sale.view'],
 };
 
 export const allowed = (intent: IntentId, perms: readonly string[] | undefined): boolean => NEEDS[intent].some((c) => perms?.includes(c));

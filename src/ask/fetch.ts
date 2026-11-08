@@ -33,8 +33,13 @@ async function sales(title: string, id: 'today' | 'yesterday' | 'week'): Promise
 }
 
 /** Runs one understood question against the shop's own data. Every number in the answer comes from the server's reports. */
-export async function answerIntent(intent: IntentId, product: string | undefined, perms: readonly string[] | undefined): Promise<Answer> {
+/** The matcher's trade and person questions are the same lookups the model can plan, so they run through the same code (and the same trade check). */
+const AS_PLAN: Partial<Record<IntentId, Plan['tool']>> = { customer_balance: 'customer_balance', metal_rates: 'metal_rates', expiring_soon: 'expiring_soon', expired_stock: 'expired_stock', orders_due: 'orders_due' };
+
+export async function answerIntent(intent: IntentId, product: string | undefined, perms: readonly string[] | undefined, features?: readonly string[]): Promise<Answer> {
   if (!allowed(intent, perms)) return notAllowed();
+  const tool = AS_PLAN[intent];
+  if (tool) return runPlan({ tool, period: 'week', item: '', name: intent === 'customer_balance' ? (product ?? '') : '' }, perms, features);
   switch (intent) {
     case 'sales_today': return sales('Sales today', 'today');
     case 'sales_yesterday': return sales('Sales yesterday', 'yesterday');
@@ -83,12 +88,14 @@ export async function answerIntent(intent: IntentId, product: string | undefined
       return stockSummaryAnswer({ lines: k.lines, units: k.units, value: k.stock_value, low: k.low_stock, out: k.out_of_stock });
     }
     case 'start_selling': return startSellingAnswer();
+    default: return notUnderstood();
   }
 }
 
 /** What to show for a typed question; "unsure" and "unsupported" have no data to fetch, the screen offers the nearest questions. */
-export async function answerFor(m: Match, perms: readonly string[] | undefined): Promise<Answer | null> {
-  if (m.kind === 'intent') return answerIntent(m.intent, m.product, perms);
+export async function answerFor(m: Match, perms: readonly string[] | undefined, features?: readonly string[]): Promise<Answer | null> {
+  if (m.kind === 'plan') return runPlan(m.plan, perms, features);
+  if (m.kind === 'intent') return answerIntent(m.intent, m.product, perms, features);
   if (m.kind === 'unsupported') return notUnderstood();
   return null;
 }

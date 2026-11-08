@@ -122,7 +122,7 @@ export const startSellingAnswer = (): Answer => ({ title: 'Start selling', lead:
 
 /** For a question that was not understood: the nearest questions to tap, never a guess. */
 export const SUGGESTION_WORDS: Record<IntentId, string> = {
-  sales_today: 'Ajker bill koto?', sales_yesterday: 'Gotokal koto bikri?', sales_week: 'Ei soptaher bikri koto?', stock_summary: 'Stock dekhao', low_stock: 'Stock kom ki ase?', out_of_stock: 'Kon mal sesh?', top_products: 'Kon mal beshi bikri?',
+  sales_today: 'Ajker bill koto?', sales_yesterday: 'Gotokal koto bikri?', sales_week: 'Ei soptaher bikri koto?', stock_summary: 'Stock dekhao', customer_balance: 'Karim er baki koto?', metal_rates: 'Sonar dam koto?', expiring_soon: 'Kon mal er meyad sesh hobe?', expired_stock: 'Meyad sesh mal dekhao', orders_due: 'Kon order dite hobe?', low_stock: 'Stock kom ki ase?', out_of_stock: 'Kon mal sesh?', top_products: 'Kon mal beshi bikri?',
   bills_today: 'Ajker bill gulo dekhao', due_amount: 'Customer der baki koto?', supplier_due: 'Supplier ke koto dite hobe?', profit_today: 'Ajker labh koto?', payments_today: 'Ajker cash koto?', product_price: 'Coca cola dam koto?', product_stock: 'Coca cola ase ki?', start_selling: 'Bikri korbo',
 };
 

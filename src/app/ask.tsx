@@ -91,7 +91,7 @@ export default function AskScreen() {
           if (m.kind === 'unsure') return settle(theirs, { kind: 'pick', options: m.suggestions, logId: await keepQuestion({ text: shown, ...how, business }) });
         }
         const logId = await keepQuestion({ text: shown, ...how, business });
-        const answer = await answerFor(m, perms);
+        const answer = await answerFor(m, perms, features);
         settle(theirs, answer ? { kind: 'answer', answer, logId } : { kind: 'pick', options: STARTERS, logId });
       } catch {
         settle(theirs, { kind: 'error', question: shown, intent });
