@@ -9,7 +9,9 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 import { SessionProvider, useSession } from '@/auth/session-provider';
+import { LocalProvider } from '@/local/provider';
 import { PrefsProvider, usePrefs } from '@/i18n/prefs';
+import { AskFab } from '@/ask/ask-fab';
 import { ConnectionBanner } from '@/components/connection-banner';
 import { useHeaderOptions } from '@/components/header-options';
 import { BackWithMenu, DrawerProvider } from '@/menu/drawer';
@@ -21,6 +23,9 @@ import { initPerformance } from '@/lib/perf';
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30_000 } } });
+
+/** Where the router starts when nothing says otherwise: the tabs (Home first), never a screen that happens to sort or be declared first. */
+export const unstable_settings = { anchor: '(tabs)' };
 
 export default function RootLayout() {
   // Not at module level: the build also loads this file in Node (to list the routes), where there is no Firebase app.
@@ -42,9 +47,11 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <PrefsProvider>
           <SessionProvider>
-            <DrawerProvider>
-              <Gate />
-            </DrawerProvider>
+            <LocalProvider>
+              <DrawerProvider>
+                <Gate />
+              </DrawerProvider>
+            </LocalProvider>
           </SessionProvider>
         </PrefsProvider>
       </QueryClientProvider>
@@ -148,6 +155,8 @@ function Gate() {
         <Stack.Screen name="payroll" options={{ ...page, title: t('Payroll') }} />
         <Stack.Screen name="reports" options={{ ...page, title: t('Reports') }} />
         <Stack.Screen name="day-report" options={{ ...page, title: t('Day report') }} />
+        <Stack.Screen name="ask" options={{ ...header, presentation: 'modal', title: t('Ask your shop') }} />
+        <Stack.Screen name="ask-model" options={{ ...page, title: t('Smarter answers') }} />
         <Stack.Screen name="products" options={{ ...page, title: t('Products List') }} />
         <Stack.Screen name="product/[id]" options={{ ...page, title: t('Item') }} />
         <Stack.Screen name="edit-product/[id]" options={{ ...page, title: t('Edit item') }} />
@@ -176,6 +185,7 @@ function Gate() {
         <Stack.Screen name="unreachable" />
       </Stack.Protected>
     </Stack>
+    {status === 'signedIn' ? <AskFab /> : null}
     <ConnectionBanner />
     <ToastHost />
     </View>

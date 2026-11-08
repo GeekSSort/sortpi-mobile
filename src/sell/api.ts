@@ -6,6 +6,7 @@ import type { Cart, PaymentInput, ScannedItem, SellContext } from './cart';
 import { buildPreviewRequest, buildSellRequest } from './cart';
 import { fromCounterRows, type Counter } from './counters';
 import { fromRow, type HeldCart, type holdBody } from './held';
+import { isOffline, localLookup } from '@/local/read';
 import { toScannedItem, type LookupResponse } from './lookup-map';
 import { isWalkIn, walkInBody, WALK_IN_CODE, WALK_IN_NAME } from './walk-in';
 
@@ -25,6 +26,11 @@ async function lookup(by: 'barcode' | 'code', code: string, branchId: string): P
     return toScannedItem(r);
   } catch (e) {
     if (e instanceof ApiError && e.status === 404) return null;
+    if (isOffline(e)) {
+      // No signal: the phone's own copy answers (its price may be a little old; the sale is priced by the server when it is sent).
+      const local = await localLookup(code);
+      if (local !== undefined) return local ? toScannedItem(local) : null;
+    }
     throw e;
   }
 }
@@ -144,6 +150,10 @@ export async function lookupForPriceCheck(by: 'barcode' | 'code', code: string, 
     return await api.get('/products/lookup/', { query: { [by]: code.trim(), branch: branchId } });
   } catch (e) {
     if (e instanceof ApiError && e.status === 404) return null;
+    if (isOffline(e)) {
+      const local = await localLookup(code);
+      if (local !== undefined) return local;
+    }
     throw e;
   }
 }

@@ -1,4 +1,5 @@
 import { api } from '@/api/session';
+import { isOffline, localCatalog } from '@/local/read';
 
 import { listStock } from '@/stock/api';
 
@@ -9,8 +10,22 @@ export type CatalogPage = { items: CatalogItem[]; nextPage: number | undefined }
 
 /** Find items by name, SKU prefix or barcode (`GET /products/search/`, active products only). */
 export async function searchCatalog(o: { q: string; page: number; wholesale: boolean }): Promise<CatalogPage> {
-  const env = await api.envelope<CatalogProduct[]>('GET', '/products/search/', { query: { q: o.q.trim(), limit: PAGE, page: o.page } });
-  return { items: toCatalogItems(env.data ?? [], o.wholesale), nextPage: o.page < (env.meta?.total_pages ?? 1) ? o.page + 1 : undefined };
+  // The phone's own copy answers first: it is instant and works with no signal. An empty answer still asks the server, because an item
+  // added a moment ago on the web is not in the copy yet. The sale itself is always priced by the server.
+  if (o.page === 1) {
+    const local = await localCatalog(o.q, o.wholesale, PAGE);
+    if (local && local.length > 0) return { items: local, nextPage: undefined };
+  }
+  try {
+    const env = await api.envelope<CatalogProduct[]>('GET', '/products/search/', { query: { q: o.q.trim(), limit: PAGE, page: o.page } });
+    return { items: toCatalogItems(env.data ?? [], o.wholesale), nextPage: o.page < (env.meta?.total_pages ?? 1) ? o.page + 1 : undefined };
+  } catch (e) {
+    if (isOffline(e)) {
+      const local = await localCatalog(o.q, o.wholesale, PAGE);
+      if (local) return { items: local, nextPage: undefined };
+    }
+    throw e;
+  }
 }
 
 /** What can be sold now, A to Z, for one category or all: the stock list narrowed to items on the shelf (it carries the branch price). */

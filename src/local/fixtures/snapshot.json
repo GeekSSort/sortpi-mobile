@@ -1,0 +1,736 @@
+{
+ "items": [
+  {
+   "path": "/products/?page=1&limit=200",
+   "body": {
+    "success": true,
+    "data": [
+     {
+      "id": "01a1a0da-ade2-71a2-97c1-707fff260fd3",
+      "organization": "01a1a0da-ad6a-7992-86c6-fdf5594e8dde",
+      "name": "ACI Classic Tea 200ml",
+      "description": "",
+      "category": "01a1a0da-adb6-7d71-8d99-5b9acb4dfde2",
+      "category_name": "Health",
+      "brand": "01a1a0da-adc7-79d3-bd42-7f8d66296e4d",
+      "brand_name": "Igloo",
+      "stock_on_hand": "0.000",
+      "unit": "01a1a0da-ad97-7a92-abe4-0b2a59a82b9f",
+      "unit_name": "Piece",
+      "unit_short_name": "pcs",
+      "unit_allow_decimal": false,
+      "tax": "01a1a0da-ad9a-7481-9fd3-ff5bd2f61ee7",
+      "tax_rate": "0.15",
+      "tax_inclusive": true,
+      "type": "SIMPLE",
+      "track_inventory": true,
+      "has_expiry": false,
+      "reorder_level": "0.000",
+      "generic_name": "",
+      "keywords": "",
+      "dgda_reg_no": "",
+      "prescription_required": false,
+      "origin_country": "",
+      "importer": "",
+      "season": "",
+      "supply_days": null,
+      "track_serial": false,
+      "warranty_months": null,
+      "details": {},
+      "part_numbers": [],
+      "fitments": [],
+      "is_active": true,
+      "archived_at": null,
+      "variants": [
+       {
+        "id": "01a1a0da-ae2c-7592-8be8-93949ba7a22f",
+        "product": "01a1a0da-ade2-71a2-97c1-707fff260fd3",
+        "sku": "SKU-0000496",
+        "name": "Default",
+        "attributes": {},
+        "cost_price": "372.9700",
+        "mrp": null,
+        "price": "503.5095",
+        "wholesale_price": null,
+        "min_price": null,
+        "stock_on_hand": "0.000",
+        "is_default": true,
+        "is_active": true,
+        "barcodes": [
+         {
+          "id": "01a1a0da-ae69-7052-bdd8-887b340ef14f",
+          "variant": "01a1a0da-ae2c-7592-8be8-93949ba7a22f",
+          "barcode": "8900000004966",
+          "is_primary": true
+         }
+        ],
+        "selling_units": []
+       }
+      ],
+      "images": [],
+      "created_at": "2026-11-03T16:00:48.365607+06:00",
+      "updated_at": "2026-11-03T16:00:48.365608+06:00"
+     },
+     {
+      "id": "01a1a0da-addd-74a1-a697-107f19941ef4",
+      "organization": "01a1a0da-ad6a-7992-86c6-fdf5594e8dde",
+      "name": "ACI Extra Cheese",
+      "description": "",
+      "category": "01a1a0da-adae-7d41-8f23-0cb015b61e09",
+      "category_name": "Baby Care",
+      "brand": "01a1a0da-add2-7751-89c5-cc1d7f8450b2",
+      "brand_name": "Nabisco",
+      "stock_on_hand": "348.000",
+      "unit": "01a1a0da-ad97-7a92-abe4-0b2a59a82b9f",
+      "unit_name": "Piece",
+      "unit_short_name": "pcs",
+      "unit_allow_decimal": false,
+      "tax": "01a1a0da-ad9a-7481-9fd3-ff5bd2f61ee7",
+      "tax_rate": "0.15",
+      "tax_inclusive": true,
+      "type": "VARIABLE",
+      "track_inventory": true,
+      "has_expiry": false,
+      "reorder_level": "0.000",
+      "generic_name": "",
+      "keywords": "",
+      "dgda_reg_no": "",
+      "prescription_required": false,
+      "origin_country": "",
+      "importer": "",
+      "season": "",
+      "supply_days": null,
+      "track_serial": false,
+      "warranty_months": null,
+      "details": {},
+      "part_numbers": [],
+      "fitments": [],
+      "is_active": true,
+      "archived_at": null,
+      "variants": [
+       {
+        "id": "01a1a0da-ae27-7922-aac2-c14fb7706afc",
+        "product": "01a1a0da-addd-74a1-a697-107f19941ef4",
+        "sku": "SKU-0000115",
+        "name": "500g",
+        "attributes": {},
+        "cost_price": "364.1800",
+        "mrp": null,
+        "price": "491.6430",
+        "wholesale_price": null,
+        "min_price": null,
+        "stock_on_hand": "111.000",
+        "is_default": true,
+        "is_active": true,
+        "barcodes": [
+         {
+          "id": "01a1a0da-ae65-73d3-9a47-97781502f014",
+          "variant": "01a1a0da-ae27-7922-aac2-c14fb7706afc",
+          "barcode": "8900000001156",
+          "is_primary": true
+         }
+        ],
+        "selling_units": []
+       },
+       {
+        "id": "01a1a0da-ae27-7922-aac2-c1578b7bee39",
+        "product": "01a1a0da-addd-74a1-a697-107f19941ef4",
+        "sku": "SKU-0000116",
+        "name": "1kg",
+        "attributes": {},
+        "cost_price": "546.2700",
+        "mrp": null,
+        "price": "737.4645",
+        "wholesale_price": null,
+        "min_price": null,
+        "stock_on_hand": "220.000",
+        "is_default": false,
+        "is_active": true,
+        "barcodes": [
+         {
+          "id": "01a1a0da-ae65-73d3-9a47-978586bf3a44",
+          "variant": "01a1a0da-ae27-7922-aac2-c1578b7bee39",
+          "barcode": "8900000001163",
+          "is_primary": true
+         }
+        ],
+        "selling_units": []
+       },
+       {
+        "id": "01a1a0da-ae27-7922-aac2-c16492fe15a4",
+        "product": "01a1a0da-addd-74a1-a697-107f19941ef4",
+        "sku": "SKU-0000117",
+        "name": "2kg",
+        "attributes": {},
+        "cost_price": "728.3600",
+        "mrp": null,
+        "price": "983.2860",
+        "wholesale_price": null,
+        "min_price": null,
+        "stock_on_hand": "17.000",
+        "is_default": false,
+        "is_active": true,
+        "barcodes": [
+         {
+          "id": "01a1a0da-ae65-73d3-9a47-9798a6acc7b9",
+          "variant": "01a1a0da-ae27-7922-aac2-c16492fe15a4",
+          "barcode": "8900000001170",
+          "is_primary": true
+         }
+        ],
+        "selling_units": []
+       }
+      ],
+      "images": [],
+      "created_at": "2026-11-03T16:00:48.361390+06:00",
+      "updated_at": "2026-11-03T16:00:48.361392+06:00"
+     },
+     {
+      "id": "01a1a0da-ade3-71b0-b84e-9ec5edefcc5a",
+      "organization": "01a1a0da-ad6a-7992-86c6-fdf5594e8dde",
+      "name": "ACI Extra Sauce 250g",
+      "description": "",
+      "category": "01a1a0da-adb2-7e92-bf2a-56f0d10742e0",
+      "category_name": "Canned Goods",
+      "brand": "01a1a0da-adc2-7bd3-9459-635daf0569b9",
+      "brand_name": "Teer",
+      "stock_on_hand": "0.000",
+      "unit": "01a1a0da-ad97-7a92-abe4-0b2a59a82b9f",
+      "unit_name": "Piece",
+      "unit_short_name": "pcs",
+      "unit_allow_decimal": false,
+      "tax": "01a1a0da-ad9a-7481-9fd3-ff5bd2f61ee7",
+      "tax_rate": "0.15",
+      "tax_inclusive": true,
+      "type": "SIMPLE",
+      "track_inventory": true,
+      "has_expiry": true,
+      "reorder_level": "0.000",
+      "generic_name": "",
+      "keywords": "",
+      "dgda_reg_no": "",
+      "prescription_required": false,
+      "origin_country": "",
+      "importer": "",
+      "season": "",
+      "supply_days": null,
+      "track_serial": false,
+      "warranty_months": null,
+      "details": {},
+      "part_numbers": [],
+      "fitments": [],
+      "is_active": true,
+      "archived_at": null,
+      "variants": [
+       {
+        "id": "01a1a0da-ae2d-7df1-a8c2-7751ad80126f",
+        "product": "01a1a0da-ade3-71b0-b84e-9ec5edefcc5a",
+        "sku": "SKU-0000596",
+        "name": "Default",
+        "attributes": {},
+        "cost_price": "440.1200",
+        "mrp": null,
+        "price": "594.1620",
+        "wholesale_price": null,
+        "min_price": null,
+        "stock_on_hand": "0.000",
+        "is_default": true,
+        "is_active": true,
+        "barcodes": [
+         {
+          "id": "01a1a0da-ae69-7052-bdd8-8eb8ed6cf5cf",
+          "variant": "01a1a0da-ae2d-7df1-a8c2-7751ad80126f",
+          "barcode": "8900000005963",
+          "is_primary": true
+         }
+        ],
+        "selling_units": []
+       }
+      ],
+      "images": [],
+      "created_at": "2026-11-03T16:00:48.366556+06:00",
+      "updated_at": "2026-11-03T16:00:48.366557+06:00"
+     },
+     {
+      "id": "01a1a0da-ade2-71a2-97c1-715ef5a0309c",
+      "organization": "01a1a0da-ad6a-7992-86c6-fdf5594e8dde",
+      "name": "ACI Family Pack Milk 1kg",
+      "description": "",
+      "category": "01a1a0da-adaa-7be2-89e3-ab128b7c2d69",
+      "category_name": "Personal Care",
+      "brand": "01a1a0da-adc2-7bd3-9459-635daf0569b9",
+      "brand_name": "Teer",
+      "stock_on_hand": "0.000",
+      "unit": "01a1a0da-ad97-7a92-abe4-0b2a59a82b9f",
+      "unit_name": "Piece",
+      "unit_short_name": "pcs",
+      "unit_allow_decimal": false,
+      "tax": "01a1a0da-ad9a-7481-9fd3-ff5bd2f61ee7",
+      "tax_rate": "0.15",
+      "tax_inclusive": true,
+      "type": "SIMPLE",
+      "track_inventory": true,
+      "has_expiry": false,
+      "reorder_level": "0.000",
+      "generic_name": "",
+      "keywords": "",
+      "dgda_reg_no": "",
+      "prescription_required": false,
+      "origin_country": "",
+      "importer": "",
+      "season": "",
+      "supply_days": null,
+      "track_serial": false,
+      "warranty_months": null,
+      "details": {},
+      "part_numbers": [],
+      "fitments": [],
+      "is_active": true,
+      "archived_at": null,
+      "variants": [
+       {
+        "id": "01a1a0da-ae2c-7592-8be8-9514765c4770",
+        "product": "01a1a0da-ade2-71a2-97c1-715ef5a0309c",
+        "sku": "SKU-0000520",
+        "name": "Default",
+        "attributes": {},
+        "cost_price": "379.8900",
+        "mrp": null,
+        "price": "512.8515",
+        "wholesale_price": null,
+        "min_price": null,
+        "stock_on_hand": "0.000",
+        "is_default": true,
+        "is_active": true,
+        "barcodes": [
+         {
+          "id": "01a1a0da-ae69-7052-bdd8-89fb51f4e435",
+          "variant": "01a1a0da-ae2c-7592-8be8-9514765c4770",
+          "barcode": "8900000005208",
+          "is_primary": true
+         }
+        ],
+        "selling_units": []
+       }
+      ],
+      "images": [],
+      "created_at": "2026-11-03T16:00:48.365799+06:00",
+      "updated_at": "2026-11-03T16:00:48.365800+06:00"
+     }
+    ],
+    "meta": {
+     "page": 1,
+     "limit": 200,
+     "total": 4,
+     "total_pages": 1
+    }
+   }
+  },
+  {
+   "path": "/customers/?page=1&limit=200",
+   "body": {
+    "success": true,
+    "data": [
+     {
+      "id": "01a1a0da-af7b-7bc2-9a13-4e274c076178",
+      "organization": "01a1a0da-ad6a-7992-86c6-fdf5594e8dde",
+      "code": "CUS-012",
+      "name": "Arif Hossain",
+      "phone": "01810000012",
+      "email": "",
+      "customer_type": "RETAIL",
+      "customer_group": "GENERAL",
+      "price_group": null,
+      "price_group_name": null,
+      "price_group_percent": null,
+      "whatsapp": "",
+      "tax_number": "",
+      "credit_limit": "10000.0000",
+      "current_balance": "9970.7000",
+      "opening_balance": "0.0000",
+      "loyalty_points": 0,
+      "order_count": 93,
+      "total_spent": "229422.0300",
+      "total_paid": "219451.3300",
+      "total_amount": "229422.0300",
+      "is_active": true,
+      "addresses": [],
+      "created_at": "2026-11-03T16:00:48.763792+06:00",
+      "updated_at": "2026-11-03T16:02:14.945423+06:00"
+     },
+     {
+      "id": "01a1a0da-afad-7eb2-a6d6-9f4eaeb26559",
+      "organization": "01a1a0da-ad6a-7992-86c6-fdf5594e8dde",
+      "code": "CUS-033",
+      "name": "Arif Islam",
+      "phone": "01810000033",
+      "email": "",
+      "customer_type": "RETAIL",
+      "customer_group": "GENERAL",
+      "price_group": null,
+      "price_group_name": null,
+      "price_group_percent": null,
+      "whatsapp": "",
+      "tax_number": "",
+      "credit_limit": "50000.0000",
+      "current_balance": "49824.3700",
+      "opening_balance": "0.0000",
+      "loyalty_points": 0,
+      "order_count": 93,
+      "total_spent": "266133.5800",
+      "total_paid": "216309.2100",
+      "total_amount": "266133.5800",
+      "is_active": true,
+      "addresses": [],
+      "created_at": "2026-11-03T16:00:48.813295+06:00",
+      "updated_at": "2026-11-04T20:26:48.014204+06:00"
+     },
+     {
+      "id": "01a1a0da-af63-7300-8d34-7532e17812d8",
+      "organization": "01a1a0da-ad6a-7992-86c6-fdf5594e8dde",
+      "code": "CUS-001",
+      "name": "Ayesha Chowdhury",
+      "phone": "01810000001",
+      "email": "",
+      "customer_type": "RETAIL",
+      "customer_group": "GENERAL",
+      "price_group": null,
+      "price_group_name": null,
+      "price_group_percent": null,
+      "whatsapp": "",
+      "tax_number": "",
+      "credit_limit": "100000.0000",
+      "current_balance": "99104.3300",
+      "opening_balance": "0.0000",
+      "loyalty_points": 80,
+      "order_count": 91,
+      "total_spent": "267377.2100",
+      "total_paid": "168272.8800",
+      "total_amount": "267377.2100",
+      "is_active": true,
+      "addresses": [],
+      "created_at": "2026-11-03T16:00:48.739844+06:00",
+      "updated_at": "2026-11-04T16:27:48.132707+06:00"
+     }
+    ],
+    "meta": {
+     "page": 1,
+     "limit": 200,
+     "total": 3,
+     "total_pages": 1
+    }
+   }
+  },
+  {
+   "path": "/categories/?page=1&limit=200",
+   "body": {
+    "success": true,
+    "data": [
+     {
+      "id": "01a1a0da-adae-7d41-8f23-0cb015b61e09",
+      "organization": "01a1a0da-ad6a-7992-86c6-fdf5594e8dde",
+      "parent": null,
+      "name": "Baby Care",
+      "slug": "",
+      "description": "",
+      "image_url": "",
+      "sort_order": 0,
+      "is_active": true,
+      "product_count": 45,
+      "created_at": "2026-11-03T16:00:48.302380+06:00",
+      "updated_at": "2026-11-03T16:00:48.302387+06:00"
+     },
+     {
+      "id": "01a1a0da-ada2-7fd1-acf6-2fa0205ffebc",
+      "organization": "01a1a0da-ad6a-7992-86c6-fdf5594e8dde",
+      "parent": null,
+      "name": "Bakery",
+      "slug": "",
+      "description": "",
+      "image_url": "",
+      "sort_order": 0,
+      "is_active": true,
+      "product_count": 20,
+      "created_at": "2026-11-03T16:00:48.290578+06:00",
+      "updated_at": "2026-11-03T16:00:48.290581+06:00"
+     },
+     {
+      "id": "01a1a0da-ad9c-7d62-ad08-ac984b3ccc2f",
+      "organization": "01a1a0da-ad6a-7992-86c6-fdf5594e8dde",
+      "parent": null,
+      "name": "Beverages",
+      "slug": "",
+      "description": "",
+      "image_url": "",
+      "sort_order": 0,
+      "is_active": true,
+      "product_count": 27,
+      "created_at": "2026-11-03T16:00:48.284966+06:00",
+      "updated_at": "2026-11-03T16:00:48.284975+06:00"
+     },
+     {
+      "id": "01a1a0da-adb2-7e92-bf2a-56f0d10742e0",
+      "organization": "01a1a0da-ad6a-7992-86c6-fdf5594e8dde",
+      "parent": null,
+      "name": "Canned Goods",
+      "slug": "",
+      "description": "",
+      "image_url": "",
+      "sort_order": 0,
+      "is_active": true,
+      "product_count": 22,
+      "created_at": "2026-11-03T16:00:48.306703+06:00",
+      "updated_at": "2026-11-03T16:00:48.306708+06:00"
+     },
+     {
+      "id": "01a1a0da-adb1-7531-b1ef-51b10fb7fc6b",
+      "organization": "01a1a0da-ad6a-7992-86c6-fdf5594e8dde",
+      "parent": null,
+      "name": "Confectionery",
+      "slug": "",
+      "description": "",
+      "image_url": "",
+      "sort_order": 0,
+      "is_active": true,
+      "product_count": 25,
+      "created_at": "2026-11-03T16:00:48.305546+06:00",
+      "updated_at": "2026-11-03T16:00:48.305553+06:00"
+     }
+    ],
+    "meta": {
+     "page": 1,
+     "limit": 200,
+     "total": 5,
+     "total_pages": 1
+    }
+   }
+  },
+  {
+   "path": "/brands/?page=1&limit=200",
+   "body": {
+    "success": true,
+    "data": [
+     {
+      "id": "01a1a0da-adbf-7dc0-b471-b783a0be1b2c",
+      "organization": "01a1a0da-ad6a-7992-86c6-fdf5594e8dde",
+      "name": "ACI",
+      "slug": "",
+      "logo_url": "",
+      "is_active": true,
+      "product_count": 19,
+      "created_at": "2026-11-03T16:00:48.319336+06:00",
+      "updated_at": "2026-11-03T16:00:48.319343+06:00"
+     },
+     {
+      "id": "01a1a0da-adc9-7550-8e66-feab7d8f857f",
+      "organization": "01a1a0da-ad6a-7992-86c6-fdf5594e8dde",
+      "name": "Aarong",
+      "slug": "",
+      "logo_url": "",
+      "is_active": true,
+      "product_count": 30,
+      "created_at": "2026-11-03T16:00:48.329193+06:00",
+      "updated_at": "2026-11-03T16:00:48.329198+06:00"
+     },
+     {
+      "id": "01a1a0da-addb-7fa1-8054-5d3dd0c4626d",
+      "organization": "01a1a0da-ad6a-7992-86c6-fdf5594e8dde",
+      "name": "Akij",
+      "slug": "",
+      "logo_url": "",
+      "is_active": true,
+      "product_count": 21,
+      "created_at": "2026-11-03T16:00:48.347495+06:00",
+      "updated_at": "2026-11-03T16:00:48.347499+06:00"
+     },
+     {
+      "id": "01a1a0da-adc5-7fd0-88c4-377e6f3eea82",
+      "organization": "01a1a0da-ad6a-7992-86c6-fdf5594e8dde",
+      "name": "Bashundhara",
+      "slug": "",
+      "logo_url": "",
+      "is_active": true,
+      "product_count": 30,
+      "created_at": "2026-11-03T16:00:48.326045+06:00",
+      "updated_at": "2026-11-03T16:00:48.326052+06:00"
+     },
+     {
+      "id": "01a1a0da-add9-7a51-b480-fa2a4500788d",
+      "organization": "01a1a0da-ad6a-7992-86c6-fdf5594e8dde",
+      "name": "City Group",
+      "slug": "",
+      "logo_url": "",
+      "is_active": true,
+      "product_count": 22,
+      "created_at": "2026-11-03T16:00:48.345914+06:00",
+      "updated_at": "2026-11-03T16:00:48.345925+06:00"
+     }
+    ],
+    "meta": {
+     "page": 1,
+     "limit": 200,
+     "total": 5,
+     "total_pages": 1
+    }
+   }
+  },
+  {
+   "path": "/units/?page=1&limit=200",
+   "body": {
+    "success": true,
+    "data": [
+     {
+      "id": "01a1a0da-ad97-7a92-abe4-0b2a59a82b9f",
+      "organization": "01a1a0da-ad6a-7992-86c6-fdf5594e8dde",
+      "name": "Piece",
+      "short_name": "pcs",
+      "base_unit": null,
+      "conversion_factor": "1.000000",
+      "allow_decimal": false,
+      "created_at": "2026-11-03T16:00:48.279709+06:00",
+      "updated_at": "2026-11-03T16:00:48.279719+06:00"
+     },
+     {
+      "id": "01a1a84a-5364-74d1-b35c-28fb72a11870",
+      "organization": "01a1a0da-ad6a-7992-86c6-fdf5594e8dde",
+      "name": "ZZ-API-TEST KZ2EG unit 3",
+      "short_name": "zzt",
+      "base_unit": null,
+      "conversion_factor": "1.000000",
+      "allow_decimal": false,
+      "created_at": "2026-11-05T02:40:05.732178+06:00",
+      "updated_at": "2026-11-05T02:40:05.748994+06:00"
+     },
+     {
+      "id": "01a1a84a-bcc0-7b51-8009-5d67bd7faae1",
+      "organization": "01a1a0da-ad6a-7992-86c6-fdf5594e8dde",
+      "name": "ZZ-API-TEST KZN7J unit 3",
+      "short_name": "zzt",
+      "base_unit": null,
+      "conversion_factor": "1.000000",
+      "allow_decimal": false,
+      "created_at": "2026-11-05T02:40:32.704738+06:00",
+      "updated_at": "2026-11-05T02:40:32.719592+06:00"
+     }
+    ],
+    "meta": {
+     "page": 1,
+     "limit": 200,
+     "total": 3,
+     "total_pages": 1
+    }
+   }
+  },
+  {
+   "path": "/warehouses/?page=1&limit=200",
+   "body": {
+    "success": true,
+    "data": [
+     {
+      "id": "01a1a0da-ad80-7ba1-bf54-95a94843270e",
+      "organization": "01a1a0da-ad6a-7992-86c6-fdf5594e8dde",
+      "branch": "01a1a0da-ad7f-78d3-bf1f-34ac75c3ca4f",
+      "code": "DHK-MAIN",
+      "name": "Dhaka \u2014 Main",
+      "type": "MAIN",
+      "is_default": true,
+      "is_active": true,
+      "created_at": "2026-11-03T16:00:48.257017+06:00",
+      "updated_at": "2026-11-03T16:00:48.257025+06:00"
+     },
+     {
+      "id": "01a1a0da-ad83-7b61-93be-4aa94bca1713",
+      "organization": "01a1a0da-ad6a-7992-86c6-fdf5594e8dde",
+      "branch": "01a1a0da-ad7f-78d3-bf1f-34ac75c3ca4f",
+      "code": "DHK-TRANSIT",
+      "name": "Dhaka \u2014 Transit",
+      "type": "TRANSIT",
+      "is_default": false,
+      "is_active": true,
+      "created_at": "2026-11-03T16:00:48.259182+06:00",
+      "updated_at": "2026-11-03T16:00:48.259191+06:00"
+     },
+     {
+      "id": "01a1a639-f492-7513-be04-fbf56e3c3ab2",
+      "organization": "01a1a0da-ad6a-7992-86c6-fdf5594e8dde",
+      "branch": "01a1a0da-ad7f-78d3-bf1f-34ac75c3ca4f",
+      "code": "TST",
+      "name": "Test shelf",
+      "type": "MAIN",
+      "is_default": false,
+      "is_active": false,
+      "created_at": "2026-11-04T17:02:58.450559+06:00",
+      "updated_at": "2026-11-04T17:34:00.578773+06:00"
+     }
+    ],
+    "meta": {
+     "page": 1,
+     "limit": 200,
+     "total": 3,
+     "total_pages": 1
+    }
+   }
+  },
+  {
+   "path": "/settings/resolved/?page=1&limit=200",
+   "body": {
+    "success": true,
+    "data": [
+     {
+      "key": "catalog.use_barcodes",
+      "value": true,
+      "resolved_from": "default"
+     },
+     {
+      "key": "customer.default_credit_limit",
+      "value": "0",
+      "resolved_from": "default"
+     },
+     {
+      "key": "customer.due_reminder_days",
+      "value": 30,
+      "resolved_from": "default"
+     },
+     {
+      "key": "customer.require_phone",
+      "value": true,
+      "resolved_from": "default"
+     },
+     {
+      "key": "display.currency_symbol",
+      "value": "\u09f3",
+      "resolved_from": "default"
+     }
+    ]
+   }
+  }
+ ],
+ "stock": [
+  {
+   "variant_id": "01a1a0da-ae27-7922-aac2-c14fb7706afc",
+   "warehouse_id": "01a1a0da-ad83-7b61-93be-4aa94bca1713",
+   "quantity": "0.000"
+  },
+  {
+   "variant_id": "01a1a0da-ae27-7922-aac2-c14fb7706afc",
+   "warehouse_id": "01a1a639-f492-7513-be04-fbf56e3c3ab2",
+   "quantity": "0.000"
+  },
+  {
+   "variant_id": "01a1a0da-ae27-7922-aac2-c1578b7bee39",
+   "warehouse_id": "01a1a0da-ad80-7ba1-bf54-95a94843270e",
+   "quantity": "220.000"
+  },
+  {
+   "variant_id": "01a1a0da-ae27-7922-aac2-c16492fe15a4",
+   "warehouse_id": "01a1a0da-ad80-7ba1-bf54-95a94843270e",
+   "quantity": "17.000"
+  },
+  {
+   "variant_id": "01a1a0da-ae27-7922-aac2-c14fb7706afc",
+   "warehouse_id": "01a1a0da-ad80-7ba1-bf54-95a94843270e",
+   "quantity": "111.000"
+  }
+ ],
+ "server_time": "2026-11-08T11:30:09.786260+00:00"
+}
