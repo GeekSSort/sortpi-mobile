@@ -4,6 +4,8 @@ import { ApiError } from '../api/client.ts';
 export function describeAuthError(error: unknown): string {
   if (!(error instanceof ApiError)) return 'Could not sign in. Please try again.';
   switch (error.code) {
+    case 'INSECURE_ADDRESS':
+      return 'A shop address typed in full must start with https:// . Or type just the shop name.';
     case 'INVALID_CREDENTIALS':
       return 'Email or password is incorrect.';
     case 'ACCOUNT_LOCKED':

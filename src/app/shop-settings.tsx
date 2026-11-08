@@ -86,7 +86,7 @@ export default function ShopSettingsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
-      <Stack.Screen options={{ title: t('Shop settings') }} />
+      <Stack.Screen options={{ title: t('Settings') }} />
       <ScrollView contentInsetAdjustmentBehavior="automatic" refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} />} contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
         {!canEdit || q.isError ? (
           <View style={{ gap: Spacing.three, padding: Spacing.three }}>

@@ -136,6 +136,7 @@ export default function OrderScreen() {
           {o.status === 'CANCELLED' ? <Notice kind="info">{o.cancel_reason ? t('This order was cancelled: {reason}', { reason: o.cancel_reason }) : t('This order was cancelled.')}</Notice> : null}
           {o.status === 'COLLECTED' && o.sale_id ? <Button title={t('See the sale {n}', { n: o.sale_invoice ?? '' })} variant="secondary" onPress={() => router.push({ pathname: '/sale/[id]', params: { id: o.sale_id! } })} /> : null}
 
+          {steps?.cancel ? <Button title="Change this order" variant="secondary" onPress={() => router.push({ pathname: '/new-order', params: { id } })} /> : null}
           {steps?.ready ? <Button title="Mark ready to collect" size="lg" loading={ready.isPending} onPress={() => ready.mutate()} /> : null}
           {steps?.collect ? <Button title="Hand it over" variant="success" size="lg" onPress={() => setSheet('collect')} /> : null}
           {steps?.deposit ? <Button title="Take some money now" variant="secondary" onPress={() => setSheet('deposit')} /> : null}

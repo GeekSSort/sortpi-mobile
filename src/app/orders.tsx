@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, FlatList, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -18,7 +18,7 @@ import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/th
 import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
 import { compareMoney, formatBDT } from '@/lib/money';
-import { countOrders, listOrders, type CustomerOrder } from '@/orders/api';
+import { countOrders, listOrders, type CustomerOrder, type OrderKind } from '@/orders/api';
 import { OrderPills, useOrderLook } from '@/orders/look';
 
 type Chip = { id: string; label: string; status: 'OPEN' | 'READY' | 'COLLECTED' | 'CANCELLED' | 'ALL'; due?: 'overdue' };
@@ -36,18 +36,20 @@ export default function OrdersScreen() {
   const theme = useTheme();
   const { t } = usePrefs();
   const router = useRouter();
+  const { kind: asked } = useLocalSearchParams<{ kind?: string }>();
+  const kind: OrderKind | undefined = asked === 'REPAIR' || asked === 'TAILORING' ? asked : undefined;
   const { me } = useSession();
   const [chip, setChip] = useState<Chip>(CHIPS[0]);
   const [search, setSearch] = useState('');
   const allowed = me?.permissions?.includes('sale.view') ?? false;
   const canAdd = me?.permissions?.includes('sale.create') ?? false;
 
-  const waiting = useQuery({ queryKey: ['orders', 'count', 'OPEN'], queryFn: () => countOrders({ status: 'OPEN' }), enabled: allowed, staleTime: 30_000 });
-  const ready = useQuery({ queryKey: ['orders', 'count', 'READY'], queryFn: () => countOrders({ status: 'READY' }), enabled: allowed, staleTime: 30_000 });
-  const late = useQuery({ queryKey: ['orders', 'count', 'late'], queryFn: () => countOrders({ due: 'overdue' }), enabled: allowed, staleTime: 30_000 });
+  const waiting = useQuery({ queryKey: ['orders', 'count', 'OPEN', kind], queryFn: () => countOrders({ status: 'OPEN', kind }), enabled: allowed, staleTime: 30_000 });
+  const ready = useQuery({ queryKey: ['orders', 'count', 'READY', kind], queryFn: () => countOrders({ status: 'READY', kind }), enabled: allowed, staleTime: 30_000 });
+  const late = useQuery({ queryKey: ['orders', 'count', 'late', kind], queryFn: () => countOrders({ due: 'overdue', kind }), enabled: allowed, staleTime: 30_000 });
   const list = useInfiniteQuery({
-    queryKey: ['orders', 'list', chip.id, search.trim()],
-    queryFn: ({ pageParam }) => listOrders({ status: chip.status, due: chip.due, search, page: pageParam }),
+    queryKey: ['orders', 'list', chip.id, search.trim(), kind],
+    queryFn: ({ pageParam }) => listOrders({ status: chip.status, due: chip.due, search, page: pageParam, kind }),
     initialPageParam: 1,
     getNextPageParam: (last) => last.nextPage,
     enabled: allowed,
@@ -88,7 +90,7 @@ export default function OrdersScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
-      <Stack.Screen options={{ title: t('Customer orders'), headerRight: canAdd ? () => <HeaderAction title="New" icon="Plus" onPress={() => router.push('/new-order')} /> : undefined }} />
+      <Stack.Screen options={{ title: t(kind === 'REPAIR' ? 'Repairs' : kind === 'TAILORING' ? 'Tailoring' : 'Customer Orders'), headerRight: canAdd ? () => <HeaderAction title="New" icon="Plus" onPress={() => router.push({ pathname: '/new-order', params: kind ? { kind } : {} })} /> : undefined }} />
       <FlatList
         contentInsetAdjustmentBehavior="automatic"
         data={rows}

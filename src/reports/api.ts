@@ -11,6 +11,11 @@ export type KindRow = { category_id: string; category_name: string; quantity_sol
 export type TenderRow = { method: string; label: string; amount: string; payment_count: number; share: string };
 export type DueRow = { outstanding: string } & ({ customer_id: string; customer_name: string } | { supplier_id: string; supplier_name: string });
 
+/** One row per cashier or per branch. Needs `report.sales`. `gross_profit` only with `sale.view_profit`. */
+export type PersonRow = { sale_count: number; revenue: string; gross_profit?: string } & ({ cashier_id: string; cashier_name: string } | { branch_id: string; branch_name: string });
+/** One stock movement behind "stock written off". Needs `finance.view_pl`. `loss` is negative when stock was found. */
+export type WriteOffRow = { date: string; reference_no: string; reason: string; warehouse_name: string; product_name: string; variant_name: string; quantity: string; loss: string };
+
 const q = (w: Window) => ({ query: w });
 /** Sales figures for a window. Needs `report.sales`. */
 export const salesSummary = (w: Window) => api.get<Summary>('/sales/summary/', q(w));
@@ -25,3 +30,6 @@ export const customerDue = () => api.get<Extract<DueRow, { customer_id: string }
 export const supplierDue = () => api.get<Extract<DueRow, { supplier_id: string }>[]>('/finance/supplier-due/');
 /** One day's takings on one sheet. Needs `report.sales`. */
 export const dayClose = (date: string) => api.get<DayClose>('/sales/day-close/', { query: { date } });
+export const salesByCashier = (w: Window) => api.get<Extract<PersonRow, { cashier_id: string }>[]>('/sales/by-cashier/', q(w));
+export const salesByBranch = (w: Window) => api.get<Extract<PersonRow, { branch_id: string }>[]>('/sales/by-branch/', q(w));
+export const stockWrittenOff = (w: Window) => api.get<WriteOffRow[]>('/finance/stock-write-offs/', q(w));

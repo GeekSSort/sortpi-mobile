@@ -5,7 +5,7 @@ export function describeSellError(error: unknown): string {
   if (!(error instanceof ApiError)) return 'Something went wrong. Try again.';
   switch (error.code) {
     case 'INSUFFICIENT_STOCK':
-      return 'Not enough stock for one of the items. Nothing was sold.';
+      return 'Not enough stock for one of the items. Nothing was sold. To sell goods that are finished, a manager can turn on “Allow selling more than is in stock” in Shop settings.';
     case 'NO_PRICE_DEFINED':
       return 'One item has no price in this branch. Ask your manager to set it.';
     case 'NO_OPEN_SHIFT':
@@ -21,6 +21,10 @@ export function describeSellError(error: unknown): string {
       return 'Somebody else is using that counter. Pick another one.';
     case 'SHIFT_ALREADY_OPEN':
       return 'You already have the day open on this phone.';
+    case 'DUPLICATE_REFERENCE':
+      return 'This cart was already put on hold.';
+    case 'SALE_ALREADY_CANCELLED':
+      return 'This sale was already cancelled.';
     case 'PERMISSION_DENIED':
       return 'You do not have permission to do that.';
     case 'IDEMPOTENCY_KEY_REUSED':

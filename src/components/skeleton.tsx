@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { AccessibilityInfo, Animated, StyleSheet, View } from 'react-native';
 
 import { Radius, Spacing } from '@/constants/theme';
@@ -9,7 +9,7 @@ import { useT } from '@/i18n/prefs';
 export function SkeletonRows({ count = 7 }: { count?: number }) {
   const theme = useTheme();
   const t = useT();
-  const pulse = useRef(new Animated.Value(0.45)).current;
+  const [pulse] = useState(() => new Animated.Value(0.45));
   useEffect(() => {
     // Plain React Native animation does not follow the system "remove animations" setting by itself, so check it.
     let loop: Animated.CompositeAnimation | undefined;

@@ -35,3 +35,32 @@ test('the amount paid now must be real and not above the total', () => {
   assert.match(buildPayments({ ...base, choice: 'CASH', payNow: '12,5', hasCustomer: true }).problem ?? '', /Enter the amount/);
   assert.match(buildPayments({ ...base, choice: 'CASH', payNow: '1000.01', hasCustomer: true }).problem ?? '', /more than the total/);
 });
+
+import { amountDueNow } from './payment.ts';
+import { changeDue } from './cart.ts';
+
+test('cash is judged against what is taken now: a part payment is not short, and change follows it', () => {
+  assert.equal(amountDueNow('1000', '', true), '1000');
+  assert.equal(amountDueNow('1000', '500', true), '500');
+  assert.equal(amountDueNow('1000', '500', false), '1000'); // a walk-in pays in full
+  assert.equal(amountDueNow('1000', '1500', true), '1000'); // more than the total is not a part payment
+  assert.equal(amountDueNow('1000', 'abc', true), '1000');
+  assert.equal(changeDue(amountDueNow('1000', '500', true), '1000'), '500'); // 1,000 handed over for 500 now: 500 back
+});
+
+import { walletReference } from './payment.ts';
+
+test('the wallet goes in front of the transaction id, and either may be missing', () => {
+  assert.equal(walletReference('bKash', ' 8N7A6D5 '), 'bKash 8N7A6D5');
+  assert.equal(walletReference('Nagad', ''), 'Nagad');
+  assert.equal(walletReference(null, 'ABC1'), 'ABC1');
+  assert.equal(walletReference(null, ''), '');
+});
+
+test('a reference never goes past what the shop keeps (50 characters), wallet name included', () => {
+  const long = 'X'.repeat(80);
+  assert.equal(walletReference('bKash', long).length, 50);
+  assert.ok(walletReference('bKash', long).startsWith('bKash '));
+  const plan = buildPayments({ choice: 'CARD', total: '100', payNow: '', reference: long, hasCustomer: false });
+  assert.equal(plan.payments[0].reference_no?.length, 50);
+});

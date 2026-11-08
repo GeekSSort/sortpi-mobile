@@ -127,3 +127,51 @@ test('a plan refusal reaches screens in words a shopkeeper can act on', async ()
   const client = createApiClient({ baseUrl: () => BASE, tokens: memoryTokens('A1', 'R1'), fetchImpl: async () => json(403, { success: false, code: 'PLAN_LIMIT_REACHED', message: "The organization is at its plan's product ceiling." }) });
   await assert.rejects(client.post('/products/', {}), (e: unknown) => e instanceof ApiError && e.code === 'PLAN_LIMIT_REACHED' && e.message === 'Your plan has reached its limit. Open “Your plan” to move up.');
 });
+
+test('asText hands back a document as is, and a refusal still reads as an error', async () => {
+  const html = '<html><body>Receipt</body></html>';
+  const ok = createApiClient({ baseUrl: () => BASE, tokens: memoryTokens('A', 'R'), fetchImpl: async () => new Response(html, { status: 200, headers: { 'Content-Type': 'text/html' } }) });
+  assert.equal(await ok.get<string>('/sales/x/receipt/', { asText: true }), html);
+  const bad = createApiClient({ baseUrl: () => BASE, tokens: memoryTokens('A', 'R'), fetchImpl: async () => json(404, { success: false, code: 'NOT_FOUND', message: 'No such sale here.' }) });
+  await assert.rejects(() => bad.get<string>('/sales/x/receipt/', { asText: true }), (e: unknown) => e instanceof ApiError && e.status === 404);
+});
+
+test('a refresh that fails on the connection keeps the person signed in and says so', async () => {
+  const tokens = memoryTokens('OLD', 'R1');
+  let ended = 0;
+  const client = createApiClient({
+    baseUrl: () => BASE,
+    tokens,
+    onSessionEnd: () => void (ended += 1),
+    fetchImpl: async (url) => {
+      if (String(url).endsWith('/auth/refresh')) throw new TypeError('network down');
+      return json(401, { success: false, code: 'TOKEN_EXPIRED', message: 'expired' });
+    },
+  });
+  await assert.rejects(() => client.get('/things/'), (e: unknown) => e instanceof ApiError && e.code === 'NETWORK_ERROR');
+  assert.equal(ended, 0);
+  assert.equal(tokens.state.refresh, 'R1'); // not wiped
+});
+
+test('a refresh the server turns down (401) ends the session and wipes the tokens', async () => {
+  const tokens = memoryTokens('OLD', 'R1');
+  let ended = 0;
+  const client = createApiClient({
+    baseUrl: () => BASE,
+    tokens,
+    onSessionEnd: () => void (ended += 1),
+    fetchImpl: async (url) => (String(url).endsWith('/auth/refresh') ? json(401, { success: false, code: 'REFRESH_TOKEN_REUSED', message: 'no' }) : json(401, { success: false, code: 'TOKEN_EXPIRED', message: 'expired' })),
+  });
+  await assert.rejects(() => client.get('/things/'));
+  assert.equal(ended, 1);
+  assert.equal(tokens.state.refresh, null);
+});
+
+import { workspaceToBaseUrl } from './workspace-url.ts';
+
+test('a typed shop address must be https in a release build; a plain name becomes its https address', () => {
+  assert.equal(workspaceToBaseUrl('acme', 'sortpi.com'), 'https://acme.sortpi.com/api/v1');
+  assert.equal(workspaceToBaseUrl('https://shop.example.com/', 'sortpi.com'), 'https://shop.example.com/api/v1');
+  assert.throws(() => workspaceToBaseUrl('http://evil.example.com', 'sortpi.com'));
+  assert.equal(workspaceToBaseUrl('http://localhost:8010', 'sortpi.com', true), 'http://localhost:8010/api/v1'); // a developer's own server
+});

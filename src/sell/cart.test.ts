@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { addItem, buildPreviewRequest, buildSellRequest, changeDue, changeQuantity, estimateSubtotal, itemCount, qtyText, setQuantity, type Cart, type ScannedItem } from './cart.ts';
+import { addItem, buildPreviewRequest, buildSellRequest, changeDue, changeQuantity, estimateSubtotal, itemCount, lastQuantity, qtyText, setQuantity, type Cart, type ScannedItem } from './cart.ts';
 
 const tea: ScannedItem = { variantId: 'v-tea', unitId: null, name: 'Igloo Family Pack Tea 2L', sku: 'SKU-0000000', unitLabel: null, unitPrice: '306.8100' };
 const carton: ScannedItem = { ...tea, unitId: 'u-carton', unitLabel: 'Carton', unitPrice: '3681.7200' };
@@ -63,4 +63,11 @@ test('a unit line sends its unit id; preview mirrors the sale lines', () => {
 test('change is what the customer handed over beyond the total, never negative', () => {
   assert.equal(changeDue('613.62', '1000'), '386.38');
   assert.equal(changeDue('613.62', '500'), '0');
+});
+
+test('lastQuantity says whether an item is already in the cart, per unit', () => {
+  const cart = addItem(addItem([], tea), tea);
+  assert.equal(lastQuantity(cart, tea), '2');
+  assert.equal(lastQuantity(cart, carton), null);
+  assert.equal(lastQuantity([], tea), null);
 });

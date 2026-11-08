@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { Alert, ScrollView, View } from 'react-native';
 
 import { useSession } from '@/auth/session-provider';
 import { listCategories } from '@/catalog/api';
@@ -15,7 +15,8 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
 import { haptics } from '@/lib/haptics';
-import { getProduct, listBrands, updateProduct, type Product } from '@/products/api';
+import { ApiError } from '@/api/client';
+import { archiveProduct, getProduct, listBrands, updateProduct, type Product } from '@/products/api';
 import { describeProductError, detailsBody, nameProblem, reorderProblem } from '@/products/logic';
 import { showToast } from '@/ui/toast';
 
@@ -44,6 +45,35 @@ function Form({ product }: { product: Product }) {
   const { t } = usePrefs();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { me } = useSession();
+  const canDelete = me?.permissions?.includes('product.delete') ?? false;
+  const remove = useMutation({
+    mutationFn: (writeOff: boolean) => archiveProduct(product.id, writeOff),
+    onSuccess: () => {
+      haptics.success();
+      void queryClient.invalidateQueries({ queryKey: ['products'] });
+      void queryClient.invalidateQueries({ queryKey: ['stock'] });
+      showToast({ text: t('Item deleted.') });
+      router.dismissTo('/products');
+    },
+    onError: (e) => {
+      if (e instanceof ApiError && e.code === 'PRODUCT_HAS_STOCK') {
+        Alert.alert(t('This item still has stock'), t('Delete it anyway? The stock left is written off as a correction, and its history stays.'), [
+          { text: t('Keep it'), style: 'cancel' },
+          { text: t('Write off and delete'), style: 'destructive', onPress: () => remove.mutate(true) },
+        ]);
+      } else {
+        haptics.warning();
+        showToast({ text: t(describeProductError(e)) });
+      }
+    },
+  });
+  function confirmDelete() {
+    Alert.alert(t('Delete this item?'), t('It is taken off your lists and the till. Its past sales and stock history stay on record.'), [
+      { text: t('Keep it'), style: 'cancel' },
+      { text: t('Yes, delete'), style: 'destructive', onPress: () => remove.mutate(false) },
+    ]);
+  }
   const before = { name: product.name, category: product.category, brand: product.brand ?? '', reorder: String(Number(product.reorder_level)) };
   const [name, setName] = useState(product.name);
   const [category, setCategory] = useState<Option | null>({ id: product.category, name: product.category_name });
@@ -79,6 +109,7 @@ function Form({ product }: { product: Product }) {
         <Button title="Cancel" variant="secondary" disabled={save.isPending} onPress={() => router.back()} style={{ flex: 1 }} />
         <Button title="Save" variant="success" loading={save.isPending} onPress={submit} style={{ flex: 1 }} />
       </View>
+      {canDelete ? <Button title="Delete this item" variant="secondary" loading={remove.isPending} onPress={confirmDelete} /> : null}
     </>
   );
 }

@@ -1,6 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ScrollView, Share, View } from 'react-native';
+import { useState } from 'react';
+import { Alert, ScrollView, Share, View } from 'react-native';
 
 import { useSession } from '@/auth/session-provider';
 import { Button } from '@/components/button';
@@ -13,8 +14,11 @@ import { MONTHS, saleWhen } from '@/home/week';
 import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
 import { formatBDT } from '@/lib/money';
+import { PaperSheet } from '@/sell/paper-sheet';
 import { receiptText } from '@/sell/receipt';
-import { getSale, type Sale } from '@/sales/api';
+import { describeSellError } from '@/sell/messages';
+import { showToast } from '@/ui/toast';
+import { cancelSale, getSale, type Sale } from '@/sales/api';
 import { isWalkIn, METHOD_LABEL, saleState } from '@/sales/logic';
 import { canReturn } from '@/sales/returns';
 
@@ -31,16 +35,40 @@ export default function SaleScreen() {
     <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: theme.canvas }} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
       {sale.isPending ? <SkeletonRows count={4} /> : null}
       {sale.isError ? <ErrorState message={t('Could not load this sale.')} onRetry={() => void sale.refetch()} /> : null}
-      {s ? <Body sale={s} lang={lang} shop={me?.organization?.name ?? 'SortPi'} canRefund={(me?.permissions?.includes('sale.refund') ?? false) && canReturn(s)} /> : null}
+      {s ? <Body sale={s} lang={lang} shop={me?.organization?.name ?? 'SortPi'} canRefund={(me?.permissions?.includes('sale.refund') ?? false) && canReturn(s)} canCancel={(me?.permissions?.includes('sale.cancel') ?? false) && s.status === 'COMPLETED'} /> : null}
       {s?.status === 'CANCELLED' ? <Notice kind="info">{s.cancel_reason ? t('This sale was cancelled: {reason}', { reason: s.cancel_reason }) : t('This sale was cancelled.')}</Notice> : null}
     </ScrollView>
   );
 }
 
-function Body({ sale, lang, shop, canRefund }: { sale: Sale; lang: 'en' | 'bn'; shop: string; canRefund: boolean }) {
+function Body({ sale, lang, shop, canRefund, canCancel }: { sale: Sale; lang: 'en' | 'bn'; shop: string; canRefund: boolean; canCancel: boolean }) {
   const theme = useTheme();
   const router = useRouter();
   const { t } = usePrefs();
+  const queryClient = useQueryClient();
+  const [printing, setPrinting] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+
+  function confirmCancel() {
+    Alert.alert(t('Cancel this sale?'), t('The items go back on the shelf and the customer’s balance is corrected. This cannot be undone.'), [
+      { text: t('Keep it'), style: 'cancel' },
+      {
+        text: t('Yes, cancel it'),
+        style: 'destructive',
+        onPress: () => {
+          setCancelling(true);
+          cancelSale(sale.id)
+            .then(() => showToast({ text: t('Sale cancelled') }))
+            .catch((e: unknown) => showToast({ text: t(describeSellError(e)) }))
+            .finally(() => {
+              // Whatever the answer was, show what the shop now says: a cancel can be recorded even when the reply is an error.
+              for (const key of ['sale', 'sales', 'home', 'stock', 'customers']) void queryClient.invalidateQueries({ queryKey: [key] });
+              setCancelling(false);
+            });
+        },
+      },
+    ]);
+  }
   const state = saleState(sale);
   const when = saleWhen(sale.sale_date);
   const day = when.day === 'today' ? t('Today') : when.day === 'yesterday' ? t('Yesterday') : `${when.day.date} ${MONTHS[lang][when.day.month]}`;
@@ -108,7 +136,10 @@ function Body({ sale, lang, shop, canRefund }: { sale: Sale; lang: 'en' | 'bn'; 
         </View>
       ) : null}
 
-      {canRefund ? <Button title="Take goods back" variant="secondary" onPress={() => router.push({ pathname: '/return/[id]', params: { id: sale.id } })} /> : null}
+      {canCancel ? <Button title="Cancel this sale" variant="secondary" loading={cancelling} onPress={confirmCancel} /> : null}
+      {canRefund ? <Button title="Return & Refunds" variant="secondary" onPress={() => router.push({ pathname: '/return/[id]', params: { id: sale.id } })} /> : null}
+      <Button title="Print receipt" onPress={() => setPrinting(true)} />
+      <PaperSheet saleId={printing ? sale.id : null} onClose={() => setPrinting(false)} />
       <Button
         title="Share receipt"
         variant="secondary"

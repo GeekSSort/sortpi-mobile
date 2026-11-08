@@ -51,6 +51,8 @@ export const listOffers = () => api.get<Offer[]>('/products/discounts/', { query
 
 /** Changes only the fields sent. Needs `product.update`. */
 export const updateProduct = (id: string, body: Record<string, string>) => api.patch<Product>(`/products/${id}/`, body);
+/** Archives the item (its history stays). Refused with PRODUCT_HAS_STOCK while any warehouse holds it, unless `writeOff` writes the stock off first. Needs `product.delete`. */
+export const archiveProduct = (id: string, writeOff = false) => api.delete<void>(`/products/${id}/`, { query: writeOff ? { write_off: true } : undefined });
 export const listBrands = (search?: string) => api.get<{ id: string; name: string }[]>('/brands/', { query: { limit: 200, search } });
 
 /** The cards above the list. `stock_value` is only there for roles that may see cost. Low and finished count kinds, not items, so they are not shown on the items list. */

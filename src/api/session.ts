@@ -24,12 +24,7 @@ export const secureTokens: TokenStore = {
 let baseUrl: string | null = null;
 let sessionEndListener: (() => void) | undefined;
 
-/** `acme` + `sortpi.com` -> https://acme.sortpi.com/api/v1. Dev servers may pass a full http://host:8000 URL. */
-export function workspaceToBaseUrl(workspace: string, platformDomain: string): string {
-  const w = workspace.trim().toLowerCase();
-  if (/^https?:\/\//.test(w)) return `${w.replace(/\/+$/, '')}/api/v1`;
-  return `https://${w}.${platformDomain}/api/v1`;
-}
+export { workspaceToBaseUrl } from './workspace-url';
 
 export async function loadWorkspace(): Promise<string | null> {
   baseUrl = await SecureStore.getItemAsync(BASE);

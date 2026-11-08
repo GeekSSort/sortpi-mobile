@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
 
 import { useSession } from '@/auth/session-provider';
+import { useDebounced } from '@/lib/use-debounced';
 import { EmptyState } from '@/components/empty-state';
 import { ErrorState } from '@/components/error-state';
 import { Field } from '@/components/field';
@@ -30,12 +31,13 @@ export default function ProductsScreen() {
   const router = useRouter();
   const { me } = useSession();
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounced(search); // the list asks the shop once the typing pauses, not on every letter
   const allowed = me?.permissions?.includes('product.view') ?? false;
   const canAdd = me?.permissions?.includes('product.create') ?? false;
 
   const list = useInfiniteQuery({
-    queryKey: ['products', 'list', search.trim()],
-    queryFn: ({ pageParam }) => listProducts({ search, page: pageParam }),
+    queryKey: ['products', 'list', debouncedSearch.trim()],
+    queryFn: ({ pageParam }) => listProducts({ search: debouncedSearch, page: pageParam }),
     initialPageParam: 1,
     getNextPageParam: (last) => last.nextPage,
     enabled: allowed,
@@ -79,7 +81,7 @@ export default function ProductsScreen() {
           ) : search.trim() ? (
             <EmptyState icon="Search" title="No item matches that" hint="Check the spelling, or try the code on the packet." action={{ title: 'Clear search', onPress: () => setSearch('') }} />
           ) : (
-            <EmptyState icon="Package" title="No items yet" hint="Add the things you sell." action={canAdd ? { title: 'Add an item', onPress: () => router.push('/add-product') } : undefined} />
+            <EmptyState icon="Package" title="No items yet" hint="Add the things you sell." action={canAdd ? { title: 'Add Products', onPress: () => router.push('/add-product') } : undefined} />
           )
         }
         ListFooterComponent={list.isFetchingNextPage ? <ActivityIndicator color={theme.brand} style={{ margin: Spacing.three }} /> : undefined}

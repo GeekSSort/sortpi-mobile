@@ -26,6 +26,27 @@ export function buildPayments(o: { choice: PayChoice; total: Money; payNow: stri
   }
   const due = subMoney(total, amount);
   if (compareMoney(due, '0') > 0 && !hasCustomer) return { payments: [], due, problem: 'Choose a customer to leave the rest on their account, or take the full amount.' };
-  const ref = reference.trim();
+  const ref = reference.trim().slice(0, MAX_REFERENCE);
   return { payments: compareMoney(amount, '0') > 0 ? [{ payment_method: choice, amount, ...(ref && choice !== 'CASH' ? { reference_no: ref } : {}) }] : [], due, problem: null };
 }
+
+/**
+ * What is being taken right now: the whole total, or "Customer pays now" when a customer is named and that is a real amount that is not
+ * more than the total. Whether the cash handed over is enough, and the change to give back, are judged against THIS, not the full total:
+ * a customer paying 500 of 1,000 in cash is not "short" with 500, and 1,000 handed over means 500 back.
+ */
+export function amountDueNow(total: Money, payNow: string, hasCustomer: boolean): Money {
+  const n = payNow.trim();
+  if (!hasCustomer || !n || !isAmount(n)) return total;
+  if (compareMoney(n, '0') <= 0 || compareMoney(n, total) > 0) return total;
+  return n;
+}
+
+/** The mobile wallets a till names. The shop's server records only "mobile banking" and a reference, so the wallet goes in front of the reference. */
+export const WALLETS = ['bKash', 'Nagad', 'Rocket', 'Upay'] as const;
+/** The shop keeps a payment's reference in 50 characters (`SalePayment.reference_no`); longer is cut so the sale is never refused for it. */
+export const MAX_REFERENCE = 50;
+export const walletReference = (wallet: string | null, txn: string): string => {
+  const room = MAX_REFERENCE - (wallet ? wallet.length + 1 : 0);
+  return [wallet, txn.trim().slice(0, Math.max(0, room))].filter(Boolean).join(' ');
+};

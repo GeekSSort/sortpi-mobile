@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 
 import { useSession } from '@/auth/session-provider';
+import { useDebounced } from '@/lib/use-debounced';
 import { ActionSheet } from '@/components/action-sheet';
 import { EmptyState } from '@/components/empty-state';
 import { HeaderAction } from '@/components/header-action';
@@ -36,12 +37,17 @@ export default function StockScreen() {
   const router = useRouter();
   const { me } = useSession();
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounced(search); // the list asks the shop once the typing pauses, not on every letter
   const [filter, setFilter] = useState<StockFilter>('all');
   // Home's "Running low" and "Finished" tiles land here already filtered.
   const params = useLocalSearchParams<{ filter?: string; n?: string }>();
-  useEffect(() => {
+  // Adjusted while rendering, when the tile that sent us here sends something new (not in an effect, which would render twice).
+  const [seenTile, setSeenTile] = useState<string | null>(null);
+  const tile = `${params.filter ?? ''}|${params.n ?? ''}`;
+  if (seenTile !== tile) {
+    setSeenTile(tile);
     if (params.filter === 'low' || params.filter === 'out' || params.filter === 'in') setFilter(params.filter);
-  }, [params.filter, params.n]);
+  }
   const pick = (f: StockFilter) => setFilter((cur) => (cur === f ? 'all' : f));
   const [scanning, setScanning] = useState(false);
   const usesBarcodes = useUsesBarcodes();
@@ -63,8 +69,8 @@ export default function StockScreen() {
 
   const summary = useQuery({ queryKey: ['stock', 'summary'], queryFn: () => stockSummary(), staleTime: 30_000 });
   const list = useInfiniteQuery({
-    queryKey: ['stock', 'list', search.trim(), filter],
-    queryFn: ({ pageParam }) => listStock({ search, filter, page: pageParam }),
+    queryKey: ['stock', 'list', debouncedSearch.trim(), filter],
+    queryFn: ({ pageParam }) => listStock({ search: debouncedSearch, filter, page: pageParam }),
     initialPageParam: 1,
     getNextPageParam: (last) => last.nextPage,
   });
@@ -119,7 +125,7 @@ export default function StockScreen() {
               search.trim() || filter !== 'all' ? (
                 <EmptyState icon="Search" title="Nothing matches that" hint="Check the spelling, or try the first letters of the name." action={{ title: 'Show everything', onPress: () => { setSearch(''); setFilter('all'); } }} />
               ) : (
-                <EmptyState icon="Package" title="No items yet" hint="Add your first item and it will show up here." action={canAdd ? { title: 'Add an item', onPress: () => router.push('/add-product') } : undefined} />
+                <EmptyState icon="Package" title="No items yet" hint="Add your first item and it will show up here." action={canAdd ? { title: 'Add Products', onPress: () => router.push('/add-product') } : undefined} />
               )
             )
           }

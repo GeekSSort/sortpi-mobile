@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { Stack } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
 
@@ -9,6 +9,7 @@ import { useSession } from '@/auth/session-provider';
 import { EmptyState } from '@/components/empty-state';
 import { ErrorState } from '@/components/error-state';
 import { Icon, type IconName } from '@/components/icons/icon';
+import { HeaderAction } from '@/components/header-action';
 import { Notice } from '@/components/notice';
 import { SkeletonRows } from '@/components/skeleton';
 import { Tap } from '@/components/tap';
@@ -28,8 +29,10 @@ export default function AccessScreen() {
   const { me } = useSession();
   const perms = me?.permissions ?? [];
   const can: Record<Tab, boolean> = { users: perms.includes('user.view'), roles: perms.includes('role.view'), branches: perms.includes('branch.view') };
+  const router = useRouter();
   const first = (['users', 'roles', 'branches'] as const).find((k) => can[k]);
-  const [tab, setTab] = useState<Tab | undefined>(first);
+  const { tab: asked } = useLocalSearchParams<{ tab?: string }>();
+  const [tab, setTab] = useState<Tab | undefined>(asked === 'branches' && can.branches ? 'branches' : first);
   const users = useInfiniteQuery({ queryKey: ['access', 'users'], queryFn: ({ pageParam }) => listUsers(pageParam), initialPageParam: 1, getNextPageParam: (l) => l.nextPage, enabled: can.users });
   const roles = useQuery({ queryKey: ['access', 'roles'], queryFn: listRoles, enabled: can.roles });
   const branches = useQuery({ queryKey: ['access', 'branches'], queryFn: listBranches, enabled: can.branches });
@@ -46,6 +49,7 @@ export default function AccessScreen() {
     { id: 'roles', label: 'Roles', icon: 'ShieldCheck' },
     { id: 'branches', label: 'Branches', icon: 'Package' },
   ];
+  const addFor = tab === 'branches' && perms.includes('branch.create') ? ('/add-branch' as const) : tab === 'roles' && perms.includes('role.create') ? ('/add-role' as const) : tab === 'users' && perms.includes('user.create') ? ('/add-user' as const) : null;
   const userRows = users.data?.pages.flatMap((p) => p.rows) ?? [];
   const q = tab === 'users' ? users : tab === 'roles' ? roles : branches;
   const data: (UserRow | RoleRow | BranchRow)[] = tab === 'users' ? userRows : tab === 'roles' ? (roles.data ?? []) : (branches.data ?? []);
@@ -79,12 +83,12 @@ export default function AccessScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
-      <Stack.Screen options={{ title: t('Access') }} />
+      <Stack.Screen options={{ title: t('Users & Roles'), headerRight: addFor ? () => <HeaderAction title="Add" icon="Plus" onPress={() => router.push(addFor)} /> : undefined }} />
       <FlatList
         contentInsetAdjustmentBehavior="automatic"
         data={data}
         keyExtractor={(r) => r.id}
-        renderItem={({ item }) => (tab === 'users' ? <UserItem u={item as UserRow} /> : tab === 'roles' ? <RoleItem r={item as RoleRow} /> : <BranchItem b={item as BranchRow} />)}
+        renderItem={({ item }) => (tab === 'users' ? <UserItem u={item as UserRow} onPress={perms.includes('user.update') || perms.includes('user.delete') ? () => router.push({ pathname: '/add-user', params: { id: (item as UserRow).id } }) : undefined} /> : tab === 'roles' ? <RoleItem r={item as RoleRow} onPress={perms.includes('role.update') || perms.includes('role.delete') ? () => router.push({ pathname: '/add-role', params: { id: (item as RoleRow).id } }) : undefined} /> : <BranchItem b={item as BranchRow} onPress={perms.includes('branch.update') || perms.includes('branch.delete') ? () => router.push({ pathname: '/add-branch', params: { id: (item as BranchRow).id } }) : undefined} />)}
         ListHeaderComponent={header}
         ListEmptyComponent={q.isPending ? <SkeletonRows /> : <EmptyState icon="Users" title="Nothing here yet" hint="This list is empty." />}
         ListFooterComponent={tab === 'users' && users.isFetchingNextPage ? <ActivityIndicator color={theme.brand} style={{ margin: Spacing.three }} /> : undefined}
@@ -98,18 +102,19 @@ export default function AccessScreen() {
   );
 }
 
-function Shell({ bar, children }: { bar: string; children: React.ReactNode }) {
+function Shell({ bar, children, onPress }: { bar: string; children: React.ReactNode; onPress?: () => void }) {
   const theme = useTheme();
-  return <View style={{ gap: 6, paddingHorizontal: Spacing.three, paddingVertical: Spacing.three, backgroundColor: theme.card, borderLeftWidth: 6, borderLeftColor: bar, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border }}>{children}</View>;
+  const Box = onPress ? Tap : View;
+  return <Box {...(onPress ? { onPress, accessibilityRole: 'button' as const } : {})} style={{ gap: 6, paddingHorizontal: Spacing.three, paddingVertical: Spacing.three, backgroundColor: theme.card, borderLeftWidth: 6, borderLeftColor: bar, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border }}>{children}</Box>;
 }
 
-function UserItem({ u }: { u: UserRow }) {
+function UserItem({ u, onPress }: { u: UserRow; onPress?: () => void }) {
   const theme = useTheme();
   const { t } = usePrefs();
   const seen = lastSeen(u.last_login);
   const today = seen.key === 'Signed in today';
   return (
-    <Shell bar={u.is_active ? theme.success : theme.border}>
+    <Shell bar={u.is_active ? theme.success : theme.border} onPress={onPress}>
       <ThemedText type="bodyMedium" numberOfLines={1} literal>
         {u.full_name}
       </ThemedText>
@@ -124,11 +129,11 @@ function UserItem({ u }: { u: UserRow }) {
   );
 }
 
-function RoleItem({ r }: { r: RoleRow }) {
+function RoleItem({ r, onPress }: { r: RoleRow; onPress?: () => void }) {
   const theme = useTheme();
   const { t } = usePrefs();
   return (
-    <Shell bar={theme.brand}>
+    <Shell bar={theme.brand} onPress={onPress}>
       <ThemedText type="bodyMedium" numberOfLines={1} literal>
         {r.name}
       </ThemedText>
@@ -145,11 +150,11 @@ function RoleItem({ r }: { r: RoleRow }) {
   );
 }
 
-function BranchItem({ b }: { b: BranchRow }) {
+function BranchItem({ b, onPress }: { b: BranchRow; onPress?: () => void }) {
   const theme = useTheme();
   const { t } = usePrefs();
   return (
-    <Shell bar={b.is_active ? theme.success : theme.border}>
+    <Shell bar={b.is_active ? theme.success : theme.border} onPress={onPress}>
       <ThemedText type="bodyMedium" numberOfLines={1} literal>
         {b.name}
       </ThemedText>

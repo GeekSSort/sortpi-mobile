@@ -26,6 +26,10 @@ export async function listCustomers(o: { search: string; owes: boolean; page: nu
 
 export const customerSummary = () => api.get<CustomerSummary>('/customers/summary/');
 export const getCustomer = (id: string) => api.get<CustomerRow>(`/customers/${id}/`);
+/** Edit the fields sent; `current_balance` is the ledger's and is never sent. Needs `customer.update`. */
+export const updateCustomer = (id: string, body: unknown) => api.patch<CustomerRow>(`/customers/${id}/`, body);
+/** The server archives the customer (their history stays). Needs `customer.delete`. */
+export const deleteCustomer = (id: string) => api.delete<void>(`/customers/${id}/`);
 export const createCustomer = (body: unknown) => api.post<{ id: string }>('/customers/', body);
 
 /** One `idempotencyKey` per dialog: a retry after a dropped connection must not take the money twice. */
