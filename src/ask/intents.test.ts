@@ -103,3 +103,16 @@ test('a product word that sounds like a function word is still a product ("cola"
   assert.equal(m.kind === 'intent' && m.intent, 'product_price');
   assert.equal(m.kind === 'intent' && m.product, 'coca cola');
 });
+
+test('"kal" means yesterday unless the sentence looks ahead, and "nogod" shows how customers paid', async () => {
+  const { asksAboutTomorrow } = await import('./intents.ts');
+  assert.equal(asksAboutTomorrow('kal koto bikri hoyechilo'), false);
+  assert.equal(asksAboutTomorrow('kal koto bikri hobe'), true);
+  assert.equal(asksAboutTomorrow('কাল কত বিক্রি হবে'), true);
+  assert.equal(asksAboutTomorrow('gotokal koto bikri hobe'), false, '"gotokal" is always yesterday');
+  assert.equal(matchIntent('kal koto bikri hobe').kind, 'unsupported');
+  const m = matchIntent('ajker nogod koto');
+  assert.equal(m.kind === 'intent' && m.intent, 'payments_today');
+  const n = matchIntent('নগদ কত');
+  assert.equal(n.kind === 'intent' && n.intent, 'payments_today');
+});

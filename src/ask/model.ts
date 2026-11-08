@@ -152,3 +152,33 @@ export const askWhich = (what: 'item' | 'name'): Answer => ({
   lead: { text: what === 'item' ? 'Tell me the item name, for example: Coca cola dam koto?' : 'Tell me the customer name, for example: Karim er baki koto?' },
   action: { label: 'Ajker bill koto?', route: null, ask: 'sales_today' },
 });
+
+/** Batches that expire soon or already have, soonest first; the days left decide the colour. */
+export function expiryAnswer(o: { kind: 'soon' | 'expired'; rows: { name: string; batch: string; date: string | null; days: number | null; qty: string }[]; total: number }): Answer {
+  const soon = o.kind === 'soon';
+  return {
+    title: soon ? 'Expiring soon' : 'Expired stock',
+    lead: o.total === 0 ? { text: soon ? 'Nothing expires in the next 30 days.' : 'Nothing has expired.' } : { text: soon ? '{n} batches expire within 30 days.' : '{n} batches have expired.', params: { n: o.total } },
+    rows: o.rows.map((r) => ({ primary: r.name, secondary: [r.batch, r.date].filter(Boolean).join(' · '), value: `${qty(r.qty)}`, tone: soon && (r.days ?? 99) > 14 ? ('warn' as const) : ('bad' as const) })),
+    alert: o.total ? { tone: soon ? 'warn' : 'bad', text: { text: soon ? 'Sell or return these first.' : 'Take these off the shelf.' } } : undefined,
+    action: { label: 'View expiry', route: '/expiry' },
+  };
+}
+
+export function metalRatesAnswer(rows: { metal: string; purity: string; rate: string }[]): Answer {
+  return {
+    title: 'Metal rates',
+    lead: rows.length ? { text: '{name}: {amount} per gram.', params: { name: `${rows[0].metal} ${rows[0].purity}`, amount: money(rows[0].rate) } } : { text: 'No rates are set.' },
+    rows: rows.map((r) => ({ primary: `${r.metal} ${r.purity}`, value: money(r.rate) })),
+    action: { label: 'Open metal rates', route: '/metal-rates' },
+  };
+}
+
+export function ordersDueAnswer(rows: { who: string; ref: string; due: string; balance: string }[], total: number): Answer {
+  return {
+    title: 'Orders due',
+    lead: total === 0 ? { text: 'No orders are due.' } : { text: '{n} orders are due or overdue.', params: { n: total } },
+    rows: rows.map((r) => ({ primary: r.who, secondary: `${r.ref} · ${r.due}`, value: money(r.balance), tone: Number(r.balance) > 0 ? ('warn' as const) : undefined })),
+    action: { label: 'View orders', route: '/orders' },
+  };
+}

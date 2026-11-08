@@ -1,6 +1,7 @@
 import Fuse from 'fuse.js';
 
 import { nameWords, normalizeBanglish } from './banglish.ts';
+import { normalizeText } from './text.ts';
 
 export type IntentId =
   | 'sales_today' | 'sales_yesterday' | 'sales_week' | 'low_stock' | 'out_of_stock' | 'top_products' | 'bills_today'
@@ -20,7 +21,7 @@ export const INTENTS: Intent[] = [
   { id: 'due_amount', examples: ['customer der baki koto', 'kar kache koto baki', 'baki koto', 'who owes', 'বাকি কত', 'customer baki', 'kon customer baki', 'baki ase ki', 'koto baki ase', 'baki koto ase', 'kar baki ase'] },
   { id: 'supplier_due', examples: ['supplier ke koto dite hobe', 'supplier baki', 'mahajon ke koto dibo', 'ami koto dibo', 'supplier due', 'সাপ্লায়ারকে কত দিতে হবে', 'supplier der baki koto'] },
   { id: 'profit_today', examples: ['ajker labh koto', 'profit koto', 'ajke koto labh', 'লাভ কত', 'today profit', 'ajker profit', 'labh koto hoyeche'] },
-  { id: 'payments_today', examples: ['cash koto ajke', 'bkash koto', 'kon payment method beshi', 'ajker cash', 'ajker taka koto ashche', 'payment koto ajke', 'ajker payment'] },
+  { id: 'payments_today', examples: ['ajker nogod koto', 'nagad koto ajke', 'নগদ কত', 'ajker nagad ar cash koto', 'cash koto ajke', 'bkash koto', 'kon payment method beshi', 'ajker cash', 'ajker taka koto ashche', 'payment koto ajke', 'ajker payment'] },
   { id: 'start_selling', examples: ['bikri korbo', 'sell korbo', 'bill korbo', 'new sale', 'বিক্রি করব', 'notun bill', 'sale suru'] },
 ];
 
@@ -46,7 +47,16 @@ const topicShared = (example: string, words: Set<string>) => [...tokens(example)
  * name left over; everything else is matched fuzzily against the examples. A weak match is never guessed: the caller gets the nearest
  * questions to offer, or "not supported" for something that is not about the shop.
  */
+/** "Kal" is yesterday AND tomorrow. A future verb in the same sentence ("kal koto bikri hobe") means tomorrow, which no shop data can answer. */
+const BARE_KAL = new Set(['kal', 'kaler', 'kalker', 'kalke', 'কাল', 'কালকের', 'কালকে', 'কালের']);
+const FUTURE = new Set(['hobe', 'hobey', 'hobo', 'hoibo', 'hoibe', 'dibo', 'debo', 'korbo', 'korbe', 'ashbe', 'asbe', 'jabe', 'lagbe', 'porbe', 'হবে', 'দিব', 'দেব', 'করব', 'করবে', 'লাগবে', 'পড়বে', 'আসবে', 'যাবে']);
+export function asksAboutTomorrow(input: string): boolean {
+  const words = normalizeText(input).split(' ');
+  return words.some((w) => BARE_KAL.has(w)) && words.some((w) => FUTURE.has(w));
+}
+
 export function matchIntent(input: string): Match {
+  if (asksAboutTomorrow(input)) return { kind: 'unsupported', confidence: 0 };
   const norm = normalizeBanglish(input);
   if (!norm) return { kind: 'unsupported', confidence: 0 };
   const words = tokens(norm);

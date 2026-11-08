@@ -3,7 +3,7 @@ import { initLlama, type LlamaContext } from 'llama.rn';
 
 import { MODEL } from './model-spec';
 import { loadModelState, modelPath } from './model-store';
-import { buildPrompt, GRAMMAR, parsePlan, type NONE, type Plan } from './plan';
+import { buildPrompt, grammarFor, parsePlan, TOOLS, type NONE, type Plan, type ShopContext } from './plan';
 
 let loaded: Promise<LlamaContext> | null = null;
 let idle: ReturnType<typeof setTimeout> | null = null;
@@ -27,7 +27,7 @@ function release(): void {
  * cannot write anything else, and nothing it says is shown: the answer is built from the shop's own data by the lookup. Any failure, a slow
  * phone or an unexpected reply gives null, and the person simply sees the nearest questions as before.
  */
-export async function planQuestion(question: string): Promise<Plan | typeof NONE | null> {
+export async function planQuestion(question: string, shop: ShopContext = {}): Promise<Plan | typeof NONE | null> {
   try {
     if (idle) clearTimeout(idle);
     loaded ??= initLlama({ model: modelPath().replace(/^file:\/\//, ''), n_ctx: 2048, n_gpu_layers: 0, use_mlock: false });
@@ -39,7 +39,7 @@ export async function planQuestion(question: string): Promise<Plan | typeof NONE
         resolve(null);
       }, WAIT_MS);
     });
-    const run = ctx.completion({ prompt: buildPrompt(question), grammar: GRAMMAR, n_predict: 90, temperature: 0, stop: ['<|im_end|>'] }).then((r) => parsePlan(r.text));
+    const run = ctx.completion({ prompt: buildPrompt(question, shop), grammar: grammarFor(shop.tools ?? TOOLS), n_predict: 90, temperature: 0, stop: ['<|im_end|>'] }).then((r) => parsePlan(r.text));
     const out = await Promise.race([run, timeout]);
     clearTimeout(timer);
     // Free the memory soon after use: the model is large and the shop app should not hold it while someone is selling.

@@ -2,6 +2,9 @@ import { periodDates } from '@/reports/logic';
 import { formatBDT } from '@/lib/money';
 import { api } from '@/api/session';
 import { listCustomers } from '@/customers/api';
+import { listBatches } from '@/expiry/api';
+import { listMetalRates } from '@/extras/api';
+import { listOrders } from '@/orders/api';
 import { bestSellers, customerDue, howPaid, salesByBranch, salesByCashier, salesByKind, salesDaily, salesSummary, supplierDue } from '@/reports/api';
 import type { Sale } from '@/sales/api';
 import { soldInRange } from '@/home/api';
@@ -12,9 +15,10 @@ import { itemName } from '@/sell/catalog-map';
 
 import { itemSearchTerms } from './banglish';
 import { allowed } from './allowed';
-import { missingInput, PERIOD_LABEL, toolAllowed, type Plan } from './plan';
+import { resolveCustomerNames, resolveItemNames } from './shop-vocab';
+import { missingInput, PERIOD_LABEL, toolAllowed, toolOffered, type Plan } from './plan';
 import type { IntentId, Match } from './intents';
-import { askWhich, billsAnswer, duesAnswer, itemSalesAnswer, notAllowed, notUnderstood, paymentsAnswer, priceAnswer, profitAnswer, rankedAnswer, salesAnswer, startSellingAnswer, stockListAnswer, stockOfAnswer, topAnswer, type Answer } from './model';
+import { askWhich, billsAnswer, duesAnswer, expiryAnswer, itemSalesAnswer, metalRatesAnswer, ordersDueAnswer, notAllowed, notUnderstood, paymentsAnswer, priceAnswer, profitAnswer, rankedAnswer, salesAnswer, startSellingAnswer, stockListAnswer, stockOfAnswer, topAnswer, type Answer } from './model';
 
 const money = (v: string) => formatBDT(v, { dp: 0 });
 const toLine = (r: { product_name: string; variant_name: string; available: string; reorder_level: string; unit_short_name: string | null }) => ({ name: itemName(r.product_name, r.variant_name), available: r.available, reorder: r.reorder_level, unit: r.unit_short_name });
@@ -57,17 +61,20 @@ export async function answerIntent(intent: IntentId, product: string | undefined
     case 'payments_today': return paymentsAnswer((await howPaid(range('today'))).map((r) => ({ label: r.label, amount: r.amount })));
     case 'product_price': {
       let items: Awaited<ReturnType<typeof searchCatalog>>['items'] = [];
-      for (const q of itemSearchTerms(product ?? '')) {
-        items = (await searchCatalog({ q, page: 1, wholesale: false })).items.slice(0, 5);
-        if (items.length) break;
+      for (const q of await searchTerms(product ?? '')) {
+        const more = (await searchCatalog({ q, page: 1, wholesale: false })).items;
+        items = [...items, ...more.filter((m) => !items.some((i) => i.variantId === m.variantId))];
+        if (items.length >= 5) break;
       }
+      items = items.slice(0, 5);
       return priceAnswer(product ?? '', items.map((i) => ({ name: i.name, price: i.price, unit: i.unitShort })));
     }
     case 'product_stock': {
       let rows: Awaited<ReturnType<typeof listStock>>['rows'] = [];
-      for (const q of itemSearchTerms(product ?? '')) {
-        rows = (await listStock({ search: q, filter: 'all', page: 1 })).rows;
-        if (rows.length) break;
+      for (const q of await searchTerms(product ?? '')) {
+        const more = (await listStock({ search: q, filter: 'all', page: 1 })).rows;
+        rows = [...rows, ...more.filter((m) => !rows.some((r) => r.id === m.id))];
+        if (rows.length >= 5) break;
       }
       return stockOfAnswer(product ?? '', rows.slice(0, 5).map((r) => ({ name: itemName(r.product_name, r.variant_name), stock: r.available, unit: r.unit_short_name, reorder: r.reorder_level })));
     }
@@ -83,6 +90,11 @@ export async function answerFor(m: Match, perms: readonly string[] | undefined):
 }
 
 
+/** What to search for, best first: the shop's own names that sound like it, then the English form, then what was typed. */
+async function searchTerms(typed: string): Promise<string[]> {
+  return [...new Set([...(await resolveItemNames(typed)), ...itemSearchTerms(typed)])];
+}
+
 const lower = (x: string) => x.toLowerCase();
 const matchesAny = (name: string, terms: string[]) => terms.some((t) => lower(name).includes(lower(t)));
 
@@ -90,8 +102,9 @@ const matchesAny = (name: string, terms: string[]) => terms.some((t) => lower(na
  * Runs a plan the model wrote. Every figure comes from the shop's own reports, the same calls the screens make, and a lookup the person's
  * role may not open is refused here as well as on the server. The model only chose the lookup, the dates and the name.
  */
-export async function runPlan(plan: Plan, perms: readonly string[] | undefined): Promise<Answer> {
+export async function runPlan(plan: Plan, perms: readonly string[] | undefined, features?: readonly string[]): Promise<Answer> {
   if (!toolAllowed(plan.tool, perms)) return notAllowed();
+  if (!toolOffered(plan.tool, features)) return notUnderstood(); // this shop's trade does not have that lookup
   const missing = missingInput(plan);
   if (missing) return askWhich(missing);
   const w = periodDates(plan.period);
@@ -109,7 +122,7 @@ export async function runPlan(plan: Plan, perms: readonly string[] | undefined):
     }
     case 'top_products': return at(topAnswer((await bestSellers(w)).map((r) => ({ name: itemName(r.product_name, r.variant_name), sold: r.quantity_sold, revenue: r.revenue }))));
     case 'item_sales': {
-      const terms = itemSearchTerms(plan.item);
+      const terms = await searchTerms(plan.item);
       const rows = await bestSellers(w, 500);
       const matches = rows.filter((r) => matchesAny(itemName(r.product_name, r.variant_name), terms)).map((r) => ({ name: itemName(r.product_name, r.variant_name), sold: r.quantity_sold, revenue: r.revenue }));
       return at(itemSalesAnswer({ name: plan.item, matches }));
@@ -138,7 +151,11 @@ export async function runPlan(plan: Plan, perms: readonly string[] | undefined):
     case 'customer_dues': return answerIntent('due_amount', undefined, perms);
     case 'supplier_dues': return answerIntent('supplier_due', undefined, perms);
     case 'customer_balance': {
-      const rows = (await listCustomers({ search: plan.name, owes: false, page: 1 })).rows.slice(0, 5);
+      let rows: Awaited<ReturnType<typeof listCustomers>>['rows'] = [];
+      for (const q of [...(await resolveCustomerNames(plan.name)), plan.name]) {
+        rows = (await listCustomers({ search: q, owes: false, page: 1 })).rows.slice(0, 5);
+        if (rows.length) break;
+      }
       return rankedAnswer({ title: 'One customer', lead: rows.length ? { text: '{name} owes {amount}.', params: { name: rows[0].name, amount: money(rows[0].current_balance) } } : { text: 'No customer matches "{name}".', params: { name: plan.name } }, rows: rows.map((c) => ({ primary: c.name, secondary: c.phone || undefined, value: money(c.current_balance), tone: Number(c.current_balance) > 0 ? ('bad' as const) : ('good' as const) })), route: '/customers', action: 'View customers' });
     }
     case 'stock_low': return answerIntent('low_stock', undefined, perms);
@@ -146,5 +163,16 @@ export async function runPlan(plan: Plan, perms: readonly string[] | undefined):
     case 'stock_of': return answerIntent('product_stock', plan.item, perms);
     case 'price_of': return answerIntent('product_price', plan.item, perms);
     case 'start_selling': return answerIntent('start_selling', undefined, perms);
+    case 'expiring_soon':
+    case 'expired_stock': {
+      const soon = plan.tool === 'expiring_soon';
+      const p = await listBatches({ state: soon ? 'expiring' : 'expired', withinDays: 30, page: 1 });
+      return expiryAnswer({ kind: soon ? 'soon' : 'expired', total: p.total, rows: p.rows.slice(0, 8).map((b) => ({ name: itemName(b.product_name, b.variant_name), batch: b.batch_no, date: b.expiry_date, days: b.days_left, qty: b.quantity })) });
+    }
+    case 'metal_rates': return metalRatesAnswer((await listMetalRates()).map((r) => ({ metal: r.metal, purity: r.purity, rate: r.rate_per_gram })));
+    case 'orders_due': {
+      const p = await listOrders({ status: 'OPEN', due: 'week', search: '', page: 1 });
+      return ordersDueAnswer(p.rows.slice(0, 8).map((o) => ({ who: o.customer_name, ref: o.reference_no, due: o.due_date, balance: o.balance })), p.total);
+    }
   }
 }

@@ -11,7 +11,8 @@ import { modelUsable, planQuestion } from '@/ask/llm';
 import { logMiss } from '@/ask/miss-log';
 import { SUGGESTION_WORDS, type Answer } from '@/ask/model';
 import { loadModelState, useModelState } from '@/ask/model-store';
-import { describePlan } from '@/ask/plan';
+import { describePlan, toolsFor } from '@/ask/plan';
+import { ownWords } from '@/ask/shop-vocab';
 import { useSession } from '@/auth/session-provider';
 import { Button } from '@/components/button';
 import { Icon } from '@/components/icons/icon';
@@ -40,6 +41,8 @@ export default function AskScreen() {
   const next = useRef(1);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const perms = me?.permissions;
+  const category = (me?.organization as { category?: { name?: string; features?: string[] } } | undefined)?.category;
+  const features = category?.features;
 
   useEffect(() => {
     queueMicrotask(() => void loadModelState());
@@ -61,8 +64,8 @@ export default function AskScreen() {
         if (m.kind !== 'intent') {
           void logMiss(shown, m.kind);
           // The word matcher was not sure: if the helper model is on this phone, let it turn the sentence into a lookup.
-          const plan = (await modelUsable()) ? await planQuestion(shown) : null;
-          if (plan && plan !== 'none') return settle(theirs, { kind: 'answer', answer: await runPlan(plan, perms), heard: describePlan(plan, t) });
+          const plan = (await modelUsable()) ? await planQuestion(shown, { business: category?.name, features, words: await ownWords(), tools: toolsFor(features, perms) }) : null;
+          if (plan && plan !== 'none') return settle(theirs, { kind: 'answer', answer: await runPlan(plan, perms, features), heard: describePlan(plan, t) });
           if (m.kind === 'unsure') return settle(theirs, { kind: 'pick', options: m.suggestions });
         }
         const answer = await answerFor(m, perms);
@@ -71,7 +74,7 @@ export default function AskScreen() {
         settle(theirs, { kind: 'error', question: shown, intent });
       }
     },
-    [perms, settle, t],
+    [perms, settle, t, category, features],
   );
 
   return (

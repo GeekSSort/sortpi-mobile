@@ -124,3 +124,25 @@ export async function searchCustomers(db: Db, typed: string, limit = 30): Promis
   );
   return rows.map((c) => ({ id: c.id, code: c.code ?? '', name: c.name, phone: c.phone ?? '', wholesale: c.customer_type === 'WHOLESALE', balance: c.current_balance ?? '0', creditLimit: c.credit_limit ?? '0' }));
 }
+
+/** Every active item's name (once per item, not per size), for matching what someone typed against the shop's own words. */
+export async function itemNames(db: Db): Promise<{ id: string; name: string }[]> {
+  return db.all<{ id: string; name: string }>('SELECT id, name FROM products WHERE is_active = 1');
+}
+
+export async function customerNames(db: Db): Promise<{ id: string; name: string }[]> {
+  return db.all<{ id: string; name: string }>('SELECT id, name FROM customers WHERE is_active = 1');
+}
+
+/** The words this shop itself uses: its busiest categories and brands, its units and a few item names. The model is told these about the shop. */
+export type ShopWords = { categories: string[]; brands: string[]; units: string[]; items: string[] };
+export async function shopWords(db: Db, per = 12): Promise<ShopWords> {
+  const top = async (column: 'category_name' | 'brand_name') =>
+    (await db.all<{ n: string }>(`SELECT ${column} AS n FROM products WHERE is_active = 1 AND ${column} IS NOT NULL AND ${column} <> '' GROUP BY ${column} ORDER BY count(*) DESC LIMIT ?`, [per])).map((r) => r.n);
+  return {
+    categories: await top('category_name'),
+    brands: await top('brand_name'),
+    units: (await db.all<{ n: string }>("SELECT coalesce(nullif(short_name, ''), name) AS n FROM units LIMIT ?", [per])).map((r) => r.n),
+    items: (await db.all<{ n: string }>('SELECT name AS n FROM products WHERE is_active = 1 ORDER BY name_key LIMIT ?', [per])).map((r) => r.n),
+  };
+}

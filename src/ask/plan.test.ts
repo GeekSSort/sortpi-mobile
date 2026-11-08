@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { buildPrompt, describePlan, GRAMMAR, missingInput, parsePlan, PERIODS, TOOLS, toolAllowed } from './plan.ts';
+import { buildPrompt, describePlan, GRAMMAR, grammarFor, missingInput, parsePlan, PERIODS, profileText, TOOLS, toolAllowed, toolOffered, toolsFor } from './plan.ts';
 
 test('the grammar allows every tool, "none" and every period, and nothing else', () => {
   for (const t of TOOLS) assert.ok(GRAMMAR.includes(`"${t.id}"`), t.id);
@@ -48,4 +48,33 @@ test('the prompt lists every lookup, shows worked examples, ends with a closed t
 test('what was understood is shown in plain words', () => {
   assert.equal(describePlan({ tool: 'item_sales', period: 'yesterday', item: 'water', name: '' }, (s) => s), 'Sales of one item · Yesterday · water');
   assert.equal(describePlan({ tool: 'profit', period: 'month', item: '', name: '' }, (s) => s), 'Profit · This month');
+});
+
+
+test('a shop gets only the lookups its trade has and its role may open', () => {
+  const all = ['report.sales', 'sale.view', 'inventory.view', 'product.view', 'pos.access', 'customer.view', 'report.finance', 'sale.view_profit'];
+  const ids = (features: string[]) => toolsFor(features, all).map((t) => t.id);
+  assert.ok(ids(['expiry']).includes('expiring_soon') && ids(['expiry']).includes('expired_stock'));
+  assert.ok(!ids([]).includes('expiring_soon'));
+  assert.ok(ids(['metal_rate']).includes('metal_rates') && !ids(['expiry']).includes('metal_rates'));
+  assert.ok(ids(['tailoring']).includes('orders_due') && ids(['repair']).includes('orders_due') && !ids(['expiry']).includes('orders_due'));
+  assert.ok(!toolsFor(['expiry'], ['sale.view']).some((t) => t.id === 'profit'), 'a cashier-level role does not get profit');
+  assert.equal(toolOffered('expiring_soon', ['expiry']), true);
+  assert.equal(toolOffered('expiring_soon', ['metal_rate']), false);
+  assert.equal(toolOffered('sales_total', undefined), true);
+});
+
+test('the grammar and prompt of a shop list only its own lookups', () => {
+  const tools = toolsFor(['expiry'], ['inventory.view', 'sale.view', 'report.sales', 'product.view']);
+  const g = grammarFor(tools);
+  assert.ok(g.includes('"expiring_soon"') && !g.includes('"metal_rates"') && g.includes('"none"'));
+  const p = buildPrompt('meyad sesh koto', { business: 'Pharmacy', features: ['expiry', 'generic'], tools, words: { categories: ['Tablet', 'Syrup'], brands: ['Square'], units: ['strip'], items: ['Napa Extra'] } });
+  assert.ok(p.includes('This shop is a Pharmacy.') && p.includes('Tablet, Syrup') && p.includes('strip') && p.includes('expiring_soon'));
+  assert.ok(!p.includes('metal_rates') && !p.includes('sonar dam'), 'a pharmacy is not shown gold-rate lookups or examples');
+  assert.ok(p.includes('baki: about a person it is money owed') && p.includes('kal means yesterday'));
+});
+
+test('the profile says nothing it does not know', () => {
+  assert.equal(profileText({}), '');
+  assert.equal(profileText({ business: 'Fabric & textiles', features: ['modal'], words: null }), 'This shop is a Fabric & textiles.\nIts trade uses: modal.');
 });

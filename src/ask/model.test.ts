@@ -69,3 +69,16 @@ test('item sales add up the matching lines, and say so when nothing matched', ()
   assert.equal(askWhich('item').action.ask, 'sales_today');
   assert.equal(rankedAnswer({ title: 'x', lead: { text: 'y' }, rows: [], route: '/reports', action: 'View reports' }).action.route, '/reports');
 });
+
+test('trade answers: expiry, metal rates and orders due', async () => {
+  const { expiryAnswer, metalRatesAnswer, ordersDueAnswer } = await import('./model.ts');
+  const e = expiryAnswer({ kind: 'soon', total: 2, rows: [{ name: 'Napa', batch: 'B1', date: '2026-12-01', days: 10, qty: '30.000' }, { name: 'Seclo', batch: 'B2', date: '2026-12-20', days: 29, qty: '5.000' }] });
+  assert.equal(e.rows?.[0].tone, 'bad');
+  assert.equal(e.rows?.[1].tone, 'warn');
+  assert.equal(e.action.route, '/expiry');
+  assert.equal(expiryAnswer({ kind: 'expired', total: 0, rows: [] }).alert, undefined);
+  assert.equal(metalRatesAnswer([]).lead.text, 'No rates are set.');
+  assert.equal(metalRatesAnswer([{ metal: 'Gold', purity: '22K', rate: '15000' }]).rows?.[0].primary, 'Gold 22K');
+  assert.equal(ordersDueAnswer([], 0).lead.text, 'No orders are due.');
+  assert.equal(ordersDueAnswer([{ who: 'Karim', ref: 'ORD-1', due: '2026-11-10', balance: '500' }], 1).rows?.[0].tone, 'warn');
+});
