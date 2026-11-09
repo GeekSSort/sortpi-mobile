@@ -3,7 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import Animated, { FadeIn, FadeInDown, FadeInUp, FadeOutLeft, LinearTransition, useAnimatedStyle, useSharedValue, withSpring, ZoomIn } from 'react-native-reanimated';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, Share, useColorScheme, Vibration, View } from 'react-native';
+import { Alert, Platform, Pressable, Share, useColorScheme, useWindowDimensions, Vibration, View } from 'react-native';
 
 import { newIdempotencyKey } from '@/api/idempotency';
 import { useSession } from '@/auth/session-provider';
@@ -20,7 +20,7 @@ import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { PayColors } from '@/constants/palette';
 import { BottomTabInset, Fonts, MaxContentWidth, Radius } from '@/constants/theme';
-import { KeyboardStickyView } from 'react-native-keyboard-controller';
+import { KeyboardAwareScrollView, KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useT } from '@/i18n/prefs';
 import { useTheme } from '@/hooks/use-theme';
 import { addMoney, compareMoney, formatBDT, subMoney } from '@/lib/money';
@@ -44,7 +44,7 @@ import { currentShift, dropHeld, listCounters, heldCarts, holdCart, loadSellCont
 import { defaultCounter } from '@/sell/counters';
 import { holdBody, holdReference, mergeHeld, type HeldCart } from '@/sell/held';
 import { HeldSheet } from '@/sell/held-sheet';
-import { addItem, changeDue, changeQuantity, setQuantity, estimateSubtotal, isEmpty, itemCount, lastQuantity, lineEstimate, lineKey, removeLine, type Cart, type CartLine, type PaymentMethod, type ScannedItem } from '@/sell/cart';
+import { addItem, changeDue, changeQuantity, setQuantity, estimateSubtotal, isEmpty, itemCount, lastQuantity, lineEstimate, removeLine, type Cart, type CartLine, type ScannedItem } from '@/sell/cart';
 import { SwipeToRemove } from '@/components/swipe-to-remove';
 import { useCameraPermissions } from 'expo-camera';
 import { useUsesBarcodes } from '@/sell/use-barcodes';
@@ -77,6 +77,8 @@ export default function SellScreen() {
   const router = useRouter();
   const [cart, setCart] = useState<Cart>([]);
   const [mode, setMode] = useState<Mode>('scan');
+  const { width } = useWindowDimensions();
+  const splitTill = Platform.OS === 'android' && width >= 720 && mode !== 'done';
   const [notice, setNotice] = useState<string | null>(null);
   const [scanNote, setScanNote] = useState<ScanNote | null>(null);
   // An item scanned a second time waits here for a yes, so a camera that lingers on one packet cannot add it twice by accident.
@@ -86,10 +88,10 @@ export default function SellScreen() {
   useEffect(() => {
     cartRef.current = cart;
   }, [cart]);
-  // The camera opens by itself only where it is already allowed; otherwise the scan button next to the search box opens it.
+  // On the wide till, keep the catalogue in view until the cashier opens the camera.
   const [cameraPermission] = useCameraPermissions();
   const [cameraChoice, setCameraChoice] = useState<boolean | null>(null);
-  const showCamera = cameraChoice ?? !!cameraPermission?.granted;
+  const showCamera = cameraChoice ?? (!splitTill && !!cameraPermission?.granted);
   const usesBarcodes = useUsesBarcodes();
   const [openingCash, setOpeningCash] = useState('0');
   const [method, setMethod] = useState<PayChoice>('CASH');
@@ -134,7 +136,7 @@ export default function SellScreen() {
   const [qtyKey, setQtyKey] = useState<string | null>(null);
   const [qtyText, setQtyText] = useState('');
   // Declared before any early return so the hook order never changes. The pay bar shows while there is something to pay for.
-  const showBar = mode !== 'done' && !isEmpty(cart);
+  const showBar = !splitTill && mode !== 'done' && !isEmpty(cart);
   const barHeight = useBottomBar();
   // An emptied cart closes its sheet, so the sheet does not pop up again by itself with the next item.
   if (!showBar && cartOpen) setCartOpen(false);
@@ -534,7 +536,7 @@ export default function SellScreen() {
             // Waits for a removed row to finish leaving, so the two never overlap.
             <Animated.View entering={FadeIn.delay(200).duration(200)}>
               <ThemedText type="small" themeColor="textMuted" style={{ padding: 8 }}>
-                Tap an item above to add the first one.
+                {splitTill ? t('Tap a product to add it to the cart.') : t('Tap an item above to add the first one.')}
               </ThemedText>
             </Animated.View>
           ) : null}
@@ -598,14 +600,116 @@ export default function SellScreen() {
           ) : null
   );
 
+  const totalSummary = (
+    <>
+      <ThemedText type="caption" themeColor="textMuted">
+        {mode === 'scan' && !splitTill ? t(itemCount(cart) === 1 ? 'Total · 1 item · tap to see' : 'Total · {n} items · tap to see', { n: itemCount(cart) }) : t('Total')}
+      </ThemedText>
+      <ThemedText type="heading">{formatBDT(pending && mode === 'pay' ? pending.total : ((mode === 'pay' ? payTotal : undefined) ?? serverTotal ?? estimate))}</ThemedText>
+      {!isEmpty(cart) && totalNote ? (
+        <ThemedText type="caption" themeColor="textMuted" numberOfLines={1}>
+          {totalNote}
+        </ThemedText>
+      ) : null}
+    </>
+  );
+
+  const cartActions = isEmpty(cart) ? null : (
+    <>
+      {canHold ? <Button title="Put on hold" variant="secondary" loading={busy} onPress={() => void putOnHold()} /> : null}
+      <Button title="Remove everything" variant="secondary" onPress={() => Alert.alert(t('Remove everything?'), t('This takes every item out of the cart.'), [{ text: t('Cancel'), style: 'cancel' }, { text: t('Yes, remove'), style: 'destructive', onPress: () => { const before = cart; setCart([]); setCartOpen(false); showToast({ text: t('Cart cleared'), actionLabel: t('Undo'), onAction: () => setCart(before) }); } }])} />
+    </>
+  );
+
+  const paymentPanel = mode === 'pay' && !isEmpty(cart) ? (
+    <Card style={{ gap: 12 }}>
+      {customerRow}
+
+      <View style={{ gap: 12 }}>
+        {serverTotal ? <DiscountBlock d={d} total={serverTotal} customerName={customer?.name} /> : null}
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          {METHODS.map((m) => {
+            const on = method === m.id;
+            const pay = PayColors[m.id as keyof typeof PayColors];
+            const ink = dark ? pay.ink.dark : pay.ink.light;
+            return (
+              <Tap key={m.id} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => setMethod(m.id)} style={{ overflow: 'hidden', flex: 1, minHeight: 72, gap: 4, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: on ? pay.fill : ink, backgroundColor: on ? pay.fill : theme.card }}>
+                <Icon name={m.icon} size={24} color={on ? theme.onBrand : ink} />
+                <ThemedText type="smallMedium" style={{ color: on ? theme.onBrand : ink }}>
+                  {m.label}
+                </ThemedText>
+              </Tap>
+            );
+          })}
+        </View>
+        {customer ? (
+          <Tap accessibilityRole="button" accessibilityState={{ selected: method === 'CREDIT' }} onPress={() => setMethod(method === 'CREDIT' ? 'CASH' : 'CREDIT')} style={{ overflow: 'hidden', minHeight: 44, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: method === 'CREDIT' ? theme.brand : theme.inputBorder, backgroundColor: method === 'CREDIT' ? theme.brandSoft : theme.card }}>
+            <ThemedText type="smallMedium" style={{ color: method === 'CREDIT' ? theme.brandText : theme.textSecondary }}>
+              {t("Pay later (udhar): write it all on {name}'s account", { name: customer.name })}
+            </ThemedText>
+          </Tap>
+        ) : null}
+        {customer && method !== 'CREDIT' ? <Field label="Customer pays now" value={payNow} onChangeText={setPayNow} keyboardType="decimal-pad" prefix="৳" hint="If it is less than the total, the rest is written on their account." /> : null}
+        {method === 'MOBILE' ? (
+          <View style={{ gap: 8 }}>
+            <ThemedText type="smallMedium" themeColor="textSecondary">
+              Which wallet?
+            </ThemedText>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {WALLETS.map((w) => {
+                const on = wallet === w;
+                return (
+                  <Tap key={w} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => setWallet(on ? null : w)} style={{ minHeight: 48, minWidth: 84, paddingHorizontal: 14, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: on ? theme.go : theme.inputBorder, backgroundColor: on ? theme.successSoft : theme.card }}>
+                    <ThemedText type="smallMedium" literal>
+                      {w}
+                    </ThemedText>
+                  </Tap>
+                );
+              })}
+            </View>
+          </View>
+        ) : null}
+        {method === 'CARD' || method === 'BANK' || method === 'MOBILE' ? <Field label="Transaction ID (optional)" value={reference} onChangeText={setReference} autoCapitalize="characters" placeholder="Transaction ID or approval code" /> : null}
+        {method === 'CASH' ? (
+          <Field label="Cash received (optional)" value={received} onChangeText={setReceived} keyboardType="decimal-pad" hint={changeText ? t('Change to give: {amount}', { amount: changeText }) : 'Enter it to see the change.'} error={cashShort ? 'That is less than the total.' : undefined} />
+        ) : null}
+        <Button title="Go back" variant="secondary" disabled={busy || !!pending} onPress={() => setMode('scan')} />
+      </View>
+    </Card>
+  ) : null;
+
+  const paymentStatus = (
+    <>
+      {/* A refusal (no stock, over the limit) is also said here: the notice at the top of the page is out of sight once the page is scrolled to Confirm. */}
+      {mode === 'pay' && pending && !busy ? (
+        <ThemedText type="caption" themeColor="textSecondary" style={{ paddingBottom: 8, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
+          {t('The last try got no answer. Confirm sends the same sale again; it cannot be charged twice.')}
+        </ThemedText>
+      ) : null}
+      {mode === 'pay' && notice ? (
+        <View accessibilityRole="alert" style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingBottom: 10, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
+          <Icon name="TriangleAlert" size={18} color={theme.danger} />
+          <ThemedText type="smallMedium" literal numberOfLines={3} style={{ flex: 1, color: theme.danger }}>{notice}</ThemedText>
+        </View>
+      ) : null}
+    </>
+  );
+
+  const paymentAction = mode === 'scan' ? (
+    <Button title="Take payment" variant="success" size="lg" disabled={isEmpty(cart) || !serverTotal} onPress={startPayment} style={{ minWidth: 168 }} />
+  ) : (
+    <Button variant="success" title={method === 'CREDIT' ? 'Write on account' : 'Confirm'} size="lg" loading={busy} disabled={pending ? false : !payTotal || cashShort} onPress={confirm} style={{ minWidth: 168 }} />
+  );
+
   return (
     <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, flexDirection: splitTill ? 'row' : 'column', backgroundColor: theme.canvas }}>
     <Screen topInset={false} keyboardGap={showBar ? barHeight + 40 : 24}>
       <Stack.Screen options={{ headerRight: mode === 'scan' ? () => <HeaderAction title="Day Close" onPress={() => router.push('/end-shift')} /> : undefined }} />
       <SaleGuide mode={mode} cartEmpty={isEmpty(cart)} usesBarcodes={usesBarcodes} />
       {mode === 'scan' ? (
         <>
-          {usesBarcodes && showCamera ? <Scanner onCode={(c) => void onCode(c)} paused={scanNote !== null || again !== null} /> : null}
+          {usesBarcodes && showCamera ? <Scanner height={splitTill ? 160 : undefined} onCode={(c) => void onCode(c)} paused={scanNote !== null || again !== null} /> : null}
           {canHold && heldCount > 0 ? (
             <Tap accessibilityRole="button" accessibilityLabel={t('Carts on hold')} onPress={() => setHeldOpen(true)} style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, borderRadius: Radius.md, backgroundColor: theme.warningSoft, borderWidth: 1, borderColor: theme.warning }}>
               <Icon name="Pause" size={20} color={theme.warning} />
@@ -614,6 +718,7 @@ export default function SellScreen() {
             </Tap>
           ) : null}
           <ItemPicker
+            wideGrid={splitTill}
             onPick={pickItem}
             qtyOf={(id) => inCart.get(id) ?? 0}
             onCode={(c) => void onCode(c, false)}
@@ -686,97 +791,38 @@ export default function SellScreen() {
         cartCard
       ) : null}
 
-      {mode === 'pay' && !isEmpty(cart) ? (
-        <Card style={{ gap: 12 }}>
-          {customerRow}
-
-            <View style={{ gap: 12 }}>
-              {serverTotal ? <DiscountBlock d={d} total={serverTotal} customerName={customer?.name} /> : null}
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                {METHODS.map((m) => {
-                  const on = method === m.id;
-                  const pay = PayColors[m.id as keyof typeof PayColors];
-                  const ink = dark ? pay.ink.dark : pay.ink.light;
-                  return (
-                    <Tap key={m.id} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => setMethod(m.id)} style={{ overflow: 'hidden', flex: 1, minHeight: 72, gap: 4, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: on ? pay.fill : ink, backgroundColor: on ? pay.fill : theme.card }}>
-                      <Icon name={m.icon} size={24} color={on ? theme.onBrand : ink} />
-                      <ThemedText type="smallMedium" style={{ color: on ? theme.onBrand : ink }}>
-                        {m.label}
-                      </ThemedText>
-                    </Tap>
-                  );
-                })}
-              </View>
-              {customer ? (
-                <Tap accessibilityRole="button" accessibilityState={{ selected: method === 'CREDIT' }} onPress={() => setMethod(method === 'CREDIT' ? 'CASH' : 'CREDIT')} style={{ overflow: 'hidden', minHeight: 44, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: method === 'CREDIT' ? theme.brand : theme.inputBorder, backgroundColor: method === 'CREDIT' ? theme.brandSoft : theme.card }}>
-                  <ThemedText type="smallMedium" style={{ color: method === 'CREDIT' ? theme.brandText : theme.textSecondary }}>
-                    {t("Pay later (udhar): write it all on {name}'s account", { name: customer.name })}
-                  </ThemedText>
-                </Tap>
-              ) : null}
-              {customer && method !== 'CREDIT' ? <Field label="Customer pays now" value={payNow} onChangeText={setPayNow} keyboardType="decimal-pad" prefix="৳" hint="If it is less than the total, the rest is written on their account." /> : null}
-              {method === 'MOBILE' ? (
-                <View style={{ gap: 8 }}>
-                  <ThemedText type="smallMedium" themeColor="textSecondary">
-                    Which wallet?
-                  </ThemedText>
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                    {WALLETS.map((w) => {
-                      const on = wallet === w;
-                      return (
-                        <Tap key={w} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => setWallet(on ? null : w)} style={{ minHeight: 48, minWidth: 84, paddingHorizontal: 14, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: on ? theme.go : theme.inputBorder, backgroundColor: on ? theme.successSoft : theme.card }}>
-                          <ThemedText type="smallMedium" literal>
-                            {w}
-                          </ThemedText>
-                        </Tap>
-                      );
-                    })}
-                  </View>
-                </View>
-              ) : null}
-              {method === 'CARD' || method === 'BANK' || method === 'MOBILE' ? <Field label="Transaction ID (optional)" value={reference} onChangeText={setReference} autoCapitalize="characters" placeholder="Transaction ID or approval code" /> : null}
-              {method === 'CASH' ? (
-                <Field label="Cash received (optional)" value={received} onChangeText={setReceived} keyboardType="decimal-pad" hint={changeText ? t('Change to give: {amount}', { amount: changeText }) : 'Enter it to see the change.'} error={cashShort ? 'That is less than the total.' : undefined} />
-              ) : null}
-              <Button title="Go back" variant="secondary" disabled={busy || !!pending} onPress={() => setMode('scan')} />
-            </View>
-        </Card>
-      ) : null}
+      {!splitTill ? paymentPanel : null}
       {showBar ? <View style={{ height: Math.max(124, barHeight + 16) }} /> : null}
     </Screen>
+    {splitTill ? (
+      <View style={{ width: '47%', maxWidth: 500, backgroundColor: theme.canvas, borderStartWidth: 1, borderColor: theme.border }}>
+        <KeyboardAwareScrollView keyboardShouldPersistTaps="handled" bottomOffset={24} contentContainerStyle={{ padding: 12, gap: 12 }}>
+          {mode === 'pay' ? paymentPanel : (
+            <>
+              {customerRow}
+              {cartCard}
+              {cartActions}
+            </>
+          )}
+        </KeyboardAwareScrollView>
+        <View style={{ padding: 12, gap: 8, backgroundColor: theme.card, borderTopWidth: 1, borderColor: theme.border }}>
+          {paymentStatus}
+          {totalSummary}
+          {paymentAction}
+        </View>
+      </View>
+    ) : null}
+    </View>
     {/* Stays on screen while the cart scrolls, so paying is one tap away however long the bill is. */}
     {showBar ? (
       <KeyboardStickyView offset={{ closed: 0, opened: BottomTabInset }} style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}>
       <Animated.View onLayout={(e) => setBottomBar(e.nativeEvent.layout.height)} entering={FadeInDown.duration(220)} style={{ paddingHorizontal: 16, paddingVertical: 12, backgroundColor: theme.card, borderTopWidth: 1, borderTopColor: theme.border }}>
-        {/* A refusal (no stock, over the limit) is also said here: the notice at the top of the page is out of sight once the page is scrolled to Confirm. */}
-        {mode === 'pay' && pending && !busy ? (
-          <ThemedText type="caption" themeColor="textSecondary" style={{ paddingBottom: 8, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
-            {t('The last try got no answer. Confirm sends the same sale again; it cannot be charged twice.')}
-          </ThemedText>
-        ) : null}
-        {mode === 'pay' && notice ? (
-          <View accessibilityRole="alert" style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingBottom: 10, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
-            <Icon name="TriangleAlert" size={18} color={theme.danger} />
-            <ThemedText type="smallMedium" literal numberOfLines={3} style={{ flex: 1, color: theme.danger }}>{notice}</ThemedText>
-          </View>
-        ) : null}
+        {paymentStatus}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
         <Tap accessibilityRole="button" accessibilityLabel={t('See the cart')} disabled={mode !== 'scan'} onPress={() => setCartOpen(true)} style={{ flex: 1 }}>
-          <ThemedText type="caption" themeColor="textMuted">
-            {mode === 'scan' ? t(itemCount(cart) === 1 ? 'Total · 1 item · tap to see' : 'Total · {n} items · tap to see', { n: itemCount(cart) }) : t('Total')}
-          </ThemedText>
-          <ThemedText type="heading">{formatBDT(pending && mode === 'pay' ? pending.total : ((mode === 'pay' ? payTotal : undefined) ?? serverTotal ?? estimate))}</ThemedText>
-          {totalNote ? (
-            <ThemedText type="caption" themeColor="textMuted" numberOfLines={1}>
-              {totalNote}
-            </ThemedText>
-          ) : null}
+          {totalSummary}
         </Tap>
-        {mode === 'scan' ? (
-          <Button title="Take payment" variant="success" size="lg" disabled={!serverTotal} onPress={startPayment} style={{ minWidth: 168 }} />
-        ) : (
-          <Button variant="success" title={method === 'CREDIT' ? 'Write on account' : 'Confirm'} size="lg" loading={busy} disabled={pending ? false : !payTotal || cashShort} onPress={confirm} style={{ minWidth: 168 }} />
-        )}
+        {paymentAction}
         </View>
       </Animated.View>
       </KeyboardStickyView>
@@ -791,8 +837,7 @@ export default function SellScreen() {
           <ThemedText type="smallMedium" style={{ color: theme.brandText }}>{customer ? 'Change' : 'Add customer'}</ThemedText>
         </Pressable> : null}
         <Button title="Take payment" variant="success" size="lg" disabled={!serverTotal} onPress={() => { setCartOpen(false); startPayment(); }} />
-        {canHold && !isEmpty(cart) ? <Button title="Put on hold" variant="secondary" loading={busy} onPress={() => void putOnHold()} /> : null}
-        {isEmpty(cart) ? null : <Button title="Remove everything" variant="secondary" onPress={() => Alert.alert(t('Remove everything?'), t('This takes every item out of the cart.'), [{ text: t('Cancel'), style: 'cancel' }, { text: t('Yes, remove'), style: 'destructive', onPress: () => { const before = cart; setCart([]); setCartOpen(false); showToast({ text: t('Cart cleared'), actionLabel: t('Undo'), onAction: () => setCart(before) }); } }])} />}
+        {cartActions}
       </View>
     </BottomSheet>
     {canPickCustomer ? (

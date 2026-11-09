@@ -24,9 +24,12 @@ import type { CatalogItem } from './catalog-map';
  * Selling without a barcode: type a name or code and tap the result, or tap an item from the shop's own list (most sold first),
  * narrowed by category. The camera is one optional button next to the search box.
  */
-export function ItemPicker({ onPick, qtyOf, onCode, wholesale, branchId, scan }: { onPick: (item: CatalogItem) => void; qtyOf: (variantId: string) => number; onCode: (code: string) => void; wholesale: boolean; branchId?: string; scan?: { open: boolean; toggle: () => void } }) {
+export function ItemPicker({ onPick, qtyOf, onCode, wholesale, branchId, scan, wideGrid = false }: { onPick: (item: CatalogItem) => void; qtyOf: (variantId: string) => number; onCode: (code: string) => void; wholesale: boolean; branchId?: string; wideGrid?: boolean; scan?: { open: boolean; toggle: () => void } }) {
   const theme = useTheme();
   const { t } = usePrefs();
+  const [gridWidth, setGridWidth] = useState(0);
+  const columns = gridWidth >= 660 ? 4 : gridWidth >= 500 ? 3 : 2;
+  const tileWidth = wideGrid && gridWidth > 0 ? Math.floor((gridWidth - Spacing.two * (columns - 1)) / columns) : undefined;
   const [text, setText] = useState('');
   const [typed, setTyped] = useState('');
   const [category, setCategory] = useState<string | null>(null);
@@ -95,7 +98,7 @@ export function ItemPicker({ onPick, qtyOf, onCode, wholesale, branchId, scan }:
         )
       ) : null}
 
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two }}>
+      <View onLayout={wideGrid ? (event) => setGridWidth(event.nativeEvent.layout.width) : undefined} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two }}>
         {items.map((it) => {
           const n = qtyOf(it.variantId);
           const out = isOut(it);
@@ -105,7 +108,7 @@ export function ItemPicker({ onPick, qtyOf, onCode, wholesale, branchId, scan }:
               accessibilityRole="button"
               accessibilityLabel={`${it.name}, ${formatBDT(it.price)}${n > 0 ? `, ${t('{n} in the cart', { n })}` : ''}`}
               onPress={() => onPick(it)} // a finished item still goes in: the branch setting decides at the till, and the server says no if it must
-              style={{ flexBasis: '48%', flexGrow: 1, minHeight: 76, padding: Spacing.three, gap: 4, borderRadius: Radius.lg, borderCurve: 'continuous', opacity: out ? 0.55 : 1, backgroundColor: n > 0 ? theme.successSoft : theme.card, borderWidth: n > 0 ? 2 : 1, borderColor: n > 0 ? theme.positive : theme.border }}>
+              style={{ flexBasis: tileWidth ?? '48%', flexGrow: tileWidth === undefined ? 1 : 0, minHeight: 76, padding: Spacing.three, gap: 4, borderRadius: Radius.lg, borderCurve: 'continuous', opacity: out ? 0.55 : 1, backgroundColor: n > 0 ? theme.successSoft : theme.card, borderWidth: n > 0 ? 2 : 1, borderColor: n > 0 ? theme.positive : theme.border }}>
               <ThemedText type="smallMedium" numberOfLines={2} literal>
                 {it.name}
               </ThemedText>

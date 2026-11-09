@@ -1364,6 +1364,7 @@ export const bn: Record<string, string> = {
   'Cash in the drawer now': 'এখন ক্যাশ বাক্সে ক্যাশ',
   'Or type the code': 'অথবা কোড লিখুন',
   Cart: 'কার্ট',
+  'Tap a product to add it to the cart.': 'কার্টে যোগ করতে কোনো পণ্যে চাপুন।',
   'Tap an item above to add the first one.': 'ওপর থেকে একটা মাল চাপুন, প্রথমটা যোগ হয়ে যাবে।',
   'Take payment': 'টাকা নিন',
   'Remove everything': 'সব সরিয়ে ফেলুন',
