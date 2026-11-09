@@ -1,7 +1,7 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, Keyboard, StyleSheet, View } from 'react-native';
 
 import { useSession } from '@/auth/session-provider';
 import { useDebounced } from '@/lib/use-debounced';
@@ -15,13 +15,16 @@ import { SkeletonRows } from '@/components/skeleton';
 import { Tap } from '@/components/tap';
 import { ThemedText } from '@/components/themed-text';
 import { ToneTile } from '@/components/tone-tile';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
 import { formatBDT } from '@/lib/money';
-import { listOffers, listProducts, productSummary, type Product } from '@/products/api';
+import { listOffers, listProducts, productByBarcode, productSummary, type Product } from '@/products/api';
 import { shopOfferFor } from '@/products/logic';
 import { Pill, useLevelStyle } from '@/products/variant-card';
+import { Scanner } from '@/scan/scanner';
+import { useUsesBarcodes } from '@/sell/use-barcodes';
+import { useSunmiScanner } from '@/sell/use-sunmi-peripherals';
 import { formatQuantity, stockLevel } from '@/stock/status';
 
 /** Every item in the shop: search by name, code or barcode, open one to see and change its price. */
@@ -31,6 +34,9 @@ export default function ProductsScreen() {
   const router = useRouter();
   const { me } = useSession();
   const [search, setSearch] = useState('');
+  const [scanning, setScanning] = useState(false);
+  const [barcode, setBarcode] = useState<string>();
+  const usesBarcodes = useUsesBarcodes();
   const debouncedSearch = useDebounced(search); // the list asks the shop once the typing pauses, not on every letter
   const allowed = me?.permissions?.includes('product.view') ?? false;
   const canAdd = me?.permissions?.includes('product.create') ?? false;
@@ -40,9 +46,30 @@ export default function ProductsScreen() {
     queryFn: ({ pageParam }) => listProducts({ search: debouncedSearch, page: pageParam }),
     initialPageParam: 1,
     getNextPageParam: (last) => last.nextPage,
-    enabled: allowed,
+    enabled: allowed && !barcode,
   });
-  const rows = list.data?.pages.flatMap((p) => p.rows) ?? [];
+  const exact = useQuery({
+    queryKey: ['products', 'scanned-barcode', me?.organization.id, barcode],
+    queryFn: () => productByBarcode(barcode!),
+    enabled: allowed && !!barcode,
+    staleTime: 0,
+  });
+  const active = barcode ? exact : list;
+  const rows = barcode ? (exact.data ? [exact.data] : []) : list.data?.pages.flatMap((p) => p.rows) ?? [];
+
+  function scanProduct(raw: string) {
+    const code = raw.trim();
+    if (!code) return;
+    Keyboard.dismiss();
+    setSearch('');
+    setBarcode(code);
+    setScanning(false);
+  }
+  function changeSearch(value: string) {
+    setBarcode(undefined);
+    setSearch(value);
+  }
+  useSunmiScanner(allowed && usesBarcodes, scanProduct);
   const summary = useQuery({ queryKey: ['products', 'summary'], queryFn: productSummary, enabled: allowed, staleTime: 30_000 });
   const offers = useQuery({ queryKey: ['products', 'offers'], queryFn: listOffers, enabled: allowed, staleTime: 30_000 });
   const sum = summary.data;
@@ -57,12 +84,32 @@ export default function ProductsScreen() {
 
   const header = (
     <View style={{ gap: Spacing.three, padding: Spacing.three }}>
-      <View style={{ flexDirection: 'row', gap: Spacing.two }}>
-        <ToneTile label="Items" icon="Package" value={sum ? String(sum.total_products) : '…'} />
-        {sum?.stock_value !== undefined ? <ToneTile label="Stock is worth" icon="Cash" tone="good" value={formatBDT(sum.stock_value, { dp: 0 })} note="At what you paid" /> : null}
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.two }}>
+        <View style={{ flex: 1 }}>
+          <Field label="Search" value={barcode ?? search} onChangeText={changeSearch} placeholder="Name, code or barcode" autoCapitalize="none" autoCorrect={false} />
+        </View>
+        {usesBarcodes ? (
+          <Tap accessibilityRole="button" accessibilityLabel={t(scanning ? 'Stop the camera' : 'Scan a barcode')} onPress={() => {
+            Keyboard.dismiss();
+            setScanning((current) => !current);
+          }} style={{ width: 48, height: 48, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: scanning ? theme.brand : theme.card, borderWidth: 1, borderColor: scanning ? theme.brand : theme.inputBorder }}>
+            <Icon name="ScanLine" size={22} color={scanning ? theme.onBrand : theme.brand} />
+          </Tap>
+        ) : null}
       </View>
-      <Field label="Search" value={search} onChangeText={setSearch} placeholder="Name, code or barcode" autoCapitalize="none" autoCorrect={false} />
-      {list.isError ? <ErrorState message={t('Could not load items.')} onRetry={() => void list.refetch()} /> : null}
+      {usesBarcodes && scanning ? <Scanner height={170} onCode={scanProduct} /> : null}
+      {barcode ? (
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <ThemedText type="small" themeColor="textMuted">Barcode match</ThemedText>
+          <HeaderAction title="Clear scan" onPress={() => changeSearch('')} />
+        </View>
+      ) : !search.trim() && !scanning ? (
+        <View style={{ flexDirection: 'row', gap: Spacing.two }}>
+          <ToneTile label="Items" icon="Package" value={sum ? String(sum.total_products) : '…'} />
+          {sum?.stock_value !== undefined ? <ToneTile label="Stock is worth" icon="Cash" tone="good" value={formatBDT(sum.stock_value, { dp: 0 })} note="At what you paid" /> : null}
+        </View>
+      ) : null}
+      {active.isError ? <ErrorState message={t('Could not load items.')} onRetry={() => void active.refetch()} /> : null}
     </View>
   );
 
@@ -76,19 +123,21 @@ export default function ProductsScreen() {
         renderItem={({ item }) => <ProductRow product={item} offered={item.variants.some((v) => shopOfferFor(offers.data ?? [], v.id))} onPress={() => router.push({ pathname: '/product/[id]', params: { id: item.id } })} />}
         ListHeaderComponent={header}
         ListEmptyComponent={
-          list.isPending ? (
+          active.isError ? undefined : active.isPending ? (
             <SkeletonRows />
+          ) : barcode ? (
+            <EmptyState icon="Search" title="No product uses this barcode" hint="Check the label or scan another barcode." action={{ title: 'Clear scan', onPress: () => changeSearch('') }} />
           ) : search.trim() ? (
             <EmptyState icon="Search" title="No item matches that" hint="Check the spelling, or try the code on the packet." action={{ title: 'Clear search', onPress: () => setSearch('') }} />
           ) : (
             <EmptyState icon="Package" title="No items yet" hint="Add the things you sell." action={canAdd ? { title: 'Add Products', onPress: () => router.push('/add-product') } : undefined} />
           )
         }
-        ListFooterComponent={list.isFetchingNextPage ? <ActivityIndicator color={theme.brand} style={{ margin: Spacing.three }} /> : undefined}
-        onEndReached={() => list.hasNextPage && !list.isFetchingNextPage && void list.fetchNextPage()}
+        ListFooterComponent={!barcode && list.isFetchingNextPage ? <ActivityIndicator color={theme.brand} style={{ margin: Spacing.three }} /> : undefined}
+        onEndReached={() => !barcode && list.hasNextPage && !list.isFetchingNextPage && void list.fetchNextPage()}
         onEndReachedThreshold={0.4}
-        refreshing={list.isRefetching && !list.isFetchingNextPage}
-        onRefresh={() => void Promise.all([list.refetch(), summary.refetch(), offers.refetch()])}
+        refreshing={active.isRefetching && (!!barcode || !list.isFetchingNextPage)}
+        onRefresh={() => void Promise.all([active.refetch(), summary.refetch(), offers.refetch()])}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}
       />
