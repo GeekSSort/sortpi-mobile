@@ -1,3 +1,4 @@
+import { useWideLandscape } from '@/hooks/use-wide-landscape';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -15,7 +16,7 @@ import { SkeletonRows } from '@/components/skeleton';
 import { Tap } from '@/components/tap';
 import { ToneTile } from '@/components/tone-tile';
 import { ThemedText } from '@/components/themed-text';
-import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
 import { localDateISO } from '@/lib/dates';
@@ -31,6 +32,7 @@ const hideDefault = (name: string) => (name.trim().toLowerCase() === 'default' ?
 
 /** One item: what it is, and for each kind its price, barcode, stock and offer. People who may edit can change the price, run an offer, or edit the details. */
 export default function ProductScreen() {
+  const { contentWidth } = useWideLandscape();
   const theme = useTheme();
   const { t } = usePrefs();
   const router = useRouter();
@@ -44,7 +46,7 @@ export default function ProductScreen() {
   const p = product.data;
 
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={product.isRefetching} onRefresh={() => void Promise.all([product.refetch(), offers.refetch()])} />} style={{ backgroundColor: theme.canvas }} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
+    <ScrollView contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={product.isRefetching} onRefresh={() => void Promise.all([product.refetch(), offers.refetch()])} />} style={{ backgroundColor: theme.canvas }} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six, maxWidth: Math.min(contentWidth, 1080), width: '100%', alignSelf: 'center' }}>
       <Stack.Screen options={{ title: t('Item'), headerRight: canEdit && p?.is_active ? () => <HeaderAction title="Edit" icon="Pencil" onPress={() => router.push({ pathname: '/edit-product/[id]', params: { id: p.id } })} /> : undefined }} />
       {product.isPending ? <SkeletonRows count={3} /> : null}
       {product.isError ? <ErrorState message={t('Could not load this item.')} onRetry={() => void product.refetch()} /> : null}

@@ -1,3 +1,4 @@
+import { useWideLandscape } from '@/hooks/use-wide-landscape';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -15,7 +16,7 @@ import { Step } from '@/components/quantity-step';
 import { SkeletonRows } from '@/components/skeleton';
 import { Tap } from '@/components/tap';
 import { ThemedText } from '@/components/themed-text';
-import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { BottomTabInset, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
 import { haptics } from '@/lib/haptics';
@@ -28,6 +29,7 @@ import { showToast } from '@/ui/toast';
 
 /** Make a transfer: where the goods leave from, where they go, what and how many. Save it for later, or send it now. Nothing moves until it is sent. */
 export default function NewTransferScreen() {
+  const { contentWidth } = useWideLandscape();
   const theme = useTheme();
   const { t } = usePrefs();
   const router = useRouter();
@@ -107,7 +109,7 @@ export default function NewTransferScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
       <Stack.Screen options={{ title: t('New transfer') }} />
-      <ScrollView contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: Spacing.three, padding: Spacing.three, paddingBottom: BottomTabInset + Spacing.five, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
+      <ScrollView contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: Spacing.three, padding: Spacing.three, paddingBottom: BottomTabInset + Spacing.five, maxWidth: Math.min(contentWidth, 1080), width: '100%', alignSelf: 'center' }}>
         {places.isError ? <ErrorState message={t('Could not load your places.')} onRetry={() => void places.refetch()} /> : null}
         {places.isPending ? <SkeletonRows /> : null}
         {places.data && goes.length === 0 ? <Notice kind="info">There is no other open place to send goods to. Add a branch or a shelf on the computer first.</Notice> : null}

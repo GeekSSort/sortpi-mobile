@@ -1,8 +1,10 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
+import { useWideLandscape } from '@/hooks/use-wide-landscape';
+import { AdaptiveList } from '@/components/adaptive-list';
 import { useSession } from '@/auth/session-provider';
 import { useDebounced } from '@/lib/use-debounced';
 import { ActionSheet } from '@/components/action-sheet';
@@ -14,7 +16,7 @@ import { ErrorState } from '@/components/error-state';
 import { ToneTile as Tile } from '@/components/tone-tile';
 import { SkeletonRows } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
-import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { BottomTabInset, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useT } from '@/i18n/prefs';
 import { BIG_TEXT, useTextFactor } from '@/i18n/text-factor';
@@ -31,6 +33,7 @@ import { formatQuantity, STOCK_LEVEL_LABEL, stockLevel, type StockLevel } from '
 
 /** What is on the shelf in this branch: search or scan a code, filter by level, and add a product. */
 export default function StockScreen() {
+  const { wideLandscape } = useWideLandscape();
   const theme = useTheme();
   const t = useT();
   const bigText = useTextFactor() > BIG_TEXT;
@@ -79,7 +82,7 @@ export default function StockScreen() {
 
   const header = (
     <View style={{ gap: Spacing.three, padding: Spacing.three }}>
-      <View style={{ flexDirection: 'row', flexWrap: bigText ? 'wrap' : 'nowrap', gap: Spacing.two }}>
+      <View style={{ flexDirection: wideLandscape ? 'column' : 'row', flexWrap: !wideLandscape && bigText ? 'wrap' : 'nowrap', gap: Spacing.two }}>
         <Tile label="Items" icon="Package" value={s ? String(s.lines) : '…'} selected={filter === 'all'} onPress={() => setFilter('all')} />
         <Tile label="Low" value={s ? String(s.low_stock) : '…'} tone={s && s.low_stock > 0 ? 'warn' : undefined} icon="TriangleAlert" selected={filter === 'low'} onPress={() => pick('low')} />
         <Tile label="Out" value={s ? String(s.out_of_stock) : '…'} tone={s && s.out_of_stock > 0 ? 'bad' : undefined} icon="Cancel" selected={filter === 'out'} onPress={() => pick('out')} />
@@ -112,7 +115,7 @@ export default function StockScreen() {
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
       <Stack.Screen options={{ headerRight: canAdd ? () => <HeaderAction title="Add" icon="Plus" onPress={() => router.push('/add-product')} /> : undefined }} />
       <View style={{ flex: 1 }}>
-        <FlatList
+        <AdaptiveList landscapeSidebar
           contentInsetAdjustmentBehavior="automatic"
           data={rows}
           keyExtractor={(r) => r.id}
@@ -135,7 +138,7 @@ export default function StockScreen() {
           refreshing={list.isRefetching && !list.isFetchingNextPage}
           onRefresh={() => void Promise.all([list.refetch(), summary.refetch()])}
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}
+          contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four }}
         />
         <ActionSheet title={picked ? stockName(picked) : null} actions={picked ? [{ title: 'Sell this', icon: 'Plus', onPress: () => void sellThis(picked) }] : []} onClose={() => setPicked(null)} />
       </View>

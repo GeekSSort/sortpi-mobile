@@ -10,6 +10,7 @@ import { ThemedText } from '@/components/themed-text';
 import { PayColors } from '@/constants/palette';
 import { Radius, Spacing } from '@/constants/theme';
 import { WEEKDAYS } from '@/home/week';
+import { useWideLandscape } from '@/hooks/use-wide-landscape';
 import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
 import { formatBDT, addMoney, compareMoney } from '@/lib/money';
@@ -25,9 +26,10 @@ type Q = { isPending: boolean; isError: boolean; refetch: () => unknown };
 /** A titled white card. Loading shows placeholders, a failure shows what to do, and only then the content. */
 export function ReportCard({ title, icon, query, hint, children }: { title: string; icon: IconName; query?: Q; hint?: string; children: ReactNode }) {
   const theme = useTheme();
+  const { wideLandscape } = useWideLandscape();
   const { t } = usePrefs();
   return (
-    <View style={{ gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.lg, borderCurve: 'continuous', backgroundColor: theme.card, borderWidth: 1, borderColor: theme.border }}>
+    <View style={{ width: wideLandscape ? '49%' : undefined, gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.lg, borderCurve: 'continuous', backgroundColor: theme.card, borderWidth: 1, borderColor: theme.border }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.two }}>
         <View style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.brandSoft }}>
           <Icon name={icon} size={18} color={theme.brandText} />

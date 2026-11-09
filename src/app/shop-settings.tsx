@@ -1,3 +1,4 @@
+import { useWideLandscape } from '@/hooks/use-wide-landscape';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -13,7 +14,7 @@ import { Notice } from '@/components/notice';
 import { SkeletonRows } from '@/components/skeleton';
 import { Tap } from '@/components/tap';
 import { ThemedText } from '@/components/themed-text';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
 import { haptics } from '@/lib/haptics';
@@ -37,6 +38,7 @@ const paperLabel = (width: string) => width === 'a4' ? 'A4' : width.replace('mm'
 
 /** The settings a shop owner needs most: tax, discount, daily target, how customers pay, and a few rules about selling and stock. Each change is saved as it is made. */
 export default function ShopSettingsScreen() {
+  const { contentWidth } = useWideLandscape();
   const theme = useTheme();
   const { t, setGuideDone } = usePrefs();
   const router = useRouter();
@@ -106,7 +108,7 @@ export default function ShopSettingsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
       <Stack.Screen options={{ title: t('Settings') }} />
-      <ScrollView contentInsetAdjustmentBehavior="automatic" refreshControl={canSee ? <RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} /> : undefined} contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
+      <ScrollView contentInsetAdjustmentBehavior="automatic" refreshControl={canSee ? <RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} /> : undefined} contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four, maxWidth: Math.min(contentWidth, 1080), width: '100%', alignSelf: 'center' }}>
         <Section title="On this device" />
         {canSetPaper && androidPosDevice ? (
           <ValueRow icon="Store" tone="info" title="POS device" hint="Detected from this Android device." value={[androidPosDevice.name, androidPosDevice.model].filter(Boolean).join(' · ')} />

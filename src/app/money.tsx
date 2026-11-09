@@ -1,8 +1,9 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 
+import { AdaptiveList } from '@/components/adaptive-list';
 import { useSession } from '@/auth/session-provider';
 import { BottomSheet } from '@/components/bottom-sheet';
 import { Button } from '@/components/button';
@@ -14,7 +15,7 @@ import { SkeletonRows } from '@/components/skeleton';
 import { Tap } from '@/components/tap';
 import { ThemedText } from '@/components/themed-text';
 import { ToneTile as Tile } from '@/components/tone-tile';
-import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { BottomTabInset, Radius, Spacing } from '@/constants/theme';
 import { MONTHS } from '@/home/week';
 import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
@@ -108,7 +109,7 @@ export default function MoneyScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
-      <FlatList
+      <AdaptiveList
         contentInsetAdjustmentBehavior="automatic"
         data={rows}
         keyExtractor={(r) => r.id}
@@ -120,7 +121,7 @@ export default function MoneyScreen() {
         onEndReachedThreshold={0.4}
         refreshing={list.isRefetching && !list.isFetchingNextPage}
         onRefresh={() => void Promise.all([list.refetch(), totals.refetch()])}
-        contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}
+        contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four }}
       />
       <BottomSheet visible={!!open} onClose={() => setOpen(null)} title={t('Entry')}>
         {open ? (

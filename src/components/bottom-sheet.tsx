@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { Radius, Spacing } from '@/constants/theme';
+import { useWideLandscape } from '@/hooks/use-wide-landscape';
 import { useTheme } from '@/hooks/use-theme';
 import { useT } from '@/i18n/prefs';
 
@@ -21,6 +22,7 @@ export function BottomSheet({ visible, onClose, title, children }: { visible: bo
   const t = useT();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
+  const { wideLandscape } = useWideLandscape();
   const drag = useSharedValue(0);
   useEffect(() => {
     if (!visible) drag.set(0);
@@ -39,6 +41,7 @@ export function BottomSheet({ visible, onClose, title, children }: { visible: bo
     };
   }, []);
 
+  const floating = wideLandscape && keyboard === 0;
   const pan = Gesture.Pan()
     .onChange((e) => {
       drag.set(Math.max(0, drag.get() + e.changeY));
@@ -52,10 +55,10 @@ export function BottomSheet({ visible, onClose, title, children }: { visible: bo
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
       {/* A Modal is its own window, so it needs its own gesture root. */}
-      <GestureHandlerRootView style={{ flex: 1, justifyContent: 'flex-end' }}>
+      <GestureHandlerRootView style={{ flex: 1, justifyContent: floating ? 'center' : 'flex-end' }}>
         <Pressable accessibilityRole="button" accessibilityLabel={t('Close')} onPress={onClose} style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.45)' }]} />
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ marginBottom: keyboard }}>
-          <Animated.View style={[{ maxHeight: Math.min(height * 0.8, height - keyboard - insets.top - 24), width: '100%', maxWidth: 640, alignSelf: 'center', backgroundColor: theme.card, borderTopLeftRadius: 28, borderTopRightRadius: 28, borderCurve: 'continuous', paddingBottom: insets.bottom }, lift]}>
+          <Animated.View style={[{ maxHeight: Math.min(height * 0.8, height - keyboard - insets.top - 24), width: floating ? '92%' : '100%', maxWidth: 640, alignSelf: 'center', backgroundColor: theme.card, borderTopLeftRadius: 28, borderTopRightRadius: 28, borderBottomLeftRadius: floating ? 28 : 0, borderBottomRightRadius: floating ? 28 : 0, borderCurve: 'continuous', paddingBottom: floating ? 0 : insets.bottom }, lift]}>
             <GestureDetector gesture={pan}>
               <View>
                 <View style={{ alignItems: 'center', paddingTop: Spacing.two, paddingBottom: Spacing.one }}>

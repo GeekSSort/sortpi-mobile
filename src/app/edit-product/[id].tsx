@@ -1,3 +1,4 @@
+import { useWideLandscape } from '@/hooks/use-wide-landscape';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -11,7 +12,7 @@ import { Field } from '@/components/field';
 import { Notice } from '@/components/notice';
 import { Picker } from '@/components/picker';
 import { SkeletonRows } from '@/components/skeleton';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
 import { haptics } from '@/lib/haptics';
@@ -24,6 +25,7 @@ type Option = { id: string; name: string };
 
 /** Change an item's name, kind, brand and the level at which you want to be told it is running low. Only what changed is sent. */
 export default function EditProductScreen() {
+  const { contentWidth } = useWideLandscape();
   const theme = useTheme();
   const { t } = usePrefs();
   const { me } = useSession();
@@ -31,7 +33,7 @@ export default function EditProductScreen() {
   const product = useQuery({ queryKey: ['products', 'one', id], queryFn: () => getProduct(id), enabled: !!id });
   const allowed = me?.permissions?.includes('product.update') ?? false;
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled" style={{ backgroundColor: theme.canvas }} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
+    <ScrollView contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled" style={{ backgroundColor: theme.canvas }} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six, maxWidth: Math.min(contentWidth, 1080), width: '100%', alignSelf: 'center' }}>
       <Stack.Screen options={{ title: t('Edit item') }} />
       {product.isPending ? <SkeletonRows count={3} /> : null}
       {product.isError ? <ErrorState message={t('Could not load this item.')} onRetry={() => void product.refetch()} /> : null}

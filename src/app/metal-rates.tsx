@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { ApiError } from '@/api/client';
+import { AdaptiveList } from '@/components/adaptive-list';
 import { useSession } from '@/auth/session-provider';
 import { BottomSheet } from '@/components/bottom-sheet';
 import { Button } from '@/components/button';
@@ -15,7 +16,7 @@ import { Notice } from '@/components/notice';
 import { SkeletonRows } from '@/components/skeleton';
 import { Tap } from '@/components/tap';
 import { ThemedText } from '@/components/themed-text';
-import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { BottomTabInset, Radius, Spacing } from '@/constants/theme';
 import { listMetalRates, setMetalRate, type Metal, type MetalRate } from '@/extras/api';
 import { METALS, purities, validateRate } from '@/extras/logic';
 import { useTheme } from '@/hooks/use-theme';
@@ -71,7 +72,7 @@ export default function MetalRatesScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
       <Stack.Screen options={{ title: t('Metal Rates'), headerRight: canSet ? () => <HeaderAction title="Set" icon="Pencil" onPress={() => { setRate(''); setError(null); setOpen(true); }} /> : undefined }} />
-      <FlatList
+      <AdaptiveList
         contentInsetAdjustmentBehavior="automatic"
         data={list.data ?? []}
         keyExtractor={(r: MetalRate) => `${r.metal}-${r.purity}`}
@@ -94,7 +95,7 @@ export default function MetalRatesScreen() {
         ListEmptyComponent={list.isPending ? <SkeletonRows /> : list.isError ? undefined : <EmptyState icon="Cash" title="No rates set" hint="Set today's price for one gram." />}
         refreshing={list.isRefetching}
         onRefresh={() => void list.refetch()}
-        contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}
+        contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four }}
       />
       <BottomSheet visible={open} onClose={() => setOpen(false)} title="Set a metal rate">
         <View style={{ gap: Spacing.three }}>

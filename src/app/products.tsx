@@ -1,8 +1,10 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, FlatList, Keyboard, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Keyboard, StyleSheet, View } from 'react-native';
 
+import { useWideLandscape } from '@/hooks/use-wide-landscape';
+import { AdaptiveList } from '@/components/adaptive-list';
 import { useSession } from '@/auth/session-provider';
 import { useDebounced } from '@/lib/use-debounced';
 import { EmptyState } from '@/components/empty-state';
@@ -15,7 +17,7 @@ import { SkeletonRows } from '@/components/skeleton';
 import { Tap } from '@/components/tap';
 import { ThemedText } from '@/components/themed-text';
 import { ToneTile } from '@/components/tone-tile';
-import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { BottomTabInset, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
 import { formatBDT } from '@/lib/money';
@@ -29,6 +31,7 @@ import { formatQuantity, stockLevel } from '@/stock/status';
 
 /** Every item in the shop: search by name, code or barcode, open one to see and change its price. */
 export default function ProductsScreen() {
+  const { wideLandscape } = useWideLandscape();
   const theme = useTheme();
   const { t } = usePrefs();
   const router = useRouter();
@@ -104,7 +107,7 @@ export default function ProductsScreen() {
           <HeaderAction title="Clear scan" onPress={() => changeSearch('')} />
         </View>
       ) : !search.trim() && !scanning ? (
-        <View style={{ flexDirection: 'row', gap: Spacing.two }}>
+        <View style={{ flexDirection: wideLandscape ? 'column' : 'row', gap: Spacing.two }}>
           <ToneTile label="Items" icon="Package" value={sum ? String(sum.total_products) : '…'} />
           {sum?.stock_value !== undefined ? <ToneTile label="Stock is worth" icon="Cash" tone="good" value={formatBDT(sum.stock_value, { dp: 0 })} note="At what you paid" /> : null}
         </View>
@@ -116,7 +119,7 @@ export default function ProductsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
       <Stack.Screen options={{ headerRight: canAdd ? () => <HeaderAction title="Add" icon="Plus" onPress={() => router.push('/add-product')} /> : undefined }} />
-      <FlatList
+      <AdaptiveList landscapeSidebar
         contentInsetAdjustmentBehavior="automatic"
         data={rows}
         keyExtractor={(r) => r.id}
@@ -139,7 +142,7 @@ export default function ProductsScreen() {
         refreshing={active.isRefetching && (!!barcode || !list.isFetchingNextPage)}
         onRefresh={() => void Promise.all([active.refetch(), summary.refetch(), offers.refetch()])}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}
+        contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four }}
       />
     </View>
   );
@@ -183,13 +186,13 @@ function ProductRow({ product, offered, onPress }: { product: Product; offered: 
         ) : null}
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-        <View style={{ alignItems: 'flex-end' }}>
+        <View style={{ alignItems: 'flex-end', minWidth: 84 }}>
           {several ? (
             <ThemedText type="caption" themeColor="textMuted">
               Starts at
             </ThemedText>
           ) : null}
-          <ThemedText type="bodyMedium" style={{ color: theme.success }} numberOfLines={1} literal>
+          <ThemedText type="bodyMedium" style={{ color: theme.success, textAlign: 'right', minWidth: 84 }} numberOfLines={1} adjustsFontSizeToFit literal>
             {price}
           </ThemedText>
         </View>

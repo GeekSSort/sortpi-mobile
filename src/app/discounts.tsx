@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { Stack, useRouter } from 'expo-router';
-import { FlatList, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { AdaptiveList } from '@/components/adaptive-list';
 import { useSession } from '@/auth/session-provider';
 import { EmptyState } from '@/components/empty-state';
 import { ErrorState } from '@/components/error-state';
@@ -11,7 +12,7 @@ import { SkeletonRows } from '@/components/skeleton';
 import { Tap } from '@/components/tap';
 import { ThemedText } from '@/components/themed-text';
 import { ToneTile } from '@/components/tone-tile';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, Spacing } from '@/constants/theme';
 import { discountSummary, listOffers, type OfferRow } from '@/groups/api';
 import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
@@ -54,7 +55,7 @@ export default function DiscountsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
       <Stack.Screen options={{ title: t('Discount') }} />
-      <FlatList
+      <AdaptiveList
         contentInsetAdjustmentBehavior="automatic"
         data={(offers.data ?? []).filter((o) => o.is_active)}
         keyExtractor={(o) => o.id}
@@ -78,7 +79,7 @@ export default function DiscountsScreen() {
         ListEmptyComponent={offers.isPending ? <SkeletonRows /> : offers.isError ? undefined : <EmptyState icon="Percent" title="No offers running" hint="Open an item and set an offer on it." />}
         refreshing={offers.isRefetching}
         onRefresh={() => void Promise.all([offers.refetch(), sum.refetch()])}
-        contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}
+        contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four }}
       />
     </View>
   );
