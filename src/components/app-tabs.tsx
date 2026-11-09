@@ -25,7 +25,8 @@ const TABS = [
 
 export default function AppTabs() {
   const router = useRouter();
-  const active = useSegments()[1] ?? 'index';
+  const segments: readonly string[] = useSegments();
+  const active = segments[1] ?? 'index';
   const { width, height } = useWindowDimensions();
   const tillFocus = useTillFocus();
   useEffect(() => { if (active !== 'sell') setTillFocus(false); }, [active]);
