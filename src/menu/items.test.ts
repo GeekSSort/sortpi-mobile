@@ -9,6 +9,7 @@ test('a person sees only what their permissions allow', () => {
   assert.deepEqual(visibleMenu(MENU, ['sale.view_own'], '', same).map((i) => i.id), ['sales', 'shop-settings']);
   assert.ok(visibleMenu(MENU, ['pos.access'], '', same).every((i) => i.id !== 'pos')); // the till needs both codes
   assert.deepEqual(visibleMenu(MENU, undefined, '', same), []);
+  assert.deepEqual(visibleMenu(MENU, [], '', same).map((item) => item.id), ['shop-settings']);
   assert.equal(visibleMenu(MENU, MENU.flatMap((i) => i.needs), '', same, MENU.flatMap((i) => (i.trade ? [i.trade] : []))).length, MENU.length);
 });
 

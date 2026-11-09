@@ -1,8 +1,15 @@
-import { useRouter } from 'expo-router';
+import { usePathname, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
+import { canSell } from '@/auth/roles';
 import { useSession } from '@/auth/session-provider';
+import { TABLET_LAYOUTS } from '@/sell/tablet-layout';
+import { setTillDevice, useTillDevice } from '@/sell/till-device';
+import { useTabletLayout } from '@/sell/use-tablet-layout';
+import { useOffline } from '@/ui/connection';
+import { setTillFocus, useTillFocus } from '@/ui/till-focus';
+import { showToast } from '@/ui/toast';
 import { useLocalShop } from '@/local/provider';
 import { Icon, type IconName } from '@/components/icons/icon';
 import { ThemedText } from '@/components/themed-text';
@@ -74,9 +81,19 @@ export function TaskList({ onNavigate, compact = false }: { onNavigate?: () => v
  */
 export function ProfileSettings({ onDone }: { onDone?: () => void } = {}) {
   const theme = useTheme();
-  const { t, lang, setLang, size, setSize, scheme, setScheme, setGuideDone } = usePrefs();
+  const { t, lang, setLang, size, setSize, scheme, setScheme } = usePrefs();
+  const router = useRouter();
+  const path = usePathname();
+  const { width, height } = useWindowDimensions();
+  const offline = useOffline();
+  const focused = useTillFocus();
+  const { scannerMode, feedback } = useTillDevice();
   const shop = useLocalShop();
-  const { me, signOut, biometricAvailable, biometricEnabled, setBiometricEnabled } = useSession();
+  const { me, signOut, biometricAvailable, biometricEnabled, lockTill } = useSession();
+  const selling = canSell(me?.permissions ?? []);
+  const tablet = Platform.OS === 'android' && width >= 720 && selling;
+  const layout = useTabletLayout(tablet);
+  const [layoutExpanded, setLayoutExpanded] = useState(false);
   const name = me?.full_name || me?.email || '';
   const roles = me?.roles?.length ? me.roles.join(', ') : '';
 
@@ -110,38 +127,62 @@ export function ProfileSettings({ onDone }: { onDone?: () => void } = {}) {
         </ThemedText>
       </View>
 
-      {biometricAvailable ? (
+      {selling ? (
         <Group>
-          <Row icon="ScanFace" title={process.env.EXPO_OS === 'ios' ? 'Unlock with Face ID' : 'Unlock with fingerprint'} sub="Keeps your shop safe if someone else picks up your phone." trailing={<Switch value={biometricEnabled} onValueChange={(on) => void setBiometricEnabled(on)} trackColor={{ true: theme.brand }} />} />
+          {tablet ? (
+            <>
+              <Row icon="Sliders" title="POS layout" sub={TABLET_LAYOUTS.find((entry) => entry.id === layout.layout)?.title} expanded={layoutExpanded} onPress={() => setLayoutExpanded(!layoutExpanded)} />
+              {layoutExpanded ? TABLET_LAYOUTS.map((entry) => (
+                <Row key={entry.id} compact indent icon={entry.id === layout.layout ? 'Check' : 'Dashboard'} title={entry.title} onPress={layout.busy ? undefined : () => {
+                  void layout.choose(entry.id).then(() => setLayoutExpanded(false)).catch(() => showToast({ text: t('Could not save the POS layout.') }));
+                }} />
+              )) : null}
+              {layoutExpanded && layout.deviceLayout ? <Row compact indent icon="Undo" title="Use shop default" onPress={layout.busy ? undefined : () => {
+                void layout.choose(null).then(() => setLayoutExpanded(false)).catch(() => showToast({ text: t('Could not save the POS layout.') }));
+              }} /> : null}
+            </>
+          ) : null}
+          <Choice title="Scanner mode" value={scannerMode} options={[{ key: 'device', label: t('Device default') }, { key: 'auto', label: t('Automatic') }, { key: 'manual', label: t('Manual') }]} onPick={(value) => setTillDevice({ scannerMode: value })} />
+          <Choice title="Scan feedback" value={feedback} options={[{ key: 'sound', label: t('Sound') }, { key: 'vibration', label: t('Vibration') }, { key: 'silent', label: t('Silent') }]} onPick={(value) => setTillDevice({ feedback: value })} />
+          {tablet && width > height ? <Row icon="Dashboard" title={focused ? 'Exit focus mode' : 'Focus mode'} sub="Hide the bottom tabs while selling." onPress={() => {
+            setTillFocus(!focused);
+            onDone?.();
+            if (!focused && path !== '/sell') router.navigate('/sell');
+          }} /> : null}
+          <Row icon="Lock" title="Lock till" sub={!biometricAvailable ? 'Set up biometrics on this device to lock the till.' : !biometricEnabled ? 'Enable biometric unlock in Settings.' : undefined} onPress={!biometricAvailable ? undefined : () => {
+            if (!biometricEnabled) {
+              onDone?.();
+              router.push('/shop-settings');
+              return;
+            }
+            void lockTill(path === '/sell').then((locked) => {
+              if (locked) onDone?.();
+              else showToast({ text: t('Could not lock the till. Finish the current action and try again.') });
+            });
+          }} />
         </Group>
       ) : null}
 
-      {shop.allowed ? (
-        <Group>
+      <Group>
+        <Row icon="Activity" title={offline ? 'Shop connection unavailable' : 'Shop connected'} />
+        {shop.allowed ? (
           <Row
             icon="Package"
-            title="Shop on this phone"
+            title="Catalogue on this device"
             sub={shop.error ? t(shop.error) : shop.syncedAt ? t('Updated {time} · {n} items', { time: new Date(shop.syncedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }), n: shop.products }) : t('Not downloaded yet')}
-            trailing={
-              shop.syncing ? (
-                <ActivityIndicator color={theme.brand} />
-              ) : (
-                <Tap accessibilityRole="button" onPress={() => void shop.syncNow()} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 14 }}>
-                  <ThemedText type="smallMedium" style={{ color: theme.brandText }}>
-                    {t('Update')}
-                  </ThemedText>
-                </Tap>
-              )
-            }
+            trailing={shop.syncing ? <ActivityIndicator color={theme.brand} /> : (
+              <Tap accessibilityRole="button" onPress={() => void shop.syncNow()} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 }}>
+                <ThemedText type="smallMedium" style={{ color: theme.brandText }}>Update now</ThemedText>
+              </Tap>
+            )}
           />
-        </Group>
-      ) : null}
+        ) : null}
+      </Group>
 
       <Group>
         <Choice title="Language" value={lang} options={[{ key: 'bn', label: 'বাংলা' }, { key: 'en', label: 'English' }]} onPick={(k) => void setLang(k)} />
         <Choice title="Text size" value={size} options={[{ key: 'normal', label: t('Normal') }, { key: 'large', label: t('Large') }, { key: 'xlarge', label: t('Extra large') }]} onPick={(k) => void setSize(k)} />
         <Choice title="Screen colours" value={scheme} options={[{ key: 'auto', label: t('Auto') }, { key: 'light', label: t('Light') }, { key: 'dark', label: t('Dark') }]} onPick={(k) => void setScheme(k)} />
-        <Row icon="ChevronRight" title="Show the help again" onPress={() => { void setGuideDone(false); onDone?.(); }} />
       </Group>
 
       <Group>

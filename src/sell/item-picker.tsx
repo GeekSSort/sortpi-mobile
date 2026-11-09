@@ -21,12 +21,13 @@ import { formatBDT } from '@/lib/money';
 import { browseCatalog, searchCatalog } from './catalog';
 import type { CatalogItem } from './catalog-map';
 import type { TabletLayout } from './tablet-layout';
+import type { Favorite } from './use-favorite-products';
 
 /**
  * Selling without a barcode: type a name or code and tap the result, or tap an item from the shop's own list (most sold first),
  * narrowed by category. The camera is one optional button next to the search box.
  */
-export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId, scan, layout }: {
+export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId, scan, layout, favorites, favoritesBusy, onFavorite }: {
   onPick: (item: CatalogItem) => void;
   onFewer?: (item: CatalogItem) => void;
   qtyOf: (variantId: string) => number;
@@ -35,6 +36,9 @@ export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId
   branchId?: string;
   scan?: { open: boolean; toggle: () => void };
   layout?: TabletLayout;
+  favorites: Favorite[];
+  favoritesBusy: boolean;
+  onFavorite: (item: CatalogItem) => void;
 }) {
   const theme = useTheme();
   const { t } = usePrefs();
@@ -124,6 +128,7 @@ export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId
               {(express && !typed ? items.slice(0, 8) : items).map((it) => {
                 const n = qtyOf(it.variantId);
                 const out = isOut(it);
+                const starred = favorites.some((entry) => entry.variantId === it.variantId);
                 const product = (
                   <Tap
                     accessibilityRole="button"
@@ -131,7 +136,7 @@ export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId
                     onPress={() => onPick(it)}
                     style={{ minHeight: touch ? 84 : express || sheet ? 56 : 76, padding: Spacing.three, gap: 4, justifyContent: 'center' }}>
                     {(touch || layout === 'wall') && it.image ? <Image source={it.image} contentFit="cover" cachePolicy="memory" style={{ height: 76, borderRadius: Radius.md, backgroundColor: theme.canvas }} /> : null}
-                    <ThemedText type="smallMedium" numberOfLines={2} literal>{it.name}</ThemedText>
+                    <ThemedText type="smallMedium" numberOfLines={2} literal style={!it.image || express || sheet ? { paddingEnd: 28 } : undefined}>{it.name}</ThemedText>
                     <ThemedText type="caption" themeColor="textSecondary">
                       {formatBDT(it.price, { dp: 0 })}
                       {it.allowDecimal && it.unitShort ? ` / ${it.unitShort}` : ''}
@@ -142,6 +147,9 @@ export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId
                 return (
                   <View key={it.variantId} style={{ flexBasis: tileWidth ?? '48%', flexGrow: tileWidth === undefined ? 1 : 0, borderRadius: Radius.lg, borderCurve: 'continuous', opacity: out ? 0.55 : 1, backgroundColor: n > 0 ? theme.successSoft : theme.card, borderWidth: n > 0 ? 2 : 1, borderColor: n > 0 ? theme.positive : theme.border }}>
                     {product}
+                    <Tap accessibilityRole="button" accessibilityLabel={t(starred ? 'Remove {name} from favorites' : 'Add {name} to favorites', { name: it.name })} accessibilityState={{ selected: starred }} disabled={favoritesBusy} onPress={() => onFavorite(it)} style={{ position: 'absolute', top: 1, end: 1, width: 40, height: 44, borderRadius: Radius.md, backgroundColor: n > 0 ? theme.successSoft : theme.card, alignItems: 'center', justifyContent: 'center' }}>
+                      <Icon name={starred ? 'StarFilled' : 'Star'} size={20} color={starred ? theme.brandText : theme.textMuted} />
+                    </Tap>
                     {touch && onFewer ? (
                       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderColor: theme.border }}>
                         <Tap accessibilityRole="button" accessibilityLabel={t('Fewer {name}', { name: it.name })} disabled={n <= 0} onPress={() => onFewer(it)} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}><Icon name="Minus" size={18} color={n <= 0 ? theme.textMuted : theme.brandText} /></Tap>
@@ -149,7 +157,7 @@ export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId
                         <Tap accessibilityRole="button" accessibilityLabel={t('More {name}', { name: it.name })} onPress={() => onPick(it)} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}><Icon name="Plus" size={18} color={theme.brandText} /></Tap>
                       </View>
                     ) : n > 0 ? (
-                      <View pointerEvents="none" style={{ position: 'absolute', top: -8, right: -6, minWidth: 26, height: 26, borderRadius: 13, paddingHorizontal: 6, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.go }}>
+                      <View pointerEvents="none" style={{ position: 'absolute', top: -8, start: -6, minWidth: 26, height: 26, borderRadius: 13, paddingHorizontal: 6, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.go }}>
                         <ThemedText type="caption" style={{ color: theme.onBrand }}>{n}</ThemedText>
                       </View>
                     ) : null}

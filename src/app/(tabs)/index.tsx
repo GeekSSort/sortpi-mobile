@@ -33,7 +33,8 @@ import { formatQuantity } from '@/stock/status';
 
 export default function HomeScreen() {
   const { width, height } = useWindowDimensions();
-  const { me } = useSession();
+  const { me, resumeTill } = useSession();
+  if (resumeTill && me?.permissions.includes('pos.access') && me.permissions.includes('sale.create')) return <Redirect href="/sell" />;
   const landing = landingTab(me?.permissions ?? []);
   if (me && landing !== 'index') return <Redirect href={landing === 'sell' ? '/sell' : landing === 'stock' ? '/stock' : landing === 'customers' ? '/customers' : '/more'} />;
 

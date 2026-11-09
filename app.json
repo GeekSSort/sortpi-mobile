@@ -42,6 +42,7 @@
         }
       ],
       "expo-secure-store",
+      ["expo-audio", { "microphonePermission": false, "recordAudioAndroid": false, "enableBackgroundPlayback": false, "enableBackgroundRecording": false }],
       [
         "expo-local-authentication",
         {

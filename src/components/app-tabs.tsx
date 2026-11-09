@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useRouter, useSegments } from 'expo-router';
 import { NativeTabs } from 'expo-router/native-tabs';
 import { Platform, useColorScheme, useWindowDimensions, View } from 'react-native';
@@ -11,6 +12,7 @@ import { Tap } from '@/components/tap';
 import { ThemedText } from '@/components/themed-text';
 import { Colors, Radius } from '@/constants/theme';
 import { useT } from '@/i18n/prefs';
+import { setTillFocus, useTillFocus } from '@/ui/till-focus';
 
 const COMPACT_BAR_HEIGHT = 49;
 
@@ -24,7 +26,9 @@ const TABS = [
 export default function AppTabs() {
   const router = useRouter();
   const active = useSegments()[1] ?? 'index';
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
+  const tillFocus = useTillFocus();
+  useEffect(() => { if (active !== 'sell') setTillFocus(false); }, [active]);
   const { bottom } = useSafeAreaInsets();
   const keyboardVisible = useKeyboardState((state) => state.isVisible);
   const scheme = useColorScheme();
@@ -34,7 +38,7 @@ export default function AppTabs() {
   const shown = visibleTabs(me?.permissions ?? []);
   const compact = Platform.OS === 'android' && width >= 720;
   const visible = TABS.filter((tab) => shown.includes(tab.name));
-  const showCompactBar = compact && !keyboardVisible && visible.length > 0;
+  const showCompactBar = compact && !keyboardVisible && !(tillFocus && active === 'sell' && width > height) && visible.length > 0;
 
   return (
     // NativeTabs still reserves the system bottom inset when its own bar is hidden.

@@ -24,6 +24,7 @@ import { readPoints } from '@/settings/points';
 import { Pill } from '@/products/variant-card';
 import { PAPERS } from '@/sell/paper';
 import { usePaperPref } from '@/sell/paper-pref';
+import { printTestReceipt } from '@/sell/print';
 import { showToast } from '@/ui/toast';
 
 type Tone = 'good' | 'warn' | 'info';
@@ -34,16 +35,17 @@ const paperLabel = (width: string) => width === 'a4' ? 'A4' : width.replace('mm'
 /** The settings a shop owner needs most: tax, discount, daily target, how customers pay, and a few rules about selling and stock. Each change is saved as it is made. */
 export default function ShopSettingsScreen() {
   const theme = useTheme();
-  const { t } = usePrefs();
+  const { t, setGuideDone } = usePrefs();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { me } = useSession();
+  const { me, biometricAvailable, biometricEnabled, setBiometricEnabled } = useSession();
   const perms = me?.permissions ?? [];
   const canSee = perms.includes('settings.view');
   const canEdit = perms.includes('settings.update');
   const canSetPaper = canSee || ['sale.create', 'sale.view', 'sale.view_own'].some((permission) => perms.includes(permission));
   const [paper, setPaper] = usePaperPref();
   const [paperOpen, setPaperOpen] = useState(false);
+  const [printing, setPrinting] = useState(false);
   const q = useQuery({ queryKey: RESOLVED, queryFn: resolvedSettings, enabled: canSee });
   const units = useQuery({ queryKey: ['settings', 'units'], queryFn: listUnitRows, enabled: canSee && perms.includes('unit.view') });
   const company = useQuery({ queryKey: ['settings', 'company'], queryFn: getCompany, enabled: canSee });
@@ -72,14 +74,6 @@ export default function ShopSettingsScreen() {
     onSettled: () => void queryClient.invalidateQueries({ queryKey: ['settings'] }),
   });
 
-  if (!canSetPaper) {
-    return (
-      <View style={{ flex: 1, padding: Spacing.three, backgroundColor: theme.canvas }}>
-        <Notice>You are not allowed to see this. Ask the owner.</Notice>
-      </View>
-    );
-  }
-
   const own = (k: string) => !!shop?.ownHere.includes(k);
   const lockedNote = () => showToast({ text: t('This branch has its own setting. Change it on the computer.') });
   const confirmFlip = (key: SettingKey, on: boolean, title: string, body: string) =>
@@ -95,7 +89,23 @@ export default function ShopSettingsScreen() {
       <Stack.Screen options={{ title: t('Settings') }} />
       <ScrollView contentInsetAdjustmentBehavior="automatic" refreshControl={canSee ? <RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} /> : undefined} contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
         <Section title="On this device" />
-        <ValueRow icon="Receipt" tone="info" title="Receipt paper" hint="Paper size used when printing receipts from this device." value={paperLabel(paper)} onPress={() => setPaperOpen(true)} />
+        {canSetPaper ? (
+          <>
+            <ValueRow icon="Receipt" tone="info" title="Receipt paper" hint="Paper size used when printing receipts from this device." value={paperLabel(paper)} onPress={() => setPaperOpen(true)} />
+            <ValueRow icon="Receipt" tone="info" title="Print test" hint="Print a sample with the current paper size." value={printing ? t('Opening…') : ''} onPress={printing ? undefined : () => {
+              setPrinting(true);
+              void printTestReceipt().finally(() => setPrinting(false));
+            }} />
+          </>
+        ) : null}
+        {biometricAvailable ? (
+          <SwitchRow icon="ScanFace" tone="info" title={process.env.EXPO_OS === 'ios' ? 'Unlock with Face ID' : 'Unlock with fingerprint'} hint="Keeps your shop safe if someone else picks up your phone." on={biometricEnabled} locked={false} disabled={false} onLocked={() => undefined} onChange={(value) => {
+            void setBiometricEnabled(value).catch(() => showToast({ text: t('Could not save this setting.') }));
+          }} />
+        ) : null}
+        <ValueRow icon="ChevronRight" tone="info" title="Show the help again" hint="Show the selling guide the next time you open Sell." value="" onPress={() => {
+          void setGuideDone(false).then(() => showToast({ text: t('Saved') }));
+        }} />
         {canSee && (!canEdit || q.isError) ? (
           <View style={{ gap: Spacing.three, padding: Spacing.three }}>
             {!canEdit ? <Notice kind="info">You can look at these, but only the owner can change them.</Notice> : null}

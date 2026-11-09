@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
 import { useSession } from '@/auth/session-provider';
@@ -14,10 +14,11 @@ import { ThemedText } from '@/components/themed-text';
 import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
-import { haptics } from '@/lib/haptics';
 import { formatBDT } from '@/lib/money';
 import { Pill, useLevelStyle } from '@/products/variant-card';
 import { Scanner } from '@/scan/scanner';
+import { useScanFeedback } from '@/scan/use-scan-feedback';
+import { useTillDevice } from '@/sell/till-device';
 import { findWarehouseId, lookupForPriceCheck } from '@/sell/api';
 import { describeSellError } from '@/sell/messages';
 import { notFoundText, toPriceCheck, type PriceCheck } from '@/sell/price-check';
@@ -31,6 +32,11 @@ export default function PriceCheckScreen() {
   const { t } = usePrefs();
   const { me } = useSession();
   const usesBarcodes = useUsesBarcodes();
+  const { scannerMode } = useTillDevice();
+  const [cameraChoice, setCameraChoice] = useState<{ mode: typeof scannerMode; open: boolean }>();
+  const cameraOpen = cameraChoice?.mode === scannerMode ? cameraChoice.open : scannerMode !== 'manual';
+  const scanFeedback = useScanFeedback();
+  const feedbackFor = useRef(0);
   const branchId = me?.active_branch?.id;
   const perms = me?.permissions ?? [];
   const [typed, setTyped] = useState('');
@@ -58,6 +64,12 @@ export default function PriceCheckScreen() {
     },
   });
 
+  useEffect(() => {
+    if (!asked || asked.n === feedbackFor.current || check.isFetching || (!check.isSuccess && !check.isError)) return;
+    feedbackFor.current = asked.n;
+    scanFeedback(check.isSuccess && !!check.data);
+  }, [asked, check.isFetching, check.isSuccess, check.isError, check.data, scanFeedback]);
+
   if (!perms.includes('product.view')) {
     return (
       <View style={{ flex: 1, padding: Spacing.three, backgroundColor: theme.canvas }}>
@@ -69,7 +81,6 @@ export default function PriceCheckScreen() {
   function ask(code: string, scanned: boolean) {
     const c = code.trim();
     if (!c) return;
-    haptics.tap();
     setAsked((a) => ({ code: c, scanned, n: (a?.n ?? 0) + 1 }));
   }
   const busy = !!asked && check.isFetching;
@@ -79,7 +90,8 @@ export default function PriceCheckScreen() {
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
       <Stack.Screen options={{ title: t('Price Check') }} />
       <ScrollView contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: Spacing.three, padding: Spacing.three, paddingBottom: BottomTabInset + Spacing.four, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
-        {usesBarcodes ? <Scanner onCode={(c) => ask(c, true)} paused={busy} height={200} /> : null}
+        {usesBarcodes && cameraOpen ? <Scanner feedbackHandled onCode={(c) => ask(c, true)} paused={busy} height={200} /> : null}
+        {usesBarcodes ? <Button title={cameraOpen ? 'Stop the camera' : 'Scan a barcode'} variant="secondary" onPress={() => setCameraChoice({ mode: scannerMode, open: !cameraOpen })} /> : null}
         <Field label="Barcode or item code" value={typed} onChangeText={setTyped} autoCapitalize="characters" autoCorrect={false} returnKeyType="search" onSubmitEditing={() => ask(typed, false)} />
         <Button title="Check the price" disabled={!typed.trim() || busy} loading={busy && !asked?.scanned} onPress={() => ask(typed, false)} />
 

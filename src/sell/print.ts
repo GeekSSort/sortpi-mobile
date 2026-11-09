@@ -53,3 +53,15 @@ export async function printReceipt(saleId: string, who: Who): Promise<void> {
     Alert.alert('Receipt not printed', printErrorText(e));
   }
 }
+
+/** A sample receipt for checking the selected paper and printer without creating a sale. */
+export async function printTestReceipt(): Promise<void> {
+  try {
+    const width = await loadPaperPref();
+    const label = width === 'a4' ? 'A4' : width.replace('mm', ' mm');
+    const sample = `<!doctype html><html><meta charset="utf-8"><style>body{font:14px monospace;padding:4mm;box-sizing:border-box}h2{font-size:16px}hr{border:0;border-top:1px dashed}</style><body><h2>SortPi · Print test</h2><p>Paper: ${label}</p><hr><p>Sample item × 1</p><p>0123456789 · ABC abc</p><hr><p>Sample only</p></body></html>`;
+    await Print.printAsync({ html: fitToPaper(sample, width) });
+  } catch (e) {
+    Alert.alert('Receipt not printed', printErrorText(e));
+  }
+}

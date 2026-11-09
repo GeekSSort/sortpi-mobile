@@ -3,7 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import Animated, { FadeIn, FadeInDown, FadeInUp, FadeOutLeft, LinearTransition, useAnimatedStyle, useSharedValue, withSpring, ZoomIn } from 'react-native-reanimated';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Keyboard, Platform, Pressable, Share, useColorScheme, useWindowDimensions, Vibration, View } from 'react-native';
+import { Alert, Keyboard, Platform, Pressable, Share, useColorScheme, useWindowDimensions, View } from 'react-native';
 
 import { newIdempotencyKey } from '@/api/idempotency';
 import { useSession } from '@/auth/session-provider';
@@ -25,6 +25,11 @@ import { useT } from '@/i18n/prefs';
 import { useTheme } from '@/hooks/use-theme';
 import { addMoney, compareMoney, formatBDT, subMoney } from '@/lib/money';
 import { Scanner } from '@/scan/scanner';
+import { useScanFeedback } from '@/scan/use-scan-feedback';
+import { searchCatalog } from '@/sell/catalog';
+import { useTillDevice } from '@/sell/till-device';
+import { useFavoriteProducts, type Favorite } from '@/sell/use-favorite-products';
+import { setTillFocus, useTillFocus } from '@/ui/till-focus';
 import { CustomerPicker } from '@/sell/customer-picker';
 import { DiscountBlock } from '@/sell/discount-block';
 import { totalFromRefusal } from '@/sell/discounts';
@@ -76,11 +81,18 @@ export default function SellScreen() {
   const dark = useColorScheme() === 'dark';
   const t = useT();
   const queryClient = useQueryClient();
-  const { me } = useSession();
+  const { me, beforeTillLock, clearTillResume } = useSession();
   const router = useRouter();
   const [cart, setCart] = useState<Cart>([]);
   const [mode, setMode] = useState<Mode>('scan');
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
+  const focus = useTillFocus() && width >= 720 && width > height;
+  const focusExit = focus ? () => <HeaderAction title="Exit focus mode" onPress={() => setTillFocus(false)} /> : undefined;
+  const { scannerMode } = useTillDevice();
+  const scanFeedback = useScanFeedback();
+  const favorites = useFavoriteProducts(me?.organization.id, me?.active_branch?.id);
+  const [favoritesOpen, setFavoritesOpen] = useState(false);
+  const [favoriteLoading, setFavoriteLoading] = useState<string | null>(null);
   const wideTill = Platform.OS === 'android' && width >= 720;
   const splitTill = wideTill && mode !== 'done';
   const tablet = useTabletLayout(wideTill);
@@ -100,8 +112,9 @@ export default function SellScreen() {
   }, [cart]);
   // On the wide till, keep the catalogue in view until the cashier opens the camera.
   const [cameraPermission] = useCameraPermissions();
-  const [cameraChoice, setCameraChoice] = useState<boolean | null>(null);
-  const showCamera = cameraChoice ?? (!splitTill && !!cameraPermission?.granted);
+  const [cameraChoice, setCameraChoice] = useState<{ mode: typeof scannerMode; open: boolean }>();
+  const showCamera = cameraChoice?.mode === scannerMode ? cameraChoice.open
+    : !!cameraPermission?.granted && (scannerMode === 'auto' || (scannerMode === 'device' && !splitTill));
   const usesBarcodes = useUsesBarcodes();
   const [openingCash, setOpeningCash] = useState('0');
   const [method, setMethod] = useState<PayChoice>('CASH');
@@ -134,12 +147,13 @@ export default function SellScreen() {
   // A product just added from the not-found card comes back here and goes straight into the cart.
   useFocusEffect(
     useCallback(() => {
+      clearTillResume();
       const item = takePendingItem();
       if (item) {
         setCart((c) => addItem(c, item));
         setScanNote(null);
       }
-    }, []),
+    }, [clearTillResume]),
   );
 
   const userId = me?.id ?? '';
@@ -191,6 +205,12 @@ export default function SellScreen() {
     }, 400);
     return () => clearTimeout(id);
   }, [cart, customer, mode, ready, userId, draftBranch, pending]);
+  useEffect(() => beforeTillLock(async () => {
+    if (busy || looking.current || sheetEditingKey) throw new Error('Till busy');
+    if (!ready || !userId || !draftBranch || mode === 'done') return;
+    if (!isEmpty(cart)) await saveDraft({ v: 1, at: Date.now(), userId, branchId: draftBranch, cart, customer }, true);
+    else if (!pending) await clearDraft(true);
+  }), [beforeTillLock, busy, sheetEditingKey, ready, userId, draftBranch, mode, cart, customer, pending]);
   const counters = useQuery({ queryKey: ['counters', me?.active_branch?.id], queryFn: () => listCounters(me!.active_branch!.id), enabled: !!me?.active_branch?.id && shiftQuery.data === null, staleTime: 0, retry: false });
   const counterList = counters.data ?? [];
   // The counter used last time is chosen again when it is free, so opening the day is usually one tap.
@@ -228,10 +248,10 @@ export default function SellScreen() {
     showToast({ text: t('Removed {name}', { name }), actionLabel: t('Undo'), onAction: () => setCart(before) });
   }
 
-  function addToOrder(item: ScannedItem) {
+  function addToOrder(item: ScannedItem, tap = true) {
     setLastItemKey(lineKey(item.variantId, item.unitId));
     setCart((c) => addItem(c, item));
-    haptics.tap();
+    if (tap) haptics.tap();
   }
 
   async function selectTabletLayout(value: TabletLayout | null) {
@@ -250,22 +270,45 @@ export default function SellScreen() {
     addToOrder(toCartItem(item));
   }
 
+  function toggleFavorite(item: Favorite) {
+    void favorites.toggle(item).catch(() => showToast({ text: t('Could not save the favorite product.') }));
+  }
+
+  async function pickFavorite(favorite: Favorite) {
+    if (favoriteLoading || !ctx) return;
+    setFavoriteLoading(favorite.variantId);
+    try {
+      const page = await searchCatalog({ q: favorite.sku || favorite.name, page: 1, wholesale: !!customer?.wholesale });
+      const item = page.items.find((entry) => entry.variantId === favorite.variantId);
+      if (!item) {
+        showToast({ text: t('This favorite product is unavailable.') });
+        return;
+      }
+      pickItem(item);
+      setFavoritesOpen(false);
+    } catch (error) {
+      showToast({ text: t(describeSellError(error)) });
+    } finally {
+      setFavoriteLoading(null);
+    }
+  }
+
   async function onCode(code: string, scanned = true) {
     if (!ctx || looking.current || scanNote || again || mode !== 'scan') return;
     looking.current = true;
     setScanNote(null);
     try {
       const item = await timed('scan_lookup', () => (scanned ? lookupBarcode : lookupCode)(code, ctx.branchId));
+      scanFeedback(!!item);
       if (item && scanned && lastQuantity(cartRef.current, item) !== null) {
-        Vibration.vibrate([0, 60, 50, 60]);
         setAgain(item);
       } else if (item) {
-        addToOrder(item);
+        addToOrder(item, false);
       } else {
         setScanNote({ kind: 'missing', code: code.trim(), scanned });
-        if (scanned) Vibration.vibrate([0, 80, 60, 80]); // a double buzz for "not found", like the web till's beep
       }
     } catch (e) {
+      scanFeedback(false);
       setScanNote({ kind: 'failed', text: describeSellError(e) });
     } finally {
       looking.current = false;
@@ -485,6 +528,7 @@ export default function SellScreen() {
   if (ctxQuery.isPending || shiftQuery.isPending) {
     return (
       <Screen topInset={false}>
+        <Stack.Screen options={{ headerRight: focusExit }} />
         <ThemedText themeColor="textMuted">Getting your till ready…</ThemedText>
       </Screen>
     );
@@ -492,6 +536,7 @@ export default function SellScreen() {
   if (ctxQuery.isError) {
     return (
       <Screen topInset={false}>
+        <Stack.Screen options={{ headerRight: focusExit }} />
         <Notice>{describeSellError(ctxQuery.error)}</Notice>
         <Button title="Try again" onPress={() => void ctxQuery.refetch()} />
       </Screen>
@@ -501,7 +546,7 @@ export default function SellScreen() {
     return (
       <Screen topInset={false}>
         {/* The header link from the selling screen would otherwise stay: there is no day to close yet. */}
-        <Stack.Screen options={{ headerRight: () => null }} />
+        <Stack.Screen options={{ headerRight: focusExit }} />
         <Card style={{ gap: 12 }}>
           <ThemedText type="lead">Start selling</ThemedText>
           <ThemedText type="small" themeColor="textMuted">
@@ -736,24 +781,26 @@ export default function SellScreen() {
     <Screen topInset={false} keyboardGap={showBar ? barHeight + 40 : 24}>
       <Stack.Screen options={{ headerRight: mode === 'scan' ? () => (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          {focusExit?.()}
           {splitTill ? <HeaderAction title="POS layout" icon="Sliders" onPress={() => { Keyboard.dismiss(); setLayoutOpen(true); }} /> : null}
           <HeaderAction title="Day Close" onPress={() => router.push('/end-shift')} />
         </View>
-      ) : undefined }} />
+      ) : focusExit }} />
       {splitTill && mode === 'scan' ? <ThemedText type="bodyMedium">{TABLET_LAYOUTS.find((layout) => layout.id === tablet.layout)?.title}</ThemedText> : null}
       <SaleGuide mode={mode} cartEmpty={isEmpty(cart)} usesBarcodes={usesBarcodes} />
       {mode === 'scan' ? (
         <>
-          {usesBarcodes && showCamera ? <Scanner height={splitTill ? 160 : undefined} onCode={(c) => void onCode(c)} paused={scanNote !== null || again !== null} /> : null}
-          {canHold && heldCount > 0 ? (
-            <Tap accessibilityRole="button" accessibilityLabel={t('Carts on hold')} onPress={() => setHeldOpen(true)} style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, borderRadius: Radius.md, backgroundColor: theme.warningSoft, borderWidth: 1, borderColor: theme.warning }}>
-              <Icon name="Pause" size={20} color={theme.warning} />
-              <ThemedText type="smallMedium" style={{ flex: 1 }}>{t(heldCount === 1 ? '1 cart on hold' : '{n} carts on hold', { n: heldCount })}</ThemedText>
-              <ThemedText type="smallMedium" style={{ color: theme.brandText }}>See</ThemedText>
-            </Tap>
-          ) : null}
+          {usesBarcodes && showCamera ? <Scanner feedbackHandled height={splitTill ? 160 : undefined} onCode={(c) => void onCode(c)} paused={scanNote !== null || again !== null} /> : null}
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {me?.permissions?.includes('product.view') ? <Button title="Price Check" variant="secondary" onPress={() => router.push('/price-check')} /> : null}
+            {canHold ? <Button title={heldCount > 0 ? t('Held carts ({n})', { n: heldCount }) : 'Held carts'} variant="secondary" onPress={() => setHeldOpen(true)} /> : null}
+            <Button title="Favorite products" variant="secondary" onPress={() => setFavoritesOpen(true)} />
+          </View>
           <ItemPicker
             layout={splitTill ? tablet.layout : undefined}
+            favorites={favorites.favorites}
+            favoritesBusy={favorites.busy}
+            onFavorite={toggleFavorite}
             onPick={pickItem}
             qtyOf={(id) => splitTill && tablet.layout === 'touch'
               ? Number(lastQuantity(cart, { variantId: id, unitId: null }) ?? 0)
@@ -762,7 +809,7 @@ export default function SellScreen() {
             onCode={(c) => void onCode(c, false)}
             wholesale={!!customer?.wholesale}
             branchId={ctx?.branchId}
-            scan={usesBarcodes ? { open: showCamera, toggle: () => setCameraChoice(!showCamera) } : undefined}
+            scan={usesBarcodes ? { open: showCamera, toggle: () => setCameraChoice({ mode: scannerMode, open: !showCamera }) } : undefined}
           />
           {sheetTill ? orderSheet : null}
         </>
@@ -915,6 +962,19 @@ export default function SellScreen() {
         <CustomerPicker onPick={setCustomer} onClose={() => setPicking(false)} />
       </BottomSheet>
     ) : null}
+    <BottomSheet visible={favoritesOpen && mode === 'scan'} title="Favorite products" onClose={() => { if (!favoriteLoading) setFavoritesOpen(false); }}>
+      <View style={{ gap: 8, paddingHorizontal: 16 }}>
+        {favorites.favorites.length === 0 ? <ThemedText type="small" themeColor="textMuted">Tap the star on a product to save it here.</ThemedText> : null}
+        {favorites.favorites.map((item) => (
+          <View key={item.variantId} style={{ flexDirection: 'row', gap: 8 }}>
+            <Button title={item.name} variant="secondary" loading={favoriteLoading === item.variantId} disabled={!!favoriteLoading} onPress={() => void pickFavorite(item)} style={{ flex: 1 }} />
+            <Tap accessibilityRole="button" accessibilityLabel={t('Remove {name} from favorites', { name: item.name })} disabled={favorites.busy || !!favoriteLoading} onPress={() => toggleFavorite(item)} style={{ width: 44, justifyContent: 'center', alignItems: 'center' }}>
+              <Icon name="StarFilled" size={20} color={theme.brandText} />
+            </Tap>
+          </View>
+        ))}
+      </View>
+    </BottomSheet>
     <HeldSheet visible={heldOpen} onClose={() => setHeldOpen(false)} carts={heldQuery.data} failed={heldQuery.isError} busyId={heldBusy} onTake={(h) => void takeBack(h)} onDrop={(h) => void throwAway(h)} onRetry={() => void heldQuery.refetch()} />
     <QuantitySheet
       line={cart.find((l) => l.key === qtyKey) ?? null}
