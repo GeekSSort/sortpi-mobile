@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
@@ -86,7 +87,7 @@ function SidePanel({ wanted, close, openProfile }: { wanted: boolean; close: () 
   );
 }
 
-function MenuPanelContent({ close, openProfile }: { close?: () => void; openProfile: () => void }) {
+function MenuPanelContent({ close, openProfile, branded }: { close?: () => void; openProfile: () => void; branded?: boolean }) {
   const theme = useTheme();
   const t = useT();
   const { me } = useSession();
@@ -94,9 +95,13 @@ function MenuPanelContent({ close, openProfile }: { close?: () => void; openProf
     <>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingLeft: Spacing.three, paddingRight: Spacing.two, paddingVertical: Spacing.two, backgroundColor: theme.card, borderBottomWidth: 1, borderBottomColor: theme.border }}>
         <View style={{ flex: 1 }}>
-          <ThemedText type="heading" literal numberOfLines={1}>
-            {close ? (me?.organization.name ?? 'SortPi') : t('Menu')}
-          </ThemedText>
+          {branded ? (
+            <Image source={require('@/assets/images/sortpi-wordmark.png')} accessibilityLabel="SortPi" accessible contentFit="contain" style={{ width: 128, height: 32 }} />
+          ) : (
+            <ThemedText type="heading" literal numberOfLines={1}>
+              {close ? (me?.organization.name ?? 'SortPi') : t('Menu')}
+            </ThemedText>
+          )}
           {close && me?.active_branch && !sameName(me.active_branch.name, me.organization.name) ? (
             <ThemedText type="caption" themeColor="textMuted" literal numberOfLines={1}>
               {me.active_branch.name}
@@ -132,14 +137,14 @@ function MenuPanelContent({ close, openProfile }: { close?: () => void; openProf
   );
 }
 
-export function HomeSidebar({ width }: { width: number }) {
+export function HomeSidebar({ width, branded }: { width: number; branded?: boolean }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { openProfile } = useDrawer();
 
   return (
     <View style={{ width, paddingTop: insets.top, backgroundColor: theme.canvas, borderEndWidth: 1, borderColor: theme.border }}>
-      <MenuPanelContent openProfile={openProfile} />
+      <MenuPanelContent openProfile={openProfile} branded={branded} />
     </View>
   );
 }

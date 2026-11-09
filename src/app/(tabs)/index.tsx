@@ -17,6 +17,7 @@ import { Radius, Spacing } from '@/constants/theme';
 import { customerSummary } from '@/customers/api';
 import { amountDue } from '@/customers/logic';
 import { biggestDebts, lowStockItems, previousSixDaySales, recentSales, salesToday, type DayTotal, type RecentSale } from '@/home/api';
+import { TabletDashboard } from '@/home/tablet-dashboard';
 import { barFractions, lastSevenDays, MONTHS, saleWhen, WEEKDAYS } from '@/home/week';
 import { localDateISO } from '@/lib/dates';
 import { usePrefs } from '@/i18n/prefs';
@@ -31,11 +32,21 @@ import { formatQuantity } from '@/stock/status';
 /** The shop at a glance, in plain words: today's takings, who owes, what is running out, the week, the latest sales. */
 
 export default function HomeScreen() {
+  const { width, height } = useWindowDimensions();
+  const { me } = useSession();
+  const landing = landingTab(me?.permissions ?? []);
+  if (me && landing !== 'index') return <Redirect href={landing === 'sell' ? '/sell' : landing === 'stock' ? '/stock' : landing === 'customers' ? '/customers' : '/more'} />;
+
+  const wideAndroid = Platform.OS === 'android' && width >= 720;
+  if (me && wideAndroid && height >= 600 && width > height) return <TabletDashboard width={width} />;
+  return <CompactHome sidebarWidth={wideAndroid ? Math.min(288, Math.round(width * 0.36)) : 0} />;
+}
+
+function CompactHome({ sidebarWidth }: { sidebarWidth: number }) {
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const showSidebar = Platform.OS === 'android' && width >= 720;
   const { t, lang } = usePrefs();
   const { me } = useSession();
+  const showSidebar = sidebarWidth > 0;
   const can = (...codes: string[]) => codes.some((c) => me?.permissions?.includes(c));
   const seeSales = !!me && can('sale.view', 'sale.view_own');
   const seeCustomers = !!me && can('customer.view');
@@ -51,10 +62,6 @@ export default function HomeScreen() {
   const debts = useQuery({ queryKey: ['home', 'debts'], queryFn: biggestDebts, enabled: seeCustomers, ...q });
   const shelf = useQuery({ queryKey: ['stock', 'summary', 'shelf'], queryFn: () => stockSummary(false), enabled: seeStock, ...q });
   const low = useQuery({ queryKey: ['home', 'low'], queryFn: lowStockItems, enabled: seeStock, ...q });
-
-  // A role with no dashboard opens on its own first tab (cashier: Sell). This screen is not in their tab bar.
-  const landing = landingTab(me?.permissions ?? []);
-  if (me && landing !== 'index') return <Redirect href={landing === 'sell' ? '/sell' : landing === 'stock' ? '/stock' : landing === 'customers' ? '/customers' : '/more'} />;
 
   const canSell = can('pos.access') && can('sale.create');
   const sales = today.data;
@@ -136,7 +143,7 @@ export default function HomeScreen() {
   if (!showSidebar) return dashboard;
   return (
     <View style={{ flex: 1, flexDirection: 'row' }}>
-      <HomeSidebar width={Math.min(288, Math.round(width * 0.36))} />
+      <HomeSidebar width={sidebarWidth} />
       {dashboard}
     </View>
   );
