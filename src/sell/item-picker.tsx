@@ -27,7 +27,7 @@ import type { Favorite } from './use-favorite-products';
  * Selling without a barcode: type a name or code and tap the result, or tap an item from the shop's own list (most sold first),
  * narrowed by category. The camera is one optional button next to the search box.
  */
-export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId, scan, layout, favorites, favoritesBusy, onFavorite }: {
+export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId, scan, acceptKeyboardCode, subscribeToBroadcast, layout, favorites, favoritesBusy, onFavorite }: {
   onPick: (item: CatalogItem) => void;
   onFewer?: (item: CatalogItem) => void;
   qtyOf: (variantId: string) => number;
@@ -35,6 +35,8 @@ export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId
   wholesale: boolean;
   branchId?: string;
   scan?: { open: boolean; toggle: () => void };
+  acceptKeyboardCode?: (code: string, willAct: boolean) => boolean;
+  subscribeToBroadcast?: (listener: (code: string) => void) => () => void;
   layout?: TabletLayout;
   favorites: Favorite[];
   favoritesBusy: boolean;
@@ -50,6 +52,9 @@ export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId
   const tileWidth = layout && gridWidth > 0 ? Math.floor((gridWidth - Spacing.two * (columns - 1)) / columns) : undefined;
   const [text, setText] = useState('');
   const [typed, setTyped] = useState('');
+  useEffect(() => subscribeToBroadcast?.((code) => {
+    setText((current) => current.trim() === code ? '' : current);
+  }), [subscribeToBroadcast]);
   const [category, setCategory] = useState<string | null>(null);
   useEffect(() => {
     const id = setTimeout(() => setTyped(text.trim()), 250);
@@ -76,9 +81,14 @@ export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId
     const q = value.trim();
     if (!q) return;
     // A scanner's code plus Enter arrives before the search below has even started: look the code up exactly, now, not in the list on screen.
-    if (looksLikeCode(q)) onCode(q);
-    else if (typed === q && !list.isPlaceholderData && items.length === 1) onPick(items[0]);
-    else return;
+    const code = looksLikeCode(q);
+    const match = typed === q && !list.isPlaceholderData && items.length === 1;
+    const allowed = acceptKeyboardCode?.(q, code || match) !== false;
+    if (allowed && !code && !match) return;
+    if (allowed) {
+      if (code) onCode(q);
+      else onPick(items[0]);
+    }
     setText('');
   }
 

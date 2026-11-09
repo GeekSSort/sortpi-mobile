@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as SecureStore from 'expo-secure-store';
 import Animated, { FadeIn, FadeInDown, FadeInUp, FadeOutLeft, LinearTransition, useAnimatedStyle, useSharedValue, withSpring, ZoomIn } from 'react-native-reanimated';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Keyboard, Platform, Pressable, Share, useColorScheme, useWindowDimensions, View } from 'react-native';
 
 import { newIdempotencyKey } from '@/api/idempotency';
@@ -41,6 +41,7 @@ import { clearDraft, clearPending, loadDraft, loadPending, saveDraft, savePendin
 import { mayHaveCommitted, type PendingSale } from '@/sell/journal';
 import { printReceipt } from '@/sell/print';
 import { androidPosDevice } from '@/sell/device-printer';
+import { sunmiHandheldScanHint, useSunmiCustomerDisplay, useSunmiScanner } from '@/sell/use-sunmi-peripherals';
 import { receiptText } from '@/sell/receipt';
 import { haptics } from '@/lib/haptics';
 import { showToast } from '@/ui/toast';
@@ -525,6 +526,24 @@ export default function SellScreen() {
     setForced(null);
   }
 
+  const hardwareScannerEnabled = !!ctx && !!shift && ready && usesBarcodes && mode === 'scan'
+    && scannerMode !== 'manual' && !cartOpen && !heldOpen && !favoritesOpen && !layoutOpen && !busy && !pending;
+  const { acceptKeyboardCode, subscribeToBroadcast } = useSunmiScanner(hardwareScannerEnabled, (code) => void onCode(code));
+  const customerTotal = pending && mode === 'pay' ? pending.total : ((mode === 'pay' ? payTotal : undefined) ?? serverTotal ?? estimate);
+  const displayTotal = formatBDT(customerTotal);
+  const digits = formatBDT(customerTotal, { symbol: false }).replace(/,/g, '');
+  const segmentTotal = /^\d+(\.\d+)?$/.test(digits) && digits.replace('.', '').length <= 7 ? digits : null;
+  const displayTitle = me?.organization.name ?? 'SortPi';
+  const displayTotalLabel = t('Total');
+  const displayBasket = useMemo(() => ({
+    title: displayTitle,
+    lines: cart.map((line) => `${line.quantity} × ${line.name}`),
+    totalLabel: displayTotalLabel,
+    total: displayTotal,
+    segmentTotal,
+  }), [cart, displayTitle, displayTotalLabel, displayTotal, segmentTotal]);
+  useSunmiCustomerDisplay(!!me && !!ctx && !!shift && ready && mode !== 'done', displayBasket);
+
   // ---- states before selling ----
   if (ctxQuery.isPending || shiftQuery.isPending) {
     return (
@@ -797,7 +816,12 @@ export default function SellScreen() {
             {canHold ? <Button title={heldCount > 0 ? t('Held carts ({n})', { n: heldCount }) : 'Held carts'} variant="secondary" onPress={() => setHeldOpen(true)} /> : null}
             <Button title="Favorite products" variant="secondary" onPress={() => setFavoritesOpen(true)} />
           </View>
+          {hardwareScannerEnabled && sunmiHandheldScanHint ? (
+            <ThemedText type="small" themeColor="textMuted">Use the side button to scan</ThemedText>
+          ) : null}
           <ItemPicker
+            acceptKeyboardCode={acceptKeyboardCode}
+            subscribeToBroadcast={subscribeToBroadcast}
             layout={splitTill ? tablet.layout : undefined}
             favorites={favorites.favorites}
             favoritesBusy={favorites.busy}

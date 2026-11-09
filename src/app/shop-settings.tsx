@@ -25,7 +25,8 @@ import { Pill } from '@/products/variant-card';
 import { PAPERS } from '@/sell/paper';
 import { usePaperPref } from '@/sell/paper-pref';
 import { printTestReceipt } from '@/sell/print';
-import { androidPosDevice, hasBuiltInPrinterSupport, loadSystemPrinting, setSystemPrinting } from '@/sell/device-printer';
+import { androidPosDevice, hasBuiltInPrinterSupport, hasSunmiDiagnostics, loadSunmiPrinterInfo, loadSystemPrinting, setSystemPrinting } from '@/sell/device-printer';
+import { sunmiPrinterStatus } from '@/sell/printer-status';
 import { showToast } from '@/ui/toast';
 
 type Tone = 'good' | 'warn' | 'info';
@@ -52,6 +53,12 @@ export default function ShopSettingsScreen() {
     queryKey: SYSTEM_PRINTING,
     queryFn: loadSystemPrinting,
     enabled: canSetPaper && hasBuiltInPrinterSupport,
+  });
+  const sunmiPrinter = useQuery({
+    queryKey: ['settings', 'sunmi-printer'],
+    queryFn: loadSunmiPrinterInfo,
+    enabled: canSetPaper && hasSunmiDiagnostics,
+    refetchInterval: 5_000,
   });
   const chooseSystemPrinting = useMutation({
     mutationFn: setSystemPrinting,
@@ -107,12 +114,18 @@ export default function ShopSettingsScreen() {
         {canSetPaper ? (
           <>
             <ValueRow icon="Receipt" tone="info" title="Receipt paper" hint={hasBuiltInPrinterSupport ? "Matches the built-in roll until you choose a size." : "Paper size used when printing receipts from this device."} value={paperLabel(paper)} onPress={() => setPaperOpen(true)} />
+            {hasSunmiDiagnostics ? (
+              <ValueRow icon="Receipt" tone="info" title="Built-in printer" hint={[sunmiPrinter.data?.model || 'SUNMI', sunmiPrinter.data?.width && paperLabel(sunmiPrinter.data.width)].filter(Boolean).join(' · ')} value={sunmiPrinter.isPending ? t('Checking…') : t(sunmiPrinterStatus(sunmiPrinter.data?.status))} onPress={() => void sunmiPrinter.refetch()} />
+            ) : null}
             {hasBuiltInPrinterSupport ? (
               <SwitchRow icon="Receipt" tone="info" title="Use Android printing" hint="Open the print dialog to choose an external printer." on={systemPrinting.data === true} locked={false} disabled={systemPrinting.isPending || chooseSystemPrinting.isPending || printing} onLocked={() => undefined} onChange={(enabled) => chooseSystemPrinting.mutate(enabled)} />
             ) : null}
             <ValueRow icon="Receipt" tone="info" title="Print test" hint="Print a sample with the current paper size." value={printing ? t('Opening…') : ''} onPress={printing ? undefined : () => {
               setPrinting(true);
-              void printTestReceipt().finally(() => setPrinting(false));
+              void printTestReceipt().finally(() => {
+                setPrinting(false);
+                if (hasSunmiDiagnostics) void sunmiPrinter.refetch();
+              });
             }} />
           </>
         ) : null}

@@ -1,0 +1,80 @@
+name: SUNMI private pilot APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_code:
+        description: Android version code greater than the last deployed pilot
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: sunmi-pilot
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - run: npm ci
+      - name: Configure Android
+        env:
+          VERSION_CODE: ${{ inputs.version_code }}
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            const raw = process.env.VERSION_CODE;
+            const code = Number(raw);
+            if (!/^\d+$/.test(raw) || code < 1 || code > 2100000000) throw new Error("Enter a valid Android version code.");
+            const config = JSON.parse(fs.readFileSync("app.json"));
+            config.expo.android.versionCode = code;
+            fs.writeFileSync("app.json", JSON.stringify(config, null, 2));
+          '
+          test -n "$GOOGLE_SERVICES_JSON"
+          printf '%s' "$GOOGLE_SERVICES_JSON" | base64 --decode > google-services.json
+          npx expo prebuild --platform android --no-install
+      - name: Build Android release
+        working-directory: android
+        env:
+          NODE_ENV: production
+        run: |
+          sed -i 's/^networkTimeout=.*/networkTimeout=120000/' gradle/wrapper/gradle-wrapper.properties
+          ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
+      - name: Sign and verify pilot APK
+        env:
+          PILOT_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
+          PILOT_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
+          PILOT_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
+          PILOT_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
+        run: |
+          : "${PILOT_KEYSTORE_BASE64:?Missing Android release keystore}"
+          : "${PILOT_STORE_PASSWORD:?Missing Android release store password}"
+          : "${PILOT_KEY_ALIAS:?Missing Android release key alias}"
+          : "${PILOT_KEY_PASSWORD:?Missing Android release key password}"
+          umask 077
+          pilot_keystore=$(mktemp)
+          trap 'rm -f "$pilot_keystore"' EXIT
+          printf '%s' "$PILOT_KEYSTORE_BASE64" | base64 --decode > "$pilot_keystore"
+          build_tools=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)
+          test -x "$build_tools"
+          "$build_tools" sign --ks "$pilot_keystore" --ks-key-alias "$PILOT_KEY_ALIAS" \
+            --ks-pass env:PILOT_STORE_PASSWORD --key-pass env:PILOT_KEY_PASSWORD \
+            --out sortpi-sunmi-pilot.apk android/app/build/outputs/apk/release/app-release.apk
+          "$build_tools" verify --verbose --print-certs sortpi-sunmi-pilot.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sortpi-sunmi-pilot
+          path: sortpi-sunmi-pilot.apk
+          if-no-files-found: error
+          retention-days: 14

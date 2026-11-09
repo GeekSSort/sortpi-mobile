@@ -4,6 +4,7 @@ import com.sunmi.peripheral.printer.InnerPrinterCallback
 import com.sunmi.peripheral.printer.InnerPrinterManager
 import com.sunmi.peripheral.printer.InnerResultCallback
 import com.sunmi.peripheral.printer.SunmiPrinterService
+import expo.modules.kotlin.exception.CodedException
 import expo.modules.kotlin.functions.Coroutine
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
@@ -25,13 +26,35 @@ class SunmiPrinterModule : Module() {
       withPrinter { paperWidth(it) }
     }
 
+    AsyncFunction("printerInfo") Coroutine { ->
+      withPrinter { printer ->
+        mapOf(
+          "model" to runCatching { printer.printerModal }.getOrNull(),
+          "width" to runCatching { paperWidth(printer) }.getOrNull(),
+          "status" to printer.updatePrinterState()
+        )
+      }
+    }
+
+    AsyncFunction("setSegmentTotal") Coroutine { total: String? ->
+      withPrinter { printer ->
+        printer.sendLCDCommand(2) // Wake before updating or clearing the LCD.
+        if (total == null) {
+          printer.sendLCDCommand(4)
+        } else {
+          require(total.count { it != '.' } <= 7 && total.matches(Regex("[0-9]+(\\.[0-9]+)?")))
+          printer.sendLCDDigital(total, null)
+        }
+      }
+    }
+
     AsyncFunction("printPdf") Coroutine { uri: String, width: String ->
       printLock.withLock {
         withPrinter { printer ->
           check(paperWidth(printer) == width) { "The printer paper changed. Try again." }
           printPdf(printer, uri, width)
           true
-        } ?: error("The built-in printer is unavailable.")
+        } ?: throw CodedException("ERR_SUNMI_PRINTER_505", "Built-in printer unavailable.", null)
       }
     }
   }
@@ -76,7 +99,10 @@ class SunmiPrinterModule : Module() {
       }
     }
 
-    check(printer.updatePrinterState() == 1) { "The built-in printer is not ready." }
+    val status = printer.updatePrinterState()
+    if (status != 1 && status != 8) {
+      throw CodedException("ERR_SUNMI_PRINTER_$status", "Built-in printer status $status", null)
+    }
     printer.enterPrinterBuffer(true)
     var submitted = false
     try {
