@@ -29,6 +29,7 @@
     },
     "plugins": [
       "expo-router",
+      "./plugins/with-android-rotation",
       [
         "expo-splash-screen",
         {

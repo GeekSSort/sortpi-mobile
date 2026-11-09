@@ -1,24 +1,23 @@
 import * as SecureStore from 'expo-secure-store';
 import { useEffect, useState } from 'react';
 
-import { DEFAULT_RECEIPT_WIDTH, parsePaperPref, type ReceiptWidth } from './paper';
+import { DEFAULT_RECEIPT_WIDTH, parsePaperPref, savedPaperWidth, type ReceiptWidth } from './paper';
+import { sunmiPaperWidth } from './sunmi-printer';
 
 const KEY = 'sortpi.paper';
 
 // One copy for the whole app, so the settings screen and the print action always agree. `undefined` is "not read from the phone yet".
-let current: ReceiptWidth | undefined;
+let current: ReceiptWidth | null | undefined;
 let pendingSave = Promise.resolve();
 const listeners = new Set<(p: ReceiptWidth) => void>();
 
-export async function loadPaperPref(): Promise<ReceiptWidth> {
-  if (current !== undefined) return current;
-  try {
-    const saved = await SecureStore.getItemAsync(KEY);
-    current ??= parsePaperPref(saved);
-  } catch {
-    current ??= DEFAULT_RECEIPT_WIDTH;
+export async function loadPaperPref(builtIn?: '58mm' | '80mm' | null): Promise<ReceiptWidth> {
+  if (current === undefined) {
+    const saved = await SecureStore.getItemAsync(KEY).catch(() => null);
+    current ??= savedPaperWidth(saved);
   }
-  return current;
+  const detected = builtIn === undefined && !current ? await sunmiPaperWidth() : builtIn;
+  return parsePaperPref(current, detected);
 }
 
 export function setPaperPref(p: ReceiptWidth): Promise<void> {

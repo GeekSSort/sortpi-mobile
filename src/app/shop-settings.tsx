@@ -25,11 +25,13 @@ import { Pill } from '@/products/variant-card';
 import { PAPERS } from '@/sell/paper';
 import { usePaperPref } from '@/sell/paper-pref';
 import { printTestReceipt } from '@/sell/print';
+import { hasSunmiPrinterSupport, loadSystemPrinting, setSystemPrinting } from '@/sell/sunmi-printer';
 import { showToast } from '@/ui/toast';
 
 type Tone = 'good' | 'warn' | 'info';
 type NumberKey = 'vat' | 'maxDiscount' | 'target';
 const RESOLVED = ['settings', 'resolved'];
+const SYSTEM_PRINTING = ['settings', 'system-printing'];
 const paperLabel = (width: string) => width === 'a4' ? 'A4' : width.replace('mm', ' mm');
 
 /** The settings a shop owner needs most: tax, discount, daily target, how customers pay, and a few rules about selling and stock. Each change is saved as it is made. */
@@ -46,6 +48,16 @@ export default function ShopSettingsScreen() {
   const [paper, setPaper] = usePaperPref();
   const [paperOpen, setPaperOpen] = useState(false);
   const [printing, setPrinting] = useState(false);
+  const systemPrinting = useQuery({
+    queryKey: SYSTEM_PRINTING,
+    queryFn: loadSystemPrinting,
+    enabled: canSetPaper && hasSunmiPrinterSupport,
+  });
+  const chooseSystemPrinting = useMutation({
+    mutationFn: setSystemPrinting,
+    onSuccess: (_, enabled) => queryClient.setQueryData(SYSTEM_PRINTING, enabled),
+    onError: () => showToast({ text: t('Could not save this setting.') }),
+  });
   const q = useQuery({ queryKey: RESOLVED, queryFn: resolvedSettings, enabled: canSee });
   const units = useQuery({ queryKey: ['settings', 'units'], queryFn: listUnitRows, enabled: canSee && perms.includes('unit.view') });
   const company = useQuery({ queryKey: ['settings', 'company'], queryFn: getCompany, enabled: canSee });
@@ -91,7 +103,10 @@ export default function ShopSettingsScreen() {
         <Section title="On this device" />
         {canSetPaper ? (
           <>
-            <ValueRow icon="Receipt" tone="info" title="Receipt paper" hint="Paper size used when printing receipts from this device." value={paperLabel(paper)} onPress={() => setPaperOpen(true)} />
+            <ValueRow icon="Receipt" tone="info" title="Receipt paper" hint={hasSunmiPrinterSupport ? "Matches the built-in roll until you choose a size." : "Paper size used when printing receipts from this device."} value={paperLabel(paper)} onPress={() => setPaperOpen(true)} />
+            {hasSunmiPrinterSupport ? (
+              <SwitchRow icon="Receipt" tone="info" title="Use Android printing" hint="Open the print dialog to choose an external printer." on={systemPrinting.data === true} locked={false} disabled={systemPrinting.isPending || chooseSystemPrinting.isPending || printing} onLocked={() => undefined} onChange={(enabled) => chooseSystemPrinting.mutate(enabled)} />
+            ) : null}
             <ValueRow icon="Receipt" tone="info" title="Print test" hint="Print a sample with the current paper size." value={printing ? t('Opening…') : ''} onPress={printing ? undefined : () => {
               setPrinting(true);
               void printTestReceipt().finally(() => setPrinting(false));

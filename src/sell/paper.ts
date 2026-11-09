@@ -21,7 +21,11 @@ export function fitToPaper(html: string, width: ReceiptWidth): string {
 
 export const DEFAULT_RECEIPT_WIDTH: ReceiptWidth = '80mm';
 
-/** Unset, invalid and legacy "ask" preferences all use the default size. */
-export function parsePaperPref(raw: string | null | undefined): ReceiptWidth {
-  return PAPERS.find((paper) => paper.width === raw)?.width ?? DEFAULT_RECEIPT_WIDTH;
+/** Unset, invalid and legacy "ask" preferences use the printer's roll or the app default. */
+export function parsePaperPref(raw: string | null | undefined, builtIn?: ReceiptWidth | null): ReceiptWidth {
+  return savedPaperWidth(raw) ?? builtIn ?? DEFAULT_RECEIPT_WIDTH;
+}
+
+export function savedPaperWidth(raw: string | null | undefined): ReceiptWidth | null {
+  return PAPERS.find((paper) => paper.width === raw)?.width ?? null;
 }
