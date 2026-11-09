@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { Redirect, useRouter } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { landingTab } from '@/auth/roles';
 import { useSession } from '@/auth/session-provider';
@@ -24,7 +24,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { isWalkIn } from '@/sales/logic';
 import { formatBDT } from '@/lib/money';
 import { sameName } from '@/lib/names';
-import { MenuButton } from '@/menu/drawer';
+import { HomeSidebar, MenuButton } from '@/menu/drawer';
 import { stockSummary } from '@/stock/api';
 import { formatQuantity } from '@/stock/status';
 
@@ -32,7 +32,8 @@ import { formatQuantity } from '@/stock/status';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const theme = useTheme();
+  const { width } = useWindowDimensions();
+  const showSidebar = Platform.OS === 'android' && width >= 720;
   const { t, lang } = usePrefs();
   const { me } = useSession();
   const can = (...codes: string[]) => codes.some((c) => me?.permissions?.includes(c));
@@ -59,10 +60,10 @@ export default function HomeScreen() {
   const sales = today.data;
   const o = owed.data;
   const k = shelf.data;
-  return (
+  const dashboard = (
     <Screen>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <MenuButton />
+        {showSidebar ? null : <MenuButton />}
         <Image source={require('@/assets/images/splash-icon.png')} style={{ width: 40, height: 40, borderRadius: 10 }} />
         <View style={{ flex: 1 }}>
           <ThemedText type="heading" literal>{me?.organization.name ?? 'SortPi'}</ThemedText>
@@ -130,6 +131,14 @@ export default function HomeScreen() {
         </Section>
       ) : null}
     </Screen>
+  );
+
+  if (!showSidebar) return dashboard;
+  return (
+    <View style={{ flex: 1, flexDirection: 'row' }}>
+      <HomeSidebar width={Math.min(288, Math.round(width * 0.36))} />
+      {dashboard}
+    </View>
   );
 }
 

@@ -1439,6 +1439,7 @@ export const bn: Record<string, string> = {
   'Throw this sale away?': 'এই বিক্রি বাদ দেবেন?',
   'Only do this if you looked in Sales and it is not there. If it is there, it was already made.': 'শুধু তখনই করুন যখন “বিক্রি” তালিকায় দেখেছেন যে এটা নেই। থাকলে বিক্রিটা আগেই হয়ে গেছে।',
   'The last try got no answer. Confirm sends the same sale again; it cannot be charged twice.': 'আগের চেষ্টার উত্তর আসেনি। নিশ্চিত করলে একই বিক্রি আবার পাঠানো হবে; দুইবার টাকা ধরা হবে না।',
+  'Menu': 'মেনু',
   'Open the menu': 'মেনু খুলুন',
   'Close the menu': 'মেনু বন্ধ করুন',
   'Scanned again': 'আবার স্ক্যান হয়েছে',

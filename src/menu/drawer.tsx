@@ -62,7 +62,6 @@ export function DrawerProvider({ children }: { children: React.ReactNode }) {
 function SidePanel({ wanted, close, openProfile }: { wanted: boolean; close: () => void; openProfile: () => void }) {
   const theme = useTheme();
   const t = useT();
-  const { me } = useSession();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const panelWidth = Math.min(width * 0.86, 360);
@@ -80,43 +79,68 @@ function SidePanel({ wanted, close, openProfile }: { wanted: boolean; close: () 
           <Pressable accessibilityRole="button" accessibilityLabel={t('Close the menu')} onPress={close} style={{ flex: 1 }} />
         </Animated.View>
         <Animated.View style={[{ position: 'absolute', top: 0, bottom: 0, left: 0, width: panelWidth, backgroundColor: theme.canvas, paddingTop: insets.top, paddingBottom: insets.bottom, boxShadow: '4px 0 24px rgba(0, 0, 0, 0.25)' }, panelStyle]}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingLeft: Spacing.three, paddingRight: Spacing.two, paddingVertical: Spacing.two, backgroundColor: theme.card, borderBottomWidth: 1, borderBottomColor: theme.border }}>
-            <View style={{ flex: 1 }}>
-              <ThemedText type="heading" literal numberOfLines={1}>
-                {me?.organization.name ?? 'SortPi'}
-              </ThemedText>
-              {me?.active_branch && !sameName(me.active_branch.name, me.organization.name) ? (
-                <ThemedText type="caption" themeColor="textMuted" literal numberOfLines={1}>
-                  {me.active_branch.name}
-                </ThemedText>
-              ) : null}
-            </View>
-            <Tap accessibilityRole="button" accessibilityLabel={t('Close the menu')} onPress={close} hitSlop={6} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
-              <Icon name="X" size={22} color={theme.textSecondary} />
-            </Tap>
-          </View>
-          <ScrollView keyboardShouldPersistTaps="handled" style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: Spacing.three }}>
-            <TaskList compact onNavigate={close} />
-          </ScrollView>
-          <Tap accessibilityRole="button" accessibilityLabel={t('Profile and settings')} onPress={openProfile} style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, backgroundColor: theme.card, borderTopWidth: 1, borderTopColor: theme.border }}>
-            <View style={{ width: 44, height: 44, borderRadius: Radius.full, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.brandSoft }}>
-              <ThemedText type="heading" style={{ color: theme.brandText }}>
-                {(me?.full_name || me?.email || '?').trim().charAt(0).toUpperCase()}
-              </ThemedText>
-            </View>
-            <View style={{ flex: 1 }}>
-              <ThemedText type="bodyMedium" literal numberOfLines={1}>
-                {me?.full_name || me?.email || ''}
-              </ThemedText>
-              <ThemedText type="caption" themeColor="textMuted" numberOfLines={1}>
-                {t('Profile and settings')}
-              </ThemedText>
-            </View>
-            <Icon name="ChevronRight" size={20} color={theme.textMuted} />
-          </Tap>
+          <MenuPanelContent close={close} openProfile={openProfile} />
         </Animated.View>
       </View>
     </Modal>
+  );
+}
+
+function MenuPanelContent({ close, openProfile }: { close?: () => void; openProfile: () => void }) {
+  const theme = useTheme();
+  const t = useT();
+  const { me } = useSession();
+  return (
+    <>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingLeft: Spacing.three, paddingRight: Spacing.two, paddingVertical: Spacing.two, backgroundColor: theme.card, borderBottomWidth: 1, borderBottomColor: theme.border }}>
+        <View style={{ flex: 1 }}>
+          <ThemedText type="heading" literal numberOfLines={1}>
+            {close ? (me?.organization.name ?? 'SortPi') : t('Menu')}
+          </ThemedText>
+          {close && me?.active_branch && !sameName(me.active_branch.name, me.organization.name) ? (
+            <ThemedText type="caption" themeColor="textMuted" literal numberOfLines={1}>
+              {me.active_branch.name}
+            </ThemedText>
+          ) : null}
+        </View>
+        {close ? (
+          <Tap accessibilityRole="button" accessibilityLabel={t('Close the menu')} onPress={close} hitSlop={6} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name="X" size={22} color={theme.textSecondary} />
+          </Tap>
+        ) : null}
+      </View>
+      <ScrollView keyboardShouldPersistTaps="handled" style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: Spacing.three }}>
+        <TaskList compact onNavigate={close} />
+      </ScrollView>
+      <Tap accessibilityRole="button" accessibilityLabel={t('Profile and settings')} onPress={openProfile} style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, backgroundColor: theme.card, borderTopWidth: 1, borderTopColor: theme.border }}>
+        <View style={{ width: 44, height: 44, borderRadius: Radius.full, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.brandSoft }}>
+          <ThemedText type="heading" style={{ color: theme.brandText }}>
+            {(me?.full_name || me?.email || '?').trim().charAt(0).toUpperCase()}
+          </ThemedText>
+        </View>
+        <View style={{ flex: 1 }}>
+          <ThemedText type="bodyMedium" literal numberOfLines={1}>
+            {me?.full_name || me?.email || ''}
+          </ThemedText>
+          <ThemedText type="caption" themeColor="textMuted" numberOfLines={1}>
+            {t('Profile and settings')}
+          </ThemedText>
+        </View>
+        <Icon name="ChevronRight" size={20} color={theme.textMuted} />
+      </Tap>
+    </>
+  );
+}
+
+export function HomeSidebar({ width }: { width: number }) {
+  const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  const { openProfile } = useDrawer();
+
+  return (
+    <View style={{ width, paddingTop: insets.top, backgroundColor: theme.canvas, borderEndWidth: 1, borderColor: theme.border }}>
+      <MenuPanelContent openProfile={openProfile} />
+    </View>
   );
 }
 
