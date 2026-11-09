@@ -130,6 +130,8 @@ export const bn: Record<string, string> = {
   'Nothing matches that': 'কিছু পাওয়া যায়নি',
   'Check the spelling, or try the first letters of the name.': 'বানানটা দেখুন, অথবা নামের প্রথম কয়েকটা অক্ষর লিখুন।',
   'Show everything': 'সব দেখান',
+  'No in-stock items to show': 'দেখানোর মতো কোনো পণ্য স্টকে নেই',
+  'Search by name or code to check an item’s availability.': 'পণ্যটি স্টকে আছে কি না দেখতে নাম বা কোড দিয়ে খুঁজুন।',
   'No items yet': 'এখনো কোনো মাল নেই',
   'Add your first item and it will show up here.': 'প্রথম মাল যোগ করুন, এখানে দেখা যাবে।',
   'Nobody matches that': 'কাউকে পাওয়া যায়নি',

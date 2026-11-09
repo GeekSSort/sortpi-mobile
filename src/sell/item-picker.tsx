@@ -131,7 +131,7 @@ export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId
               typed ? (
                 <EmptyState icon="Search" title="Nothing matches that" hint="Check the spelling, or try the first letters of the name." />
               ) : (
-                <EmptyState icon="Package" title="No items yet" hint="Add your first item and it will show up here." />
+                <EmptyState icon="Package" title="No in-stock items to show" hint="Search by name or code to check an item’s availability." />
               )
             ) : null}
 
