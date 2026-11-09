@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { Redirect, useRouter } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { landingTab } from '@/auth/roles';
 import { useSession } from '@/auth/session-provider';
@@ -17,6 +17,7 @@ import { Radius, Spacing } from '@/constants/theme';
 import { customerSummary } from '@/customers/api';
 import { amountDue } from '@/customers/logic';
 import { biggestDebts, lowStockItems, previousSixDaySales, recentSales, salesToday, type DayTotal, type RecentSale } from '@/home/api';
+import { TabletDashboard } from '@/home/tablet-dashboard';
 import { barFractions, lastSevenDays, MONTHS, saleWhen, WEEKDAYS } from '@/home/week';
 import { localDateISO } from '@/lib/dates';
 import { usePrefs } from '@/i18n/prefs';
@@ -24,17 +25,29 @@ import { useTheme } from '@/hooks/use-theme';
 import { isWalkIn } from '@/sales/logic';
 import { formatBDT } from '@/lib/money';
 import { sameName } from '@/lib/names';
-import { MenuButton } from '@/menu/drawer';
+import { HomeSidebar, MenuButton } from '@/menu/drawer';
 import { stockSummary } from '@/stock/api';
 import { formatQuantity } from '@/stock/status';
 
 /** The shop at a glance, in plain words: today's takings, who owes, what is running out, the week, the latest sales. */
 
 export default function HomeScreen() {
+  const { width, height } = useWindowDimensions();
+  const { me, resumeTill } = useSession();
+  if (resumeTill && me?.permissions.includes('pos.access') && me.permissions.includes('sale.create')) return <Redirect href="/sell" />;
+  const landing = landingTab(me?.permissions ?? []);
+  if (me && landing !== 'index') return <Redirect href={landing === 'sell' ? '/sell' : landing === 'stock' ? '/stock' : landing === 'customers' ? '/customers' : '/more'} />;
+
+  const wideAndroid = Platform.OS === 'android' && width >= 720;
+  if (me && wideAndroid && height >= 600 && width > height) return <TabletDashboard width={width} />;
+  return <CompactHome sidebarWidth={wideAndroid ? Math.min(288, Math.round(width * 0.36)) : 0} />;
+}
+
+function CompactHome({ sidebarWidth }: { sidebarWidth: number }) {
   const router = useRouter();
-  const theme = useTheme();
   const { t, lang } = usePrefs();
   const { me } = useSession();
+  const showSidebar = sidebarWidth > 0;
   const can = (...codes: string[]) => codes.some((c) => me?.permissions?.includes(c));
   const seeSales = !!me && can('sale.view', 'sale.view_own');
   const seeCustomers = !!me && can('customer.view');
@@ -51,18 +64,14 @@ export default function HomeScreen() {
   const shelf = useQuery({ queryKey: ['stock', 'summary', 'shelf'], queryFn: () => stockSummary(false), enabled: seeStock, ...q });
   const low = useQuery({ queryKey: ['home', 'low'], queryFn: lowStockItems, enabled: seeStock, ...q });
 
-  // A role with no dashboard opens on its own first tab (cashier: Sell). This screen is not in their tab bar.
-  const landing = landingTab(me?.permissions ?? []);
-  if (me && landing !== 'index') return <Redirect href={landing === 'sell' ? '/sell' : landing === 'stock' ? '/stock' : landing === 'customers' ? '/customers' : '/more'} />;
-
   const canSell = can('pos.access') && can('sale.create');
   const sales = today.data;
   const o = owed.data;
   const k = shelf.data;
-  return (
+  const dashboard = (
     <Screen>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <MenuButton />
+        {showSidebar ? null : <MenuButton />}
         <Image source={require('@/assets/images/splash-icon.png')} style={{ width: 40, height: 40, borderRadius: 10 }} />
         <View style={{ flex: 1 }}>
           <ThemedText type="heading" literal>{me?.organization.name ?? 'SortPi'}</ThemedText>
@@ -130,6 +139,14 @@ export default function HomeScreen() {
         </Section>
       ) : null}
     </Screen>
+  );
+
+  if (!showSidebar) return dashboard;
+  return (
+    <View style={{ flex: 1, flexDirection: 'row' }}>
+      <HomeSidebar width={sidebarWidth} />
+      {dashboard}
+    </View>
   );
 }
 

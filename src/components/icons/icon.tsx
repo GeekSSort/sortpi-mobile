@@ -15,6 +15,8 @@ const symbols = {
   Briefcase: { ios: 'briefcase', android: 'work' },
   Sliders: { ios: 'slider.horizontal.3', android: 'tune' },
   Percent: { ios: 'percent', android: 'percent' },
+  Star: { ios: 'star', android: 'star_outline' },
+  StarFilled: { ios: 'star.fill', android: 'star' },
   Flag: { ios: 'flag.fill', android: 'flag' },
   ArrowUp: { ios: 'arrow.up', android: 'arrow_upward' },
   Ruler: { ios: 'ruler', android: 'straighten' },

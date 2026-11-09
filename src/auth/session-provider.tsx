@@ -10,6 +10,7 @@ import { api, checkWorkspace, endSession, loadWorkspace, onSessionEnd, secureTok
 import { PLATFORM_DOMAIN } from './platform';
 import { identify } from '@/lib/crash';
 import { clearDraft } from '@/sell/journal-store';
+import { setTillFocus } from '@/ui/till-focus';
 import { isFresh, retryableUnlockError, shouldRelock } from './unlock';
 
 const BIOMETRIC = 'sortpi.biometric';
@@ -48,6 +49,11 @@ type Session = {
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   unlock: () => Promise<boolean>;
+  lockTill: (resume: boolean) => Promise<boolean>;
+  resumeTill: boolean;
+  manualLock: boolean;
+  clearTillResume: () => void;
+  beforeTillLock: (save: () => Promise<void>) => () => void;
   retry: () => Promise<void>;
   setBiometricEnabled: (on: boolean) => Promise<void>;
 };
@@ -69,6 +75,15 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [unlocking, setUnlocking] = useState(false);
   const [unlockError, setUnlockError] = useState<string | null>(null);
   const unlockBusy = useRef(false);
+  const lockBusy = useRef(false);
+  const saveTill = useRef<(() => Promise<void>) | null>(null);
+  const [resumeTill, setResumeTill] = useState(false);
+  const [manualLock, setManualLock] = useState(false);
+  const clearTillResume = useCallback(() => setResumeTill(false), []);
+  const beforeTillLock = useCallback((save: () => Promise<void>) => {
+    saveTill.current = save;
+    return () => { if (saveTill.current === save) saveTill.current = null; };
+  }, []);
   /** /auth/me started while the fingerprint prompt is up, so its wait overlaps with the person's touch. Nothing is shown until unlock. */
   const warm = useRef<{ at: number; result: Promise<MeResult> } | null>(null);
 
@@ -118,6 +133,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   // Nothing the last person saw stays for the next one on a shared phone: the cached shop data and the saved cart go with the session.
   // (An unfinished sale is kept, tied to its own user, so signing back in can still finish it.)
   const forgetSession = useCallback(() => {
+    setResumeTill(false);
+    setManualLock(false);
+    setTillFocus(false);
     queryClient.clear();
     void clearDraft();
   }, [queryClient]);
@@ -159,6 +177,23 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setStatus('signedOut');
   }, [forgetSession]);
 
+  const lockTill = useCallback(async (resume: boolean) => {
+    if (status !== 'signedIn' || !biometricEnabled || !biometricAvailable || lockBusy.current) return false;
+    lockBusy.current = true;
+    try {
+      await saveTill.current?.();
+      setResumeTill(resume);
+      setManualLock(true);
+      warm.current = { at: Date.now(), result: fetchMe() };
+      setStatus('locked');
+      return true;
+    } catch {
+      return false;
+    } finally {
+      lockBusy.current = false;
+    }
+  }, [status, biometricEnabled, biometricAvailable]);
+
   const unlock = useCallback(async () => {
     if (unlockBusy.current) return false; // one prompt at a time: a second tap must not open a second prompt
     unlockBusy.current = true;
@@ -183,6 +218,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       const ready = warm.current && isFresh(warm.current.at, Date.now()) ? warm.current.result : fetchMe();
       warm.current = null;
       await apply(await ready);
+      setManualLock(false);
       return true;
     } finally {
       unlockBusy.current = false;
@@ -216,8 +252,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => identify(me), [me]);
 
   const value = useMemo(
-    () => ({ status, me, workspaceUrl, biometricAvailable, biometricEnabled, unlocking, unlockError, chooseWorkspace, signIn, signOut, unlock, retry: boot, setBiometricEnabled }),
-    [status, me, workspaceUrl, biometricAvailable, biometricEnabled, unlocking, unlockError, chooseWorkspace, signIn, signOut, unlock, boot, setBiometricEnabled],
+    () => ({ status, me, workspaceUrl, biometricAvailable, biometricEnabled, unlocking, unlockError, chooseWorkspace, signIn, signOut, unlock, lockTill, resumeTill, manualLock, clearTillResume, beforeTillLock, retry: boot, setBiometricEnabled }),
+    [status, me, workspaceUrl, biometricAvailable, biometricEnabled, unlocking, unlockError, chooseWorkspace, signIn, signOut, unlock, lockTill, resumeTill, manualLock, clearTillResume, beforeTillLock, boot, setBiometricEnabled],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

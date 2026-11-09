@@ -1,40 +1,40 @@
 import * as SecureStore from 'expo-secure-store';
 import { useEffect, useState } from 'react';
 
-import { parsePaperPref, type PaperPref } from './paper';
+import { DEFAULT_RECEIPT_WIDTH, parsePaperPref, type ReceiptWidth } from './paper';
 
 const KEY = 'sortpi.paper';
 
-// One copy for the whole app, so the More screen and the print sheet always agree. `undefined` is "not read from the phone yet".
-let current: PaperPref | undefined;
-const listeners = new Set<(p: PaperPref) => void>();
+// One copy for the whole app, so the settings screen and the print action always agree. `undefined` is "not read from the phone yet".
+let current: ReceiptWidth | undefined;
+let pendingSave = Promise.resolve();
+const listeners = new Set<(p: ReceiptWidth) => void>();
 
-async function load(): Promise<PaperPref> {
+export async function loadPaperPref(): Promise<ReceiptWidth> {
   if (current !== undefined) return current;
   try {
-    current = parsePaperPref(await SecureStore.getItemAsync(KEY));
+    const saved = await SecureStore.getItemAsync(KEY);
+    current ??= parsePaperPref(saved);
   } catch {
-    current = null;
+    current ??= DEFAULT_RECEIPT_WIDTH;
   }
   return current;
 }
 
-export async function setPaperPref(p: Exclude<PaperPref, null>): Promise<void> {
+export function setPaperPref(p: ReceiptWidth): Promise<void> {
   current = p;
   listeners.forEach((l) => l(p));
-  try {
-    await SecureStore.setItemAsync(KEY, p);
-  } catch {
-    // the choice still holds until the app closes; the next print asks again
-  }
+  pendingSave = pendingSave.then(() => SecureStore.setItemAsync(KEY, p)).catch(() => {
+    // Keep the choice for this session if storage is unavailable.
+  });
+  return pendingSave;
 }
 
-/** The saved receipt paper, `undefined` for the moment it is being read. */
-export function usePaperPref(): [PaperPref | undefined, (p: Exclude<PaperPref, null>) => Promise<void>] {
-  const [pref, setPref] = useState<PaperPref | undefined>(current);
+export function usePaperPref(): [ReceiptWidth, typeof setPaperPref] {
+  const [pref, setPref] = useState(current ?? DEFAULT_RECEIPT_WIDTH);
   useEffect(() => {
     let live = true;
-    void load().then((p) => live && setPref(p));
+    void loadPaperPref().then((p) => live && setPref(current ?? p));
     listeners.add(setPref);
     return () => {
       live = false;

@@ -73,7 +73,7 @@ export const MENU: MenuItem[] = [
   { id: 'activity', group: 'roles', title: 'Activity Log', hint: 'What happened in your shop, and who did it', icon: 'Activity', route: '/activity', needs: ['audit.view'] },
   { id: 'branches', group: 'branches', title: 'Branches', hint: 'Your shops and their details', icon: 'Store', route: { pathname: '/access', params: { tab: 'branches' } }, needs: ['branch.view'] },
   { id: 'notifications', group: 'settings', title: 'Notifications', hint: 'Messages from your shop', icon: 'Bell', route: '/notifications', needs: ['notification.view'] },
-  { id: 'shop-settings', group: 'settings', title: 'Settings', hint: 'VAT, discount, daily target, ways to pay', icon: 'Sliders', route: '/shop-settings', needs: ['settings.view'] },
+  { id: 'shop-settings', group: 'settings', title: 'Settings', hint: 'Receipt paper, VAT, discount, daily target, ways to pay', icon: 'Sliders', route: '/shop-settings', needs: [] },
   { id: 'plan', group: 'settings', title: 'Plan & billing', hint: 'Your SortPi plan, what you use, and how to move up', icon: 'CreditCard', route: '/plan', needs: ['billing.view'] },
 ];
 
@@ -81,7 +81,7 @@ export const MENU: MenuItem[] = [
 export function visibleMenu(items: MenuItem[], permissions: string[] | undefined, query: string, tr: (text: string) => string, trades?: readonly string[]): MenuItem[] {
   const q = query.trim().toLowerCase();
   return items
-    .filter((i) => (i.all ? i.needs.every((p) => permissions?.includes(p)) : i.needs.some((p) => permissions?.includes(p))))
+    .filter((i) => i.needs.length === 0 ? permissions !== undefined : (i.all ? i.needs.every((p) => permissions?.includes(p)) : i.needs.some((p) => permissions?.includes(p))))
     .filter((i) => !i.trade || !!trades?.includes(i.trade))
     .filter((i) => !q || [i.title, tr(i.title), tr(i.hint)].some((s) => s.toLowerCase().includes(q)));
 }
