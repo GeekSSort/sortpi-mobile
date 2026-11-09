@@ -73,7 +73,7 @@ export const MENU: MenuItem[] = [
   { id: 'activity', group: 'roles', title: 'Activity Log', hint: 'What happened in your shop, and who did it', icon: 'Activity', route: '/activity', needs: ['audit.view'] },
   { id: 'branches', group: 'branches', title: 'Branches', hint: 'Your shops and their details', icon: 'Store', route: { pathname: '/access', params: { tab: 'branches' } }, needs: ['branch.view'] },
   { id: 'notifications', group: 'settings', title: 'Notifications', hint: 'Messages from your shop', icon: 'Bell', route: '/notifications', needs: ['notification.view'] },
-  { id: 'shop-settings', group: 'settings', title: 'Settings', hint: 'VAT, discount, daily target, ways to pay', icon: 'Sliders', route: '/shop-settings', needs: ['settings.view'] },
+  { id: 'shop-settings', group: 'settings', title: 'Settings', hint: 'Receipt paper, VAT, discount, daily target, ways to pay', icon: 'Sliders', route: '/shop-settings', needs: ['settings.view', 'sale.create', 'sale.view', 'sale.view_own'] },
   { id: 'plan', group: 'settings', title: 'Plan & billing', hint: 'Your SortPi plan, what you use, and how to move up', icon: 'CreditCard', route: '/plan', needs: ['billing.view'] },
 ];
 

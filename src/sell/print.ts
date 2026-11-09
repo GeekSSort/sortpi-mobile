@@ -10,6 +10,7 @@ import { getCompany, resolvedSettings } from '@/settings/api';
 
 import { receiptHtml } from './api';
 import { fitToPaper, type ReceiptWidth } from './paper';
+import { loadPaperPref } from './paper-pref';
 
 /** Words for a receipt that would not print, in the shop's terms. */
 export function printErrorText(e: unknown): string {
@@ -37,8 +38,9 @@ async function designedHtml(saleId: string, width: ReceiptWidth, who: Who): Prom
 }
 
 /** Prints the receipt (roll or A4) through Android's print screen (a Wi-Fi printer, a print app, or Save as PDF). */
-export async function printReceipt(saleId: string, width: ReceiptWidth, who: Who): Promise<void> {
+export async function printReceipt(saleId: string, who: Who): Promise<void> {
   try {
+    const width = await loadPaperPref();
     let html: string;
     try {
       html = await designedHtml(saleId, width, who);

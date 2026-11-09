@@ -12,7 +12,6 @@ import { usePrefs } from '@/i18n/prefs';
 import { Tap } from '@/components/tap';
 import { EmptyState } from '@/components/empty-state';
 import { Field } from '@/components/field';
-import { usePaperPref } from '@/sell/paper-pref';
 import { GROUP_ICON, GROUP_TITLE, groupMenu, MENU, visibleMenu, type MenuGroup, type MenuItem } from '@/menu/items';
 
 /** Every task the person may do, with a search box: the body of the side drawer. `onNavigate` lets the drawer close itself. */
@@ -76,7 +75,6 @@ export function TaskList({ onNavigate, compact = false }: { onNavigate?: () => v
 export function ProfileSettings({ onDone }: { onDone?: () => void } = {}) {
   const theme = useTheme();
   const { t, lang, setLang, size, setSize, scheme, setScheme, setGuideDone } = usePrefs();
-  const [paper, setPaper] = usePaperPref();
   const shop = useLocalShop();
   const { me, signOut, biometricAvailable, biometricEnabled, setBiometricEnabled } = useSession();
   const name = me?.full_name || me?.email || '';
@@ -143,7 +141,6 @@ export function ProfileSettings({ onDone }: { onDone?: () => void } = {}) {
         <Choice title="Language" value={lang} options={[{ key: 'bn', label: 'বাংলা' }, { key: 'en', label: 'English' }]} onPick={(k) => void setLang(k)} />
         <Choice title="Text size" value={size} options={[{ key: 'normal', label: t('Normal') }, { key: 'large', label: t('Large') }, { key: 'xlarge', label: t('Extra large') }]} onPick={(k) => void setSize(k)} />
         <Choice title="Screen colours" value={scheme} options={[{ key: 'auto', label: t('Auto') }, { key: 'light', label: t('Light') }, { key: 'dark', label: t('Dark') }]} onPick={(k) => void setScheme(k)} />
-        <Choice title="Receipt paper" value={paper ?? 'ask'} options={[{ key: '58mm', label: '58 mm' }, { key: '80mm', label: '80 mm' }, { key: 'a4', label: 'A4' }, { key: 'ask', label: t('Ask') }]} onPick={(k) => void setPaper(k)} />
         <Row icon="ChevronRight" title="Show the help again" onPress={() => { void setGuideDone(false); onDone?.(); }} />
       </Group>
 

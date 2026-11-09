@@ -53,7 +53,7 @@ export function DrawerProvider({ children }: { children: React.ReactNode }) {
     <Ctx.Provider value={value}>
       {children}
       {shown ? <SidePanel wanted={wanted} close={close} openProfile={openProfile} /> : null}
-      <BottomSheet visible={profile} onClose={() => setProfile(false)} title={t('Profile and settings')}>
+      <BottomSheet visible={profile} onClose={() => setProfile(false)} title={t('Profile & quick settings')}>
         <ProfileSettings onDone={() => setProfile(false)} />
       </BottomSheet>
     </Ctx.Provider>
@@ -117,7 +117,7 @@ function MenuPanelContent({ close, openProfile, branded }: { close?: () => void;
       <ScrollView keyboardShouldPersistTaps="handled" style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: Spacing.three }}>
         <TaskList compact onNavigate={close} />
       </ScrollView>
-      <Tap accessibilityRole="button" accessibilityLabel={t('Profile and settings')} onPress={openProfile} style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, backgroundColor: theme.card, borderTopWidth: 1, borderTopColor: theme.border }}>
+      <Tap accessibilityRole="button" accessibilityLabel={t('Profile & quick settings')} onPress={openProfile} style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, backgroundColor: theme.card, borderTopWidth: 1, borderTopColor: theme.border }}>
         <View style={{ width: 44, height: 44, borderRadius: Radius.full, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.brandSoft }}>
           <ThemedText type="heading" style={{ color: theme.brandText }}>
             {(me?.full_name || me?.email || '?').trim().charAt(0).toUpperCase()}
@@ -128,7 +128,7 @@ function MenuPanelContent({ close, openProfile, branded }: { close?: () => void;
             {me?.full_name || me?.email || ''}
           </ThemedText>
           <ThemedText type="caption" themeColor="textMuted" numberOfLines={1}>
-            {t('Profile and settings')}
+            {t('Profile & quick settings')}
           </ThemedText>
         </View>
         <Icon name="ChevronRight" size={20} color={theme.textMuted} />

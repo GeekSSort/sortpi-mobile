@@ -34,7 +34,7 @@ import type { PickedCustomer } from '@/sell/customers';
 import { amountDueNow, buildPayments, walletReference, WALLETS, type PayChoice } from '@/sell/payment';
 import { clearDraft, clearPending, loadDraft, loadPending, saveDraft, savePending } from '@/sell/journal-store';
 import { mayHaveCommitted, type PendingSale } from '@/sell/journal';
-import { PaperSheet } from '@/sell/paper-sheet';
+import { printReceipt } from '@/sell/print';
 import { receiptText } from '@/sell/receipt';
 import { haptics } from '@/lib/haptics';
 import { showToast } from '@/ui/toast';
@@ -93,7 +93,7 @@ export default function SellScreen() {
   const [scanNote, setScanNote] = useState<ScanNote | null>(null);
   // An item scanned a second time waits here for a yes, so a camera that lingers on one packet cannot add it twice by accident.
   const [again, setAgain] = useState<ScannedItem | null>(null);
-  const [printFor, setPrintFor] = useState<string | null>(null);
+  const [printing, setPrinting] = useState(false);
   const cartRef = useRef(cart);
   useEffect(() => {
     cartRef.current = cart;
@@ -769,7 +769,6 @@ export default function SellScreen() {
       ) : null}
 
       <UnfinishedSaleSheet pending={mode === 'scan' && !hidePending ? pending : null} busy={busy} onFinish={() => pending && void finishPending(pending)} onLater={() => setHidePending(true)} onDiscard={discardPending} notice={notice} />
-      <PaperSheet saleId={printFor} onClose={() => setPrintFor(null)} />
       <ScannedAgainSheet item={mode === 'scan' ? again : null} inCart={again ? lastQuantity(cart, again) : null} onYes={() => { if (again) addToOrder(again); setAgain(null); }} onNo={() => setAgain(null)} />
       <ScanNoteSheet note={mode === 'scan' ? scanNote : null} canAdd={me?.permissions?.includes('product.create') ?? false} onAdd={(code) => { setScanNote(null); router.push({ pathname: '/add-product', params: { code, from: 'sell' } }); }} onDismiss={() => setScanNote(null)} />
       {notice ? <Notice>{notice}</Notice> : null}
@@ -805,7 +804,10 @@ export default function SellScreen() {
               {customer ? t('{amount} left on {name} account', { amount: formatBDT(result.due_amount), name: customer.name }) : t('{amount} left on the account', { amount: formatBDT(result.due_amount) })}
             </ThemedText>
           ) : null}
-          <Button title="Print receipt" onPress={() => setPrintFor(result.id)} style={{ alignSelf: 'stretch', marginTop: 8 }} />
+          <Button title="Print receipt" loading={printing} onPress={() => {
+            setPrinting(true);
+            void printReceipt(result.id, { shopName: me?.organization.name ?? 'SortPi', branchName: me?.active_branch?.name }).finally(() => setPrinting(false));
+          }} style={{ alignSelf: 'stretch', marginTop: 8 }} />
           <Button
             title="Share receipt"
             variant="secondary"
