@@ -120,10 +120,11 @@ export default function ProductsScreen() {
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
       <Stack.Screen options={{ headerRight: canAdd ? () => <HeaderAction title="Add" icon="Plus" onPress={() => router.push('/add-product')} /> : undefined }} />
       <AdaptiveList landscapeSidebar
+        landscapeResultsHeader={rows.length > 0 ? <ProductColumnsHeader /> : undefined}
         contentInsetAdjustmentBehavior="automatic"
         data={rows}
         keyExtractor={(r) => r.id}
-        renderItem={({ item }) => <ProductRow product={item} offered={item.variants.some((v) => shopOfferFor(offers.data ?? [], v.id))} onPress={() => router.push({ pathname: '/product/[id]', params: { id: item.id } })} />}
+        renderItem={({ item }) => <ProductRow landscape={wideLandscape} product={item} offered={item.variants.some((v) => shopOfferFor(offers.data ?? [], v.id))} onPress={() => router.push({ pathname: '/product/[id]', params: { id: item.id } })} />}
         ListHeaderComponent={header}
         ListEmptyComponent={
           active.isError ? undefined : active.isPending ? (
@@ -148,7 +149,31 @@ export default function ProductsScreen() {
   );
 }
 
-function ProductRow({ product, offered, onPress }: { product: Product; offered: boolean; onPress: () => void }) {
+const productColumns = StyleSheet.create({
+  row: { flexDirection: 'row', gap: Spacing.three, paddingHorizontal: Spacing.three },
+  name: { flex: 1, minWidth: 0 },
+  stock: { width: '34%', minWidth: 0 },
+  price: { width: '19%', minWidth: 84, alignItems: 'flex-end' },
+});
+
+function ProductColumnsHeader() {
+  const theme = useTheme();
+  return (
+    <View style={[productColumns.row, {
+      backgroundColor: theme.canvas, paddingVertical: Spacing.two, borderBottomWidth: 1, borderBottomColor: theme.border,
+      borderLeftWidth: 4, borderLeftColor: 'transparent',
+    }]}>
+      <ThemedText type="smallMedium" themeColor="textMuted" style={productColumns.name}>Product</ThemedText>
+      <ThemedText type="smallMedium" themeColor="textMuted" style={productColumns.stock}>Stock</ThemedText>
+      <View style={productColumns.price}>
+        <ThemedText type="smallMedium" themeColor="textMuted">Price</ThemedText>
+      </View>
+      <View style={{ width: 16 }} />
+    </View>
+  );
+}
+
+function ProductRow({ landscape, product, offered, onPress }: { landscape: boolean; product: Product; offered: boolean; onPress: () => void }) {
   const theme = useTheme();
   const { t } = usePrefs();
   const levelStyle = useLevelStyle();
@@ -161,13 +186,29 @@ function ProductRow({ product, offered, onPress }: { product: Product; offered: 
   const priceText = several ? t('from {amount}', { amount: price }) : price;
   const qty = formatQuantity(product.stock_on_hand, product.unit_allow_decimal);
   const stockText = Number(product.stock_on_hand) <= 0 ? level.word : `${level.word} · ${qty}`;
+  const badges = (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+      <Pill icon={level.icon} text={stockText} fg={level.fg} soft={level.soft} line={level.line} />
+      {offered ? <Pill icon="Tag" text={t('Offer')} fg={theme.success} soft={theme.successSoft} line={theme.successBorder} /> : null}
+    </View>
+  );
+  const finishedLabel = several && finished > 0 && finished < product.variants.length ? (
+    <ThemedText type="caption" style={{ color: theme.danger }} literal>
+      {t('{n} kinds finished', { n: finished })}
+    </ThemedText>
+  ) : null;
+
   return (
     <Tap
       accessibilityRole="button"
       accessibilityLabel={`${product.name}, ${priceText}, ${stockText}`}
       onPress={onPress}
-      style={{ flexDirection: 'row', gap: Spacing.three, paddingHorizontal: Spacing.three, paddingVertical: Spacing.three, backgroundColor: theme.card, borderLeftWidth: 6, borderLeftColor: level.fg, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border }}>
-      <View style={{ flex: 1, gap: 6 }}>
+      style={[productColumns.row, {
+        alignItems: landscape ? 'center' : undefined, paddingVertical: landscape ? Spacing.two : Spacing.three,
+        backgroundColor: theme.card, borderLeftWidth: landscape ? 4 : 6, borderLeftColor: level.fg,
+        borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border, minHeight: landscape ? 64 : undefined,
+      }]}>
+      <View style={[productColumns.name, { gap: landscape ? Spacing.half : 6 }]}>
         <ThemedText type="bodyMedium" numberOfLines={2} literal>
           {product.name}
         </ThemedText>
@@ -175,29 +216,24 @@ function ProductRow({ product, offered, onPress }: { product: Product; offered: 
           {product.category_name}
           {several ? ` · ${t('{n} kinds', { n: product.variants.length })}` : ''}
         </ThemedText>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-          <Pill icon={level.icon} text={stockText} fg={level.fg} soft={level.soft} line={level.line} />
-          {offered ? <Pill icon="Tag" text={t('Offer')} fg={theme.success} soft={theme.successSoft} line={theme.successBorder} /> : null}
-        </View>
-        {several && finished > 0 && finished < product.variants.length ? (
-          <ThemedText type="caption" style={{ color: theme.danger }} literal>
-            {t('{n} kinds finished', { n: finished })}
-          </ThemedText>
-        ) : null}
+        {landscape ? null : badges}
+        {landscape ? null : finishedLabel}
       </View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-        <View style={{ alignItems: 'flex-end', minWidth: 84 }}>
+      {landscape ? <View style={productColumns.stock}>{badges}{finishedLabel}</View> : null}
+      <View style={landscape ? productColumns.price : { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+        <View style={{ alignItems: 'flex-end', minWidth: 84, width: landscape ? '100%' : undefined }}>
           {several ? (
             <ThemedText type="caption" themeColor="textMuted">
               Starts at
             </ThemedText>
           ) : null}
-          <ThemedText type="bodyMedium" style={{ color: theme.success, textAlign: 'right', minWidth: 84 }} numberOfLines={1} adjustsFontSizeToFit literal>
+          <ThemedText type="bodyMedium" style={{ color: theme.success, textAlign: 'right', minWidth: 84, maxWidth: landscape ? '100%' : undefined }} numberOfLines={1} adjustsFontSizeToFit literal>
             {price}
           </ThemedText>
         </View>
-        <Icon name="ChevronRight" size={16} color={theme.textMuted} />
+        {landscape ? null : <Icon name="ChevronRight" size={16} color={theme.textMuted} />}
       </View>
+      {landscape ? <Icon name="ChevronRight" size={16} color={theme.textMuted} /> : null}
     </Tap>
   );
 }

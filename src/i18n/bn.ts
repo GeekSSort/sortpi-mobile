@@ -32,6 +32,8 @@ export const bn: Record<string, string> = {
   Paid: 'পরিশোধ',
   Bought: 'কেনা হয়েছে',
   Items: 'মাল',
+  Product: 'পণ্য',
+  Price: 'দাম',
   Low: 'কম',
   Out: 'শেষ',
   'In stock': 'আছে',
