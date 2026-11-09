@@ -954,6 +954,13 @@ export default function SellScreen() {
     <BottomSheet visible={toolsOpen && mode === 'scan'} onClose={() => setToolsOpen(false)} title="Till tools">
       <View style={{ gap: 8, paddingHorizontal: 16 }}>
         {me?.permissions?.includes('product.view') ? <Button title="Price Check" variant="secondary" onPress={() => { setToolsOpen(false); router.push('/price-check'); }} /> : null}
+        {me?.permissions?.includes('purchase.view') ? <Button title="Purchase List" variant="secondary" onPress={() => { setToolsOpen(false); router.push('/purchases'); }} /> : null}
+        {splitTill && tablet.layout !== 'sheet' ? (
+          <Button title="Spreadsheet till" variant="secondary" disabled={tablet.busy} onPress={() => {
+            setToolsOpen(false);
+            void selectTabletLayout('sheet');
+          }} />
+        ) : null}
         {canHold ? <Button title={heldCount > 0 ? t('Held carts ({n})', { n: heldCount }) : 'Held carts'} variant="secondary" onPress={() => { setToolsOpen(false); setHeldOpen(true); }} /> : null}
         <Button title="Favorite products" variant="secondary" onPress={() => { setToolsOpen(false); setFavoritesOpen(true); }} />
         <Button title="Day Close" variant="secondary" onPress={() => { setToolsOpen(false); router.push('/end-shift'); }} />
