@@ -6,29 +6,33 @@ import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
 import type { ReceiptWidth } from './paper';
+import { posDevice } from './pos-device';
 
 type Roll = Exclude<ReceiptWidth, 'a4'>;
-export const isSunmiAndroid = Platform.OS === 'android' && [Device.manufacturer, Device.brand]
-  .some((name) => name?.trim().toLowerCase() === 'sunmi');
+export const androidPosDevice = posDevice(Platform.OS === 'android', Device.manufacturer, Device.brand, Device.modelName);
 
-const printer = isSunmiAndroid
+const nativeModule = androidPosDevice?.name === 'SUNMI' ? 'SortPiSunmiPrinter'
+  : androidPosDevice?.name === 'iMin' ? 'SortPiIminPrinter'
+  : androidPosDevice?.name === 'Urovo' && androidPosDevice.suggestedPaper ? 'SortPiUrovoPrinter'
+  : undefined;
+const printer = nativeModule
   ? requireOptionalNativeModule<{
       paperWidth(): Promise<Roll | null>;
       printPdf(uri: string, width: Roll): Promise<boolean>;
-    }>('SortPiSunmiPrinter')
+    }>(nativeModule)
   : null;
 
 const PRINTER_KEY = 'sortpi.sunmi.system-printing';
 
-export const hasSunmiPrinterSupport = printer !== null;
+export const hasBuiltInPrinterSupport = printer !== null;
 export const loadSystemPrinting = async () => (await SecureStore.getItemAsync(PRINTER_KEY)) === 'true';
 export const setSystemPrinting = (enabled: boolean) => SecureStore.setItemAsync(PRINTER_KEY, String(enabled));
 
-export async function sunmiPaperWidth(): Promise<Roll | null> {
+export async function builtInPaperWidth(): Promise<Roll | null> {
   return printer?.paperWidth().catch(() => null) ?? null;
 }
 
-export class SunmiPrintError extends Error {}
+export class BuiltInPrintError extends Error {}
 
 export async function printReceiptHtml(html: string, width: ReceiptWidth, builtIn: Roll | null): Promise<void> {
   if (!printer || width !== builtIn || await loadSystemPrinting().catch(() => false)) {
@@ -41,7 +45,7 @@ export async function printReceiptHtml(html: string, width: ReceiptWidth, builtI
   try {
     await printer.printPdf(uri, width);
   } catch (cause) {
-    throw new SunmiPrintError('Check the built-in printer and see whether the receipt came out before trying again.', { cause });
+    throw new BuiltInPrintError('Check the built-in printer and see whether the receipt came out before trying again.', { cause });
   } finally {
     try {
       new File(uri).delete();

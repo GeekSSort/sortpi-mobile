@@ -10,11 +10,11 @@ import { getCompany, resolvedSettings } from '@/settings/api';
 import { receiptHtml } from './api';
 import { fitToPaper, type ReceiptWidth } from './paper';
 import { loadPaperPref } from './paper-pref';
-import { printReceiptHtml, SunmiPrintError, sunmiPaperWidth } from './sunmi-printer';
+import { printReceiptHtml, BuiltInPrintError, builtInPaperWidth } from './device-printer';
 
 /** Words for a receipt that would not print, in the shop's terms. */
 export function printErrorText(e: unknown): string {
-  if (e instanceof SunmiPrintError) return e.message;
+  if (e instanceof BuiltInPrintError) return e.message;
   if (e instanceof ApiError) {
     if (e.code === 'NETWORK_ERROR' || e.code === 'TIMEOUT') return 'No connection. Check the internet and try again.';
     if (e.status === 403 || e.code === 'PERMISSION_DENIED') return 'You do not have permission to print this receipt.';
@@ -41,7 +41,7 @@ async function designedHtml(saleId: string, width: ReceiptWidth, who: Who): Prom
 /** Use the built-in printer for its configured roll size, or Android printing for other paper. */
 export async function printReceipt(saleId: string, who: Who): Promise<void> {
   try {
-    const builtIn = await sunmiPaperWidth();
+    const builtIn = await builtInPaperWidth();
     const width = await loadPaperPref(builtIn);
     let html: string;
     try {
@@ -59,7 +59,7 @@ export async function printReceipt(saleId: string, who: Who): Promise<void> {
 /** A sample receipt for checking the selected paper and printer without creating a sale. */
 export async function printTestReceipt(): Promise<void> {
   try {
-    const builtIn = await sunmiPaperWidth();
+    const builtIn = await builtInPaperWidth();
     const width = await loadPaperPref(builtIn);
     const label = width === 'a4' ? 'A4' : width.replace('mm', ' mm');
     const sample = `<!doctype html><html><meta charset="utf-8"><style>body{font:14px monospace;padding:4mm;box-sizing:border-box}h2{font-size:16px}hr{border:0;border-top:1px dashed}</style><body><h2>SortPi · Print test</h2><p>Paper: ${label}</p><hr><p>Sample item × 1</p><p>0123456789 · ABC abc</p><hr><p>Sample only</p></body></html>`;

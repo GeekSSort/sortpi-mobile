@@ -25,7 +25,7 @@ import { Pill } from '@/products/variant-card';
 import { PAPERS } from '@/sell/paper';
 import { usePaperPref } from '@/sell/paper-pref';
 import { printTestReceipt } from '@/sell/print';
-import { hasSunmiPrinterSupport, loadSystemPrinting, setSystemPrinting } from '@/sell/sunmi-printer';
+import { androidPosDevice, hasBuiltInPrinterSupport, loadSystemPrinting, setSystemPrinting } from '@/sell/device-printer';
 import { showToast } from '@/ui/toast';
 
 type Tone = 'good' | 'warn' | 'info';
@@ -51,7 +51,7 @@ export default function ShopSettingsScreen() {
   const systemPrinting = useQuery({
     queryKey: SYSTEM_PRINTING,
     queryFn: loadSystemPrinting,
-    enabled: canSetPaper && hasSunmiPrinterSupport,
+    enabled: canSetPaper && hasBuiltInPrinterSupport,
   });
   const chooseSystemPrinting = useMutation({
     mutationFn: setSystemPrinting,
@@ -101,10 +101,13 @@ export default function ShopSettingsScreen() {
       <Stack.Screen options={{ title: t('Settings') }} />
       <ScrollView contentInsetAdjustmentBehavior="automatic" refreshControl={canSee ? <RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} /> : undefined} contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
         <Section title="On this device" />
+        {canSetPaper && androidPosDevice ? (
+          <ValueRow icon="Store" tone="info" title="POS device" hint="Detected from this Android device." value={[androidPosDevice.name, androidPosDevice.model].filter(Boolean).join(' · ')} />
+        ) : null}
         {canSetPaper ? (
           <>
-            <ValueRow icon="Receipt" tone="info" title="Receipt paper" hint={hasSunmiPrinterSupport ? "Matches the built-in roll until you choose a size." : "Paper size used when printing receipts from this device."} value={paperLabel(paper)} onPress={() => setPaperOpen(true)} />
-            {hasSunmiPrinterSupport ? (
+            <ValueRow icon="Receipt" tone="info" title="Receipt paper" hint={hasBuiltInPrinterSupport ? "Matches the built-in roll until you choose a size." : "Paper size used when printing receipts from this device."} value={paperLabel(paper)} onPress={() => setPaperOpen(true)} />
+            {hasBuiltInPrinterSupport ? (
               <SwitchRow icon="Receipt" tone="info" title="Use Android printing" hint="Open the print dialog to choose an external printer." on={systemPrinting.data === true} locked={false} disabled={systemPrinting.isPending || chooseSystemPrinting.isPending || printing} onLocked={() => undefined} onChange={(enabled) => chooseSystemPrinting.mutate(enabled)} />
             ) : null}
             <ValueRow icon="Receipt" tone="info" title="Print test" hint="Print a sample with the current paper size." value={printing ? t('Opening…') : ''} onPress={printing ? undefined : () => {
@@ -164,6 +167,7 @@ export default function ShopSettingsScreen() {
             </Tap>
           ))}
         </View>
+        {androidPosDevice ? <Button title="Use device default" variant="secondary" onPress={() => { void setPaper(null); setPaperOpen(false); }} /> : null}
       </BottomSheet>
       {editing && shop ? <NumberSheet key={editing} what={editing} shop={shop} onClose={() => setEditing(null)} /> : null}
     </View>

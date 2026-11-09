@@ -40,7 +40,7 @@ import { amountDueNow, buildPayments, walletReference, WALLETS, type PayChoice }
 import { clearDraft, clearPending, loadDraft, loadPending, saveDraft, savePending } from '@/sell/journal-store';
 import { mayHaveCommitted, type PendingSale } from '@/sell/journal';
 import { printReceipt } from '@/sell/print';
-import { isSunmiAndroid } from '@/sell/sunmi-printer';
+import { androidPosDevice } from '@/sell/device-printer';
 import { receiptText } from '@/sell/receipt';
 import { haptics } from '@/lib/haptics';
 import { showToast } from '@/ui/toast';
@@ -111,11 +111,11 @@ export default function SellScreen() {
   useEffect(() => {
     cartRef.current = cart;
   }, [cart]);
-  // Keep the catalogue in view on wide tills and compact SUNMI terminals unless camera scanning is selected.
+  // Keep the catalogue in view on wide tills and compact Android POS terminals unless camera scanning is selected.
   const [cameraPermission] = useCameraPermissions();
   const [cameraChoice, setCameraChoice] = useState<{ mode: typeof scannerMode; open: boolean }>();
   const showCamera = cameraChoice?.mode === scannerMode ? cameraChoice.open
-    : !!cameraPermission?.granted && (scannerMode === 'auto' || (scannerMode === 'device' && !splitTill && !isSunmiAndroid));
+    : !!cameraPermission?.granted && (scannerMode === 'auto' || (scannerMode === 'device' && !splitTill && !androidPosDevice));
   const usesBarcodes = useUsesBarcodes();
   const [openingCash, setOpeningCash] = useState('0');
   const [method, setMethod] = useState<PayChoice>('CASH');

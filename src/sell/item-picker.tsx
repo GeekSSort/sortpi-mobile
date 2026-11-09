@@ -72,8 +72,8 @@ export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId
   const isOut = (it: CatalogItem) => it.stock !== null && Number(it.stock) <= 0;
 
   /** Enter on what was typed: a code (barcode or SKU) is looked up exactly; with words, one match on screen is taken. */
-  function submit() {
-    const q = text.trim();
+  function submit(value: string) {
+    const q = value.trim();
     if (!q) return;
     // A scanner's code plus Enter arrives before the search below has even started: look the code up exactly, now, not in the list on screen.
     if (looksLikeCode(q)) onCode(q);
@@ -97,7 +97,7 @@ export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId
     <View style={{ gap: Spacing.three }}>
       <View style={{ flexDirection: 'row', gap: Spacing.two, alignItems: 'flex-end' }}>
         <View style={{ flex: 1 }}>
-          <Field label={express ? "Scan or enter a code" : "Find an item"} value={text} disableFullscreenUI={!!layout} onChangeText={setText} placeholder="Name or code" autoCapitalize="none" autoCorrect={false} returnKeyType="search" onSubmitEditing={submit} />
+          <Field label={express ? "Scan or enter a code" : "Find an item"} value={text} disableFullscreenUI onChangeText={setText} placeholder="Name or code" autoCapitalize="none" autoCorrect={false} returnKeyType="search" submitBehavior="submit" onSubmitEditing={(event) => submit(event.nativeEvent.text)} />
         </View>
         {scan ? (
           <Tap accessibilityRole="button" accessibilityLabel={t(scan.open ? 'Stop the camera' : 'Scan a barcode')} onPress={scan.toggle} style={{ width: 48, height: 48, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: scan.open ? theme.brand : theme.card, borderWidth: 1, borderColor: scan.open ? theme.brand : theme.inputBorder }}>

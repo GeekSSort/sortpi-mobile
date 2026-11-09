@@ -10,6 +10,14 @@ android {
   namespace 'com.sortpi.sunmi'
 }
 
+repositories {
+  maven {
+    url = uri('https://jitpack.io')
+    content { includeGroup('com.github.iminsoftware') }
+  }
+}
+
 dependencies {
+  implementation 'com.github.iminsoftware:IminPrinterLibrary:V2.0.0.18'
   implementation 'com.sunmi:printerlibrary:1.0.24'
 }

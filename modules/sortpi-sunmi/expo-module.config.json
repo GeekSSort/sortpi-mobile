@@ -1,4 +1,4 @@
 {
   "platforms": ["android"],
-  "android": { "modules": ["com.sortpi.sunmi.SunmiPrinterModule"] }
+  "android": { "modules": ["com.sortpi.sunmi.SunmiPrinterModule", "com.sortpi.sunmi.IminPrinterModule", "com.sortpi.sunmi.UrovoPrinterModule"] }
 }
