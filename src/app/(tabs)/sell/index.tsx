@@ -3,7 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import Animated, { FadeIn, FadeInDown, FadeInUp, FadeOutLeft, LinearTransition, useAnimatedStyle, useSharedValue, withSpring, ZoomIn } from 'react-native-reanimated';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Platform, Pressable, Share, useColorScheme, useWindowDimensions, Vibration, View } from 'react-native';
+import { Alert, Keyboard, Platform, Pressable, Share, useColorScheme, useWindowDimensions, Vibration, View } from 'react-native';
 
 import { newIdempotencyKey } from '@/api/idempotency';
 import { useSession } from '@/auth/session-provider';
@@ -40,11 +40,11 @@ import { haptics } from '@/lib/haptics';
 import { showToast } from '@/ui/toast';
 import { amountDue } from '@/customers/logic';
 import { salesToday } from '@/home/api';
-import { currentShift, dropHeld, listCounters, heldCarts, holdCart, loadSellContext, lookupBarcode, openShift, previewTotal, resumeHeld, sell, type SaleResult } from '@/sell/api';
+import { currentShift, dropHeld, listCounters, heldCarts, holdCart, loadSellContext, lookupBarcode, lookupCode, openShift, previewTotal, resumeHeld, sell, type SaleResult } from '@/sell/api';
 import { defaultCounter } from '@/sell/counters';
 import { holdBody, holdReference, mergeHeld, type HeldCart } from '@/sell/held';
 import { HeldSheet } from '@/sell/held-sheet';
-import { addItem, changeDue, changeQuantity, setQuantity, estimateSubtotal, isEmpty, itemCount, lastQuantity, lineEstimate, removeLine, type Cart, type CartLine, type ScannedItem } from '@/sell/cart';
+import { addItem, changeDue, changeQuantity, setQuantity, estimateSubtotal, isEmpty, itemCount, lastQuantity, lineEstimate, lineKey, removeLine, type Cart, type CartLine, type ScannedItem } from '@/sell/cart';
 import { SwipeToRemove } from '@/components/swipe-to-remove';
 import { useCameraPermissions } from 'expo-camera';
 import { useUsesBarcodes } from '@/sell/use-barcodes';
@@ -55,6 +55,9 @@ import { setBottomBar, useBottomBar } from '@/ui/bottom-bar';
 import { ApiError } from '@/api/client';
 import { describeSellError, LOOKUP_FAILED_TITLE, NOT_IN_CATALOGUE_TITLE, notInCatalogueText } from '@/sell/messages';
 import { Tap } from '@/components/tap';
+import { TABLET_LAYOUTS, validTillQuantity, type TabletLayout } from '@/sell/tablet-layout';
+import { TabletOrderSheet } from '@/sell/tablet-order-sheet';
+import { useTabletLayout } from '@/sell/use-tablet-layout';
 
 /** Each way of paying has its own colour and picture, so it can be picked without reading: green cash, pink bKash-style mobile, blue card, teal bank. */
 const METHODS: { id: PayChoice; label: string; icon: 'Cash' | 'Phone' | 'CreditCard' | 'Bank' }[] = [
@@ -78,7 +81,14 @@ export default function SellScreen() {
   const [cart, setCart] = useState<Cart>([]);
   const [mode, setMode] = useState<Mode>('scan');
   const { width } = useWindowDimensions();
-  const splitTill = Platform.OS === 'android' && width >= 720 && mode !== 'done';
+  const wideTill = Platform.OS === 'android' && width >= 720;
+  const splitTill = wideTill && mode !== 'done';
+  const tablet = useTabletLayout(wideTill);
+  const [layoutOpen, setLayoutOpen] = useState(false);
+  const [sheetEditingKey, setSheetEditingKey] = useState<string | null>(null);
+  const [lastItemKey, setLastItemKey] = useState<string | null>(null);
+  const sheetTill = splitTill && tablet.layout === 'sheet';
+  const expressTill = splitTill && tablet.layout === 'express';
   const [notice, setNotice] = useState<string | null>(null);
   const [scanNote, setScanNote] = useState<ScanNote | null>(null);
   // An item scanned a second time waits here for a yes, so a camera that lingers on one packet cannot add it twice by accident.
@@ -218,11 +228,26 @@ export default function SellScreen() {
     showToast({ text: t('Removed {name}', { name }), actionLabel: t('Undo'), onAction: () => setCart(before) });
   }
 
+  function addToOrder(item: ScannedItem) {
+    setLastItemKey(lineKey(item.variantId, item.unitId));
+    setCart((c) => addItem(c, item));
+    haptics.tap();
+  }
+
+  async function selectTabletLayout(value: TabletLayout | null) {
+    try {
+      await tablet.choose(value);
+      setSheetEditingKey(null);
+      setLayoutOpen(false);
+    } catch {
+      showToast({ text: t('Could not save the POS layout.') });
+    }
+  }
+
   /** A tapped item goes in the cart at once; the server prices the whole cart as it always does. */
   function pickItem(item: CatalogItem) {
     setScanNote(null);
-    setCart((c) => addItem(c, toCartItem(item)));
-    haptics.tap();
+    addToOrder(toCartItem(item));
   }
 
   async function onCode(code: string, scanned = true) {
@@ -230,13 +255,12 @@ export default function SellScreen() {
     looking.current = true;
     setScanNote(null);
     try {
-      const item = await timed('scan_lookup', () => lookupBarcode(code, ctx.branchId));
+      const item = await timed('scan_lookup', () => (scanned ? lookupBarcode : lookupCode)(code, ctx.branchId));
       if (item && scanned && lastQuantity(cartRef.current, item) !== null) {
         Vibration.vibrate([0, 60, 50, 60]);
         setAgain(item);
       } else if (item) {
-        setCart((c) => addItem(c, item));
-        haptics.tap();
+        addToOrder(item);
       } else {
         setScanNote({ kind: 'missing', code: code.trim(), scanned });
         if (scanned) Vibration.vibrate([0, 80, 60, 80]); // a double buzz for "not found", like the web till's beep
@@ -695,8 +719,13 @@ export default function SellScreen() {
     </>
   );
 
+  const lastItem = cart.find((line) => line.key === lastItemKey) ?? cart.at(-1);
+  const orderSheet = (
+    <TabletOrderSheet cart={cart} onQuantity={(key, value) => setCart((c) => setQuantity(c, key, value))} onRemove={removeWithUndo}
+      onEditing={(key, editing) => setSheetEditingKey((current) => editing ? key : current === key ? null : current)} />
+  );
   const paymentAction = mode === 'scan' ? (
-    <Button title="Take payment" variant="success" size="lg" disabled={isEmpty(cart) || !serverTotal} onPress={startPayment} style={{ minWidth: 168 }} />
+    <Button title="Take payment" variant="success" size="lg" disabled={isEmpty(cart) || !serverTotal || (sheetTill && cart.some((line) => line.key === sheetEditingKey))} onPress={startPayment} style={{ minWidth: 168 }} />
   ) : (
     <Button variant="success" title={method === 'CREDIT' ? 'Write on account' : 'Confirm'} size="lg" loading={busy} disabled={pending ? false : !payTotal || cashShort} onPress={confirm} style={{ minWidth: 168 }} />
   );
@@ -705,7 +734,13 @@ export default function SellScreen() {
     <View style={{ flex: 1 }}>
     <View style={{ flex: 1, flexDirection: splitTill ? 'row' : 'column', backgroundColor: theme.canvas }}>
     <Screen topInset={false} keyboardGap={showBar ? barHeight + 40 : 24}>
-      <Stack.Screen options={{ headerRight: mode === 'scan' ? () => <HeaderAction title="Day Close" onPress={() => router.push('/end-shift')} /> : undefined }} />
+      <Stack.Screen options={{ headerRight: mode === 'scan' ? () => (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          {splitTill ? <HeaderAction title="POS layout" icon="Sliders" onPress={() => { Keyboard.dismiss(); setLayoutOpen(true); }} /> : null}
+          <HeaderAction title="Day Close" onPress={() => router.push('/end-shift')} />
+        </View>
+      ) : undefined }} />
+      {splitTill && mode === 'scan' ? <ThemedText type="bodyMedium">{TABLET_LAYOUTS.find((layout) => layout.id === tablet.layout)?.title}</ThemedText> : null}
       <SaleGuide mode={mode} cartEmpty={isEmpty(cart)} usesBarcodes={usesBarcodes} />
       {mode === 'scan' ? (
         <>
@@ -718,20 +753,24 @@ export default function SellScreen() {
             </Tap>
           ) : null}
           <ItemPicker
-            wideGrid={splitTill}
+            layout={splitTill ? tablet.layout : undefined}
             onPick={pickItem}
-            qtyOf={(id) => inCart.get(id) ?? 0}
+            qtyOf={(id) => splitTill && tablet.layout === 'touch'
+              ? Number(lastQuantity(cart, { variantId: id, unitId: null }) ?? 0)
+              : inCart.get(id) ?? 0}
+            onFewer={(item) => setCart((c) => changeQuantity(c, lineKey(item.variantId, null), -1))}
             onCode={(c) => void onCode(c, false)}
             wholesale={!!customer?.wholesale}
             branchId={ctx?.branchId}
             scan={usesBarcodes ? { open: showCamera, toggle: () => setCameraChoice(!showCamera) } : undefined}
           />
+          {sheetTill ? orderSheet : null}
         </>
       ) : null}
 
       <UnfinishedSaleSheet pending={mode === 'scan' && !hidePending ? pending : null} busy={busy} onFinish={() => pending && void finishPending(pending)} onLater={() => setHidePending(true)} onDiscard={discardPending} notice={notice} />
       <PaperSheet saleId={printFor} onClose={() => setPrintFor(null)} />
-      <ScannedAgainSheet item={mode === 'scan' ? again : null} inCart={again ? lastQuantity(cart, again) : null} onYes={() => { if (again) setCart((c) => addItem(c, again)); haptics.tap(); setAgain(null); }} onNo={() => setAgain(null)} />
+      <ScannedAgainSheet item={mode === 'scan' ? again : null} inCart={again ? lastQuantity(cart, again) : null} onYes={() => { if (again) addToOrder(again); setAgain(null); }} onNo={() => setAgain(null)} />
       <ScanNoteSheet note={mode === 'scan' ? scanNote : null} canAdd={me?.permissions?.includes('product.create') ?? false} onAdd={(code) => { setScanNote(null); router.push({ pathname: '/add-product', params: { code, from: 'sell' } }); }} onDismiss={() => setScanNote(null)} />
       {notice ? <Notice>{notice}</Notice> : null}
 
@@ -800,7 +839,19 @@ export default function SellScreen() {
           {mode === 'pay' ? paymentPanel : (
             <>
               {customerRow}
-              {cartCard}
+              {expressTill ? (
+                <Card style={{ gap: 4 }}>
+                  <ThemedText type="small" themeColor="textMuted">Last item</ThemedText>
+                  <ThemedText type="heading" literal numberOfLines={2}>{lastItem?.name ?? '—'}</ThemedText>
+                  {lastItem ? <ThemedText type="bodyMedium">{formatBDT(lastItem.unitPrice)}</ThemedText> : null}
+                </Card>
+              ) : null}
+              {sheetTill ? (
+                <Card style={{ gap: 4 }}>
+                  <ThemedText type="bodyMedium">Invoice</ThemedText>
+                  <ThemedText type="small" themeColor="textMuted">{t(itemCount(cart) === 1 ? '1 item' : '{n} items', { n: itemCount(cart) })}</ThemedText>
+                </Card>
+              ) : cartCard}
               {cartActions}
             </>
           )}
@@ -827,6 +878,23 @@ export default function SellScreen() {
       </Animated.View>
       </KeyboardStickyView>
     ) : null}
+    <BottomSheet visible={layoutOpen && splitTill && mode === 'scan'} onClose={() => setLayoutOpen(false)} title="POS layout">
+      <View style={{ gap: 8, paddingHorizontal: 16 }}>
+        {TABLET_LAYOUTS.map((layout) => {
+          const selected = tablet.layout === layout.id;
+          return (
+            <Tap key={layout.id} accessibilityRole="radio" accessibilityState={{ checked: selected, disabled: tablet.busy }} disabled={tablet.busy} onPress={() => void selectTabletLayout(layout.id)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, minHeight: 56, borderRadius: Radius.md, backgroundColor: selected ? theme.brandSoft : theme.card, borderWidth: 1, borderColor: selected ? theme.brandSoftBorder : theme.border }}>
+              <View style={{ flex: 1, gap: 4 }}>
+                <ThemedText type="bodyMedium">{layout.title}</ThemedText>
+                <ThemedText type="small" themeColor="textMuted">{layout.description}</ThemedText>
+              </View>
+              {selected ? <Icon name="Check" size={20} color={theme.brandText} /> : null}
+            </Tap>
+          );
+        })}
+        {tablet.deviceLayout ? <Button title="Use shop default" variant="secondary" disabled={tablet.busy} onPress={() => void selectTabletLayout(null)} /> : null}
+      </View>
+    </BottomSheet>
     <BottomSheet visible={cartOpen && mode === 'scan'} onClose={() => setCartOpen(false)} title="Check the cart">
       <View style={{ gap: 12, paddingHorizontal: 16 }}>
         {cartCard}
@@ -868,7 +936,7 @@ function QuantitySheet({ line, text, onText, onClose, onSet }: { line: CartLine 
   const theme = useTheme();
   const t = useT();
   const parts = !!line?.allowDecimal;
-  const ok = parts ? /^\d+(\.\d{1,3})?$/.test(text) : /^\d+$/.test(text);
+  const ok = validTillQuantity(text, parts);
   const unit = line?.allowDecimal && line.unitShort ? ` ${line.unitShort}` : '';
   return (
     <BottomSheet visible={!!line} onClose={onClose} title={line ? line.name : ''}>
@@ -887,7 +955,7 @@ function QuantitySheet({ line, text, onText, onClose, onSet }: { line: CartLine 
           ))}
         </View>
         <Field label="Or type the amount" value={text} onChangeText={onText} keyboardType={parts ? 'decimal-pad' : 'number-pad'} hint={!ok && text ? (parts ? 'Use numbers, like 1.5' : t('One item cannot be sold in parts. Use a whole number.')) : undefined} />
-        <Button title="Done" disabled={!ok || Number(text) <= 0} onPress={() => onSet(text)} />
+        <Button title="Done" disabled={!ok} onPress={() => onSet(text)} />
       </View>
     </BottomSheet>
   );
