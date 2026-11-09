@@ -34,7 +34,7 @@ export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId
   onCode: (code: string) => void;
   wholesale: boolean;
   branchId?: string;
-  scan?: { open: boolean; toggle: () => void };
+  scan?: { open: boolean; toggle: () => void; preview?: React.ReactNode };
   acceptKeyboardCode?: (code: string, willAct: boolean) => boolean;
   subscribeToBroadcast?: (listener: (code: string) => void) => () => void;
   layout?: TabletLayout;
@@ -116,6 +116,7 @@ export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId
         ) : null}
       </View>
 
+      {scan?.preview}
       {filters && !touch ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Spacing.two }}>{filters}</ScrollView>
       ) : null}

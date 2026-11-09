@@ -99,6 +99,7 @@ export default function SellScreen() {
   const splitTill = wideTill && mode !== 'done';
   const tablet = useTabletLayout(wideTill);
   const [layoutOpen, setLayoutOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
   const [sheetEditingKey, setSheetEditingKey] = useState<string | null>(null);
   const [lastItemKey, setLastItemKey] = useState<string | null>(null);
   const sheetTill = splitTill && tablet.layout === 'sheet';
@@ -527,7 +528,7 @@ export default function SellScreen() {
   }
 
   const hardwareScannerEnabled = !!ctx && !!shift && ready && usesBarcodes && mode === 'scan'
-    && scannerMode !== 'manual' && !cartOpen && !heldOpen && !favoritesOpen && !layoutOpen && !busy && !pending;
+    && scannerMode !== 'manual' && !cartOpen && !heldOpen && !favoritesOpen && !layoutOpen && !toolsOpen && !busy && !pending;
   const { acceptKeyboardCode, subscribeToBroadcast } = useSunmiScanner(hardwareScannerEnabled, (code) => void onCode(code));
   const customerTotal = pending && mode === 'pay' ? pending.total : ((mode === 'pay' ? payTotal : undefined) ?? serverTotal ?? estimate);
   const displayTotal = formatBDT(customerTotal);
@@ -803,19 +804,13 @@ export default function SellScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           {focusExit?.()}
           {splitTill ? <HeaderAction title="POS layout" icon="Sliders" onPress={() => { Keyboard.dismiss(); setLayoutOpen(true); }} /> : null}
-          <HeaderAction title="Day Close" onPress={() => router.push('/end-shift')} />
+          <HeaderAction title="Till tools" onPress={() => { Keyboard.dismiss(); setToolsOpen(true); }} />
         </View>
       ) : focusExit }} />
       {splitTill && mode === 'scan' ? <ThemedText type="bodyMedium">{TABLET_LAYOUTS.find((layout) => layout.id === tablet.layout)?.title}</ThemedText> : null}
       <SaleGuide mode={mode} cartEmpty={isEmpty(cart)} usesBarcodes={usesBarcodes} />
       {mode === 'scan' ? (
         <>
-          {usesBarcodes && showCamera ? <Scanner feedbackHandled height={splitTill ? 160 : undefined} onCode={(c) => void onCode(c)} paused={scanNote !== null || again !== null} /> : null}
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {me?.permissions?.includes('product.view') ? <Button title="Price Check" variant="secondary" onPress={() => router.push('/price-check')} /> : null}
-            {canHold ? <Button title={heldCount > 0 ? t('Held carts ({n})', { n: heldCount }) : 'Held carts'} variant="secondary" onPress={() => setHeldOpen(true)} /> : null}
-            <Button title="Favorite products" variant="secondary" onPress={() => setFavoritesOpen(true)} />
-          </View>
           {hardwareScannerEnabled && sunmiHandheldScanHint ? (
             <ThemedText type="small" themeColor="textMuted">Use the side button to scan</ThemedText>
           ) : null}
@@ -834,7 +829,11 @@ export default function SellScreen() {
             onCode={(c) => void onCode(c, false)}
             wholesale={!!customer?.wholesale}
             branchId={ctx?.branchId}
-            scan={usesBarcodes ? { open: showCamera, toggle: () => setCameraChoice({ mode: scannerMode, open: !showCamera }) } : undefined}
+            scan={usesBarcodes ? {
+              open: showCamera,
+              toggle: () => setCameraChoice({ mode: scannerMode, open: !showCamera }),
+              preview: showCamera ? <Scanner feedbackHandled height={splitTill ? 160 : 180} onCode={(c) => void onCode(c)} paused={scanNote !== null || again !== null || toolsOpen} /> : undefined,
+            } : undefined}
           />
           {sheetTill ? orderSheet : null}
         </>
@@ -952,6 +951,14 @@ export default function SellScreen() {
       </Animated.View>
       </KeyboardStickyView>
     ) : null}
+    <BottomSheet visible={toolsOpen && mode === 'scan'} onClose={() => setToolsOpen(false)} title="Till tools">
+      <View style={{ gap: 8, paddingHorizontal: 16 }}>
+        {me?.permissions?.includes('product.view') ? <Button title="Price Check" variant="secondary" onPress={() => { setToolsOpen(false); router.push('/price-check'); }} /> : null}
+        {canHold ? <Button title={heldCount > 0 ? t('Held carts ({n})', { n: heldCount }) : 'Held carts'} variant="secondary" onPress={() => { setToolsOpen(false); setHeldOpen(true); }} /> : null}
+        <Button title="Favorite products" variant="secondary" onPress={() => { setToolsOpen(false); setFavoritesOpen(true); }} />
+        <Button title="Day Close" variant="secondary" onPress={() => { setToolsOpen(false); router.push('/end-shift'); }} />
+      </View>
+    </BottomSheet>
     <BottomSheet visible={layoutOpen && splitTill && mode === 'scan'} onClose={() => setLayoutOpen(false)} title="POS layout">
       <View style={{ gap: 8, paddingHorizontal: 16 }}>
         {TABLET_LAYOUTS.map((layout) => {
