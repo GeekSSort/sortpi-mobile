@@ -39,7 +39,9 @@ export default function HomeScreen() {
   if (me && landing !== 'index') return <Redirect href={landing === 'sell' ? '/sell' : landing === 'stock' ? '/stock' : landing === 'customers' ? '/customers' : '/more'} />;
 
   const wideAndroid = Platform.OS === 'android' && width >= 720;
-  if (me && wideAndroid && height >= 600 && width > height) return <TabletDashboard width={width} />;
+  // Wide counter screens can report less than 600 dp of height after system insets.
+  const dashboardFits = width > height && (height >= 600 || (width >= 800 && height >= 480));
+  if (me && wideAndroid && dashboardFits) return <TabletDashboard width={width} />;
   return <CompactHome sidebarWidth={wideAndroid ? Math.min(288, Math.round(width * 0.36)) : 0} />;
 }
 

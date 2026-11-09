@@ -21,3 +21,11 @@ test('explicit sizes are preserved and unset or legacy preferences use 80 mm', (
   assert.equal(parsePaperPref(null), '80mm');
   assert.equal(parsePaperPref('letter'), '80mm');
 });
+
+test('use the built-in roll size only when the cashier has no saved selection', () => {
+  assert.equal(parsePaperPref(null, '58mm'), '58mm');
+  assert.equal(parsePaperPref('ask', '58mm'), '58mm');
+  assert.equal(parsePaperPref(null, '80mm'), '80mm');
+  assert.equal(parsePaperPref('80mm', '58mm'), '80mm');
+  assert.equal(parsePaperPref('a4', '58mm'), 'a4');
+});

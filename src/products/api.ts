@@ -1,3 +1,4 @@
+import { ApiError } from '@/api/client';
 import { api } from '@/api/session';
 
 import { withListedStock, type Offer, type offerBody, type priceBody } from './logic';
@@ -27,6 +28,17 @@ export async function listProducts(o: { search: string; page: number }) {
   const env = await api.envelope<Product[]>('GET', '/products/', { query: { limit: PAGE, page: o.page, status: 'active', ordering: 'name', search: o.search.trim() || undefined } });
   return { rows: env.data ?? [], nextPage: o.page < (env.meta?.total_pages ?? 1) ? o.page + 1 : undefined };
 }
+/** Resolve the exact scanned barcode, including selling-unit barcodes. */
+export async function productByBarcode(barcode: string): Promise<Product | null> {
+  try {
+    const match = await api.get<{ product: Product }>('/products/lookup/', { query: { barcode } });
+    return match.product.is_active ? getProduct(match.product.id) : null;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
+  }
+}
+
 /** One item. Its stock figures are replaced with the list's (the single-item call answers 0: see `withListedStock`); the list is found by the item's first code. */
 export async function getProduct(id: string): Promise<Product> {
   const one = await api.get<Product>(`/products/${id}/`);

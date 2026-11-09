@@ -1,3 +1,4 @@
+import { useWideLandscape } from '@/hooks/use-wide-landscape';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
@@ -15,7 +16,7 @@ import { Notice } from '@/components/notice';
 import { SkeletonRows } from '@/components/skeleton';
 import { Tap } from '@/components/tap';
 import { ThemedText } from '@/components/themed-text';
-import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
 import { haptics } from '@/lib/haptics';
@@ -30,6 +31,7 @@ const REQS = ['billing', 'requests'];
 
 /** Which SortPi plan the shop is on, how much of it is used, and how to move up. Nothing is charged here: the shop pays SortPi first, then tells SortPi. */
 export default function PlanScreen() {
+  const { contentWidth } = useWideLandscape();
   const theme = useTheme();
   const { t, lang } = usePrefs();
   const queryClient = useQueryClient();
@@ -82,7 +84,7 @@ export default function PlanScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
       <Stack.Screen options={{ title: t('Plan & billing') }} />
-      <ScrollView contentInsetAdjustmentBehavior="automatic" refreshControl={<RefreshControl refreshing={sub.isRefetching || plans.isRefetching} onRefresh={refresh} />} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
+      <ScrollView contentInsetAdjustmentBehavior="automatic" refreshControl={<RefreshControl refreshing={sub.isRefetching || plans.isRefetching} onRefresh={refresh} />} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six, maxWidth: Math.min(contentWidth, 1080), width: '100%', alignSelf: 'center' }}>
         {failed ? <ErrorState message={t('Could not load your plan.')} onRetry={refresh} /> : null}
         {loading && !failed ? <SkeletonRows /> : null}
 

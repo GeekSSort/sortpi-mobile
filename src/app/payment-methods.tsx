@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
-import { Alert, FlatList, StyleSheet, View, useColorScheme } from 'react-native';
+import { Alert, StyleSheet, View, useColorScheme } from 'react-native';
 
+import { AdaptiveList } from '@/components/adaptive-list';
 import { useSession } from '@/auth/session-provider';
 import { BottomSheet } from '@/components/bottom-sheet';
 import { Button } from '@/components/button';
@@ -14,7 +15,7 @@ import { Notice } from '@/components/notice';
 import { SkeletonRows } from '@/components/skeleton';
 import { Tap } from '@/components/tap';
 import { ThemedText } from '@/components/themed-text';
-import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { BottomTabInset, Radius, Spacing } from '@/constants/theme';
 import { PayColors } from '@/constants/palette';
 import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
@@ -68,7 +69,7 @@ export default function PaymentMethodsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
       <Stack.Screen options={{ title: t('Ways to pay'), headerRight: editable && shop ? () => <HeaderAction title="Add" icon="Plus" onPress={() => setSheet({ mode: 'add' })} /> : undefined }} />
-      <FlatList
+      <AdaptiveList
         contentInsetAdjustmentBehavior="automatic"
         data={list}
         keyExtractor={(m) => m}
@@ -77,7 +78,7 @@ export default function PaymentMethodsScreen() {
         ListEmptyComponent={q.isPending ? <SkeletonRows /> : undefined}
         refreshing={q.isRefetching}
         onRefresh={() => void q.refetch()}
-        contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}
+        contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four }}
       />
       {sheet && shop ? <MethodSheet key={sheet.mode === 'edit' ? sheet.index : 'add'} sheet={sheet} list={list} busy={write.isPending} error={write.error} onSave={(next) => write.mutate(next)} onClose={() => setSheet(null)} reset={() => write.reset()} /> : null}
     </View>

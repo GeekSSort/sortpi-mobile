@@ -27,14 +27,16 @@ import type { Favorite } from './use-favorite-products';
  * Selling without a barcode: type a name or code and tap the result, or tap an item from the shop's own list (most sold first),
  * narrowed by category. The camera is one optional button next to the search box.
  */
-export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId, scan, layout, favorites, favoritesBusy, onFavorite }: {
+export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId, scan, acceptKeyboardCode, subscribeToBroadcast, layout, favorites, favoritesBusy, onFavorite }: {
   onPick: (item: CatalogItem) => void;
   onFewer?: (item: CatalogItem) => void;
   qtyOf: (variantId: string) => number;
   onCode: (code: string) => void;
   wholesale: boolean;
   branchId?: string;
-  scan?: { open: boolean; toggle: () => void };
+  scan?: { open: boolean; toggle: () => void; preview?: React.ReactNode };
+  acceptKeyboardCode?: (code: string, willAct: boolean) => boolean;
+  subscribeToBroadcast?: (listener: (code: string) => void) => () => void;
   layout?: TabletLayout;
   favorites: Favorite[];
   favoritesBusy: boolean;
@@ -50,6 +52,9 @@ export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId
   const tileWidth = layout && gridWidth > 0 ? Math.floor((gridWidth - Spacing.two * (columns - 1)) / columns) : undefined;
   const [text, setText] = useState('');
   const [typed, setTyped] = useState('');
+  useEffect(() => subscribeToBroadcast?.((code) => {
+    setText((current) => current.trim() === code ? '' : current);
+  }), [subscribeToBroadcast]);
   const [category, setCategory] = useState<string | null>(null);
   useEffect(() => {
     const id = setTimeout(() => setTyped(text.trim()), 250);
@@ -72,13 +77,18 @@ export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId
   const isOut = (it: CatalogItem) => it.stock !== null && Number(it.stock) <= 0;
 
   /** Enter on what was typed: a code (barcode or SKU) is looked up exactly; with words, one match on screen is taken. */
-  function submit() {
-    const q = text.trim();
+  function submit(value: string) {
+    const q = value.trim();
     if (!q) return;
     // A scanner's code plus Enter arrives before the search below has even started: look the code up exactly, now, not in the list on screen.
-    if (looksLikeCode(q)) onCode(q);
-    else if (typed === q && !list.isPlaceholderData && items.length === 1) onPick(items[0]);
-    else return;
+    const code = looksLikeCode(q);
+    const match = typed === q && !list.isPlaceholderData && items.length === 1;
+    const allowed = acceptKeyboardCode?.(q, code || match) !== false;
+    if (allowed && !code && !match) return;
+    if (allowed) {
+      if (code) onCode(q);
+      else onPick(items[0]);
+    }
     setText('');
   }
 
@@ -97,7 +107,7 @@ export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId
     <View style={{ gap: Spacing.three }}>
       <View style={{ flexDirection: 'row', gap: Spacing.two, alignItems: 'flex-end' }}>
         <View style={{ flex: 1 }}>
-          <Field label={express ? "Scan or enter a code" : "Find an item"} value={text} disableFullscreenUI={!!layout} onChangeText={setText} placeholder="Name or code" autoCapitalize="none" autoCorrect={false} returnKeyType="search" onSubmitEditing={submit} />
+          <Field label={express ? "Scan or enter a code" : "Find an item"} value={text} disableFullscreenUI onChangeText={setText} placeholder="Name or code" autoCapitalize="none" autoCorrect={false} returnKeyType="search" submitBehavior="submit" onSubmitEditing={(event) => submit(event.nativeEvent.text)} />
         </View>
         {scan ? (
           <Tap accessibilityRole="button" accessibilityLabel={t(scan.open ? 'Stop the camera' : 'Scan a barcode')} onPress={scan.toggle} style={{ width: 48, height: 48, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: scan.open ? theme.brand : theme.card, borderWidth: 1, borderColor: scan.open ? theme.brand : theme.inputBorder }}>
@@ -106,6 +116,7 @@ export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId
         ) : null}
       </View>
 
+      {scan?.preview}
       {filters && !touch ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Spacing.two }}>{filters}</ScrollView>
       ) : null}
@@ -120,7 +131,7 @@ export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId
               typed ? (
                 <EmptyState icon="Search" title="Nothing matches that" hint="Check the spelling, or try the first letters of the name." />
               ) : (
-                <EmptyState icon="Package" title="No items yet" hint="Add your first item and it will show up here." />
+                <EmptyState icon="Package" title="No in-stock items to show" hint="Search by name or code to check an item’s availability." />
               )
             ) : null}
 

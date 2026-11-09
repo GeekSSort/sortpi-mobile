@@ -1,3 +1,4 @@
+import { useWideLandscape } from '@/hooks/use-wide-landscape';
 import { useQuery } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -11,7 +12,7 @@ import { Icon } from '@/components/icons/icon';
 import { Notice } from '@/components/notice';
 import { SkeletonRows } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
-import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { BottomTabInset, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
 import { formatBDT } from '@/lib/money';
@@ -28,6 +29,7 @@ import { formatQuantity, stockLevel } from '@/stock/status';
 
 /** What does this cost, and is it in stock? Scan the barcode or type the code. Nothing is added to a sale. */
 export default function PriceCheckScreen() {
+  const { contentWidth } = useWideLandscape();
   const theme = useTheme();
   const { t } = usePrefs();
   const { me } = useSession();
@@ -89,7 +91,7 @@ export default function PriceCheckScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
       <Stack.Screen options={{ title: t('Price Check') }} />
-      <ScrollView contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: Spacing.three, padding: Spacing.three, paddingBottom: BottomTabInset + Spacing.four, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
+      <ScrollView contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: Spacing.three, padding: Spacing.three, paddingBottom: BottomTabInset + Spacing.four, maxWidth: Math.min(contentWidth, 1080), width: '100%', alignSelf: 'center' }}>
         {usesBarcodes && cameraOpen ? <Scanner feedbackHandled onCode={(c) => ask(c, true)} paused={busy} height={200} /> : null}
         {usesBarcodes ? <Button title={cameraOpen ? 'Stop the camera' : 'Scan a barcode'} variant="secondary" onPress={() => setCameraChoice({ mode: scannerMode, open: !cameraOpen })} /> : null}
         <Field label="Barcode or item code" value={typed} onChangeText={setTyped} autoCapitalize="characters" autoCorrect={false} returnKeyType="search" onSubmitEditing={() => ask(typed, false)} />

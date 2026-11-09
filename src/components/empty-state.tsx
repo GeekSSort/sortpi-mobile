@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import Animated, { Easing, FadeInDown, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 
 import { Spacing } from '@/constants/theme';
+import { useWideLandscape } from '@/hooks/use-wide-landscape';
 import { useTheme } from '@/hooks/use-theme';
 
 import { Button } from './button';
@@ -11,6 +12,7 @@ import { ThemedText } from './themed-text';
 /** A list with nothing to show: say what is true, what to try, and give one button to get out of it. */
 export function EmptyState({ icon, title, hint, action }: { icon: IconName; title: string; hint?: string; action?: { title: string; onPress: () => void } }) {
   const theme = useTheme();
+  const { wideLandscape } = useWideLandscape();
   // The picture floats up and down very slowly so an empty page still feels alive. The system's reduce-motion setting stops it.
   const lift = useSharedValue(0);
   useEffect(() => {
@@ -30,7 +32,7 @@ export function EmptyState({ icon, title, hint, action }: { icon: IconName; titl
           {hint}
         </ThemedText>
       ) : null}
-      {action ? <Button title={action.title} onPress={action.onPress} style={{ alignSelf: 'stretch' }} /> : null}
+      {action ? <Button title={action.title} onPress={action.onPress} style={wideLandscape ? { minWidth: 200 } : { alignSelf: 'stretch' }} /> : null}
     </Animated.View>
   );
 }

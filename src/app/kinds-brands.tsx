@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
-import { Alert, FlatList, StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 
+import { AdaptiveList } from '@/components/adaptive-list';
 import { useSession } from '@/auth/session-provider';
 import { addBrand, addCategory, listBrandRows, listCategoryRows, removeBrand, removeCategory, renameBrand, renameCategory } from '@/catalog/api';
 import { canNest, categoryTree, createBody, describeCatalogError, emptyOnes, nameProblem, renameBody, type Kind, type TreeRow } from '@/catalog/manage';
@@ -18,7 +19,7 @@ import { SkeletonRows } from '@/components/skeleton';
 import { Tap } from '@/components/tap';
 import { ThemedText } from '@/components/themed-text';
 import { ToneTile } from '@/components/tone-tile';
-import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { BottomTabInset, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
 import { haptics } from '@/lib/haptics';
@@ -84,7 +85,7 @@ export default function KindsAndBrandsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
       <Stack.Screen options={{ title: t('Categories & Brands'), headerRight: canAdd ? () => <HeaderAction title="Add" icon="Plus" onPress={() => setSheet({ mode: 'add', parent: null })} /> : undefined }} />
-      <FlatList
+      <AdaptiveList
         contentInsetAdjustmentBehavior="automatic"
         data={shown}
         keyExtractor={(r) => r.id}
@@ -102,7 +103,7 @@ export default function KindsAndBrandsScreen() {
         refreshing={list.isRefetching}
         onRefresh={() => void list.refetch()}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}
+        contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four }}
       />
       {sheet ? <EditSheet key={sheet.mode === 'edit' ? sheet.row.id : `add-${sheet.parent?.id ?? 'top'}`} kind={which} sheet={sheet} rows={tree} perms={perms} onClose={() => setSheet(null)} onAddInside={(parent) => setSheet({ mode: 'add', parent })} /> : null}
     </View>

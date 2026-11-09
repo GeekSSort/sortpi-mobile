@@ -1,8 +1,10 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, FlatList, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 
+import { useWideLandscape } from '@/hooks/use-wide-landscape';
+import { AdaptiveList } from '@/components/adaptive-list';
 import { useSession } from '@/auth/session-provider';
 import { EmptyState } from '@/components/empty-state';
 import { ErrorState } from '@/components/error-state';
@@ -13,7 +15,7 @@ import { SkeletonRows } from '@/components/skeleton';
 import { Tap } from '@/components/tap';
 import { ThemedText } from '@/components/themed-text';
 import { ToneTile as Tile } from '@/components/tone-tile';
-import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { BottomTabInset, Radius, Spacing } from '@/constants/theme';
 import { MONTHS } from '@/home/week';
 import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
@@ -28,6 +30,7 @@ const FILTERS: StatusFilter[] = ['ALL', 'DRAFT', 'CONFIRMED', 'PARTIAL', 'RECEIV
 
 /** Every order to a supplier: what was bought, what has arrived, what is still owed. */
 export default function PurchasesScreen() {
+  const { wideLandscape } = useWideLandscape();
   const theme = useTheme();
   const { t, lang } = usePrefs();
   const router = useRouter();
@@ -57,26 +60,37 @@ export default function PurchasesScreen() {
     );
   }
 
+  const statusChips = FILTERS.map((f) => {
+    const on = status === f;
+    return (
+      <Tap key={f} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => setStatus(f)} style={{ minHeight: 48, justifyContent: 'center', paddingHorizontal: 18, borderRadius: Radius.full, backgroundColor: on ? theme.brandSoft : theme.card, borderWidth: 1, borderColor: on ? theme.brandSoftBorder : theme.border }}>
+        <ThemedText type="smallMedium" style={{ color: on ? theme.brandText : theme.textSecondary }}>
+          {f === 'ALL' ? 'All' : STATUS_WORDS[f]}
+        </ThemedText>
+      </Tap>
+    );
+  });
+
+  const searchControls = (
+    <Field label="Search" value={search} onChangeText={setSearch} placeholder="Order number, invoice or supplier" autoCapitalize="none" autoCorrect={false} />
+  );
+
   const header = (
     <View style={{ gap: Spacing.three, padding: Spacing.three }}>
-      <View style={{ flexDirection: 'row', flexWrap: bigText ? 'wrap' : 'nowrap', gap: Spacing.two }}>
-        <Tile label="Bought" icon="Package" value={s ? formatBDT(s.total, { dp: 0, symbol: false }) : '…'} note={s ? (s.count === 1 ? t('1 order') : t('{n} orders', { n: s.count })) : undefined} />
-        <Tile label="Paid" icon="Cash" tone="good" value={s ? formatBDT(s.paid, { dp: 0, symbol: false }) : '…'} />
-        <Tile label="You owe" icon="Users" tone={s && compareMoney(s.due, '0') > 0 ? 'bad' : undefined} value={s ? formatBDT(s.due, { dp: 0, symbol: false }) : '…'} />
+      {wideLandscape ? searchControls : null}
+      <View style={{ flexDirection: wideLandscape ? 'column' : 'row', flexWrap: !wideLandscape && bigText ? 'wrap' : 'nowrap', gap: Spacing.two }}>
+        <Tile compact={wideLandscape} label="Bought" icon="Package" value={s ? formatBDT(s.total, { dp: 0, symbol: false }) : '…'} note={s ? (s.count === 1 ? t('1 order') : t('{n} orders', { n: s.count })) : undefined} />
+        <Tile compact={wideLandscape} label="Paid" icon="Cash" tone="good" value={s ? formatBDT(s.paid, { dp: 0, symbol: false }) : '…'} />
+        <Tile compact={wideLandscape} label="You owe" icon="Users" tone={s && compareMoney(s.due, '0') > 0 ? 'bad' : undefined} value={s ? formatBDT(s.due, { dp: 0, symbol: false }) : '…'} />
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Spacing.two }}>
-        {FILTERS.map((f) => {
-          const on = status === f;
-          return (
-            <Tap key={f} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => setStatus(f)} style={{ minHeight: 48, justifyContent: 'center', paddingHorizontal: 18, borderRadius: Radius.full, backgroundColor: on ? theme.brandSoft : theme.card, borderWidth: 1, borderColor: on ? theme.brandSoftBorder : theme.border }}>
-              <ThemedText type="smallMedium" style={{ color: on ? theme.brandText : theme.textSecondary }}>
-                {f === 'ALL' ? 'All' : STATUS_WORDS[f]}
-              </ThemedText>
-            </Tap>
-          );
-        })}
-      </ScrollView>
-      <Field label="Search" value={search} onChangeText={setSearch} placeholder="Order number, invoice or supplier" autoCapitalize="none" autoCorrect={false} />
+      {wideLandscape ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two }}>{statusChips}</View>
+      ) : (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Spacing.two }}>
+          {statusChips}
+        </ScrollView>
+      )}
+      {!wideLandscape ? searchControls : null}
       {list.isError ? <ErrorState message={t('Could not load the orders.')} onRetry={() => void list.refetch()} /> : null}
     </View>
   );
@@ -84,7 +98,7 @@ export default function PurchasesScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
       <Stack.Screen options={{ headerRight: canAdd ? () => <HeaderAction title="New" icon="Plus" onPress={() => router.push('/new-purchase')} /> : undefined }} />
-      <FlatList
+      <AdaptiveList landscapeSidebar
         contentInsetAdjustmentBehavior="automatic"
         data={rows}
         keyExtractor={(r) => r.id}
@@ -105,7 +119,7 @@ export default function PurchasesScreen() {
         refreshing={list.isRefetching && !list.isFetchingNextPage}
         onRefresh={() => void Promise.all([list.refetch(), totals.refetch()])}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}
+        contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four }}
       />
     </View>
   );

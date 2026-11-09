@@ -1,8 +1,10 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
+import { useWideLandscape } from '@/hooks/use-wide-landscape';
+import { AdaptiveList } from '@/components/adaptive-list';
 import { useSession } from '@/auth/session-provider';
 import { useDebounced } from '@/lib/use-debounced';
 import { ActionSheet } from '@/components/action-sheet';
@@ -14,7 +16,7 @@ import { ErrorState } from '@/components/error-state';
 import { ToneTile as Tile } from '@/components/tone-tile';
 import { SkeletonRows } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
-import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { BottomTabInset, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useT } from '@/i18n/prefs';
 import { BIG_TEXT, useTextFactor } from '@/i18n/text-factor';
@@ -31,6 +33,7 @@ import { formatQuantity, STOCK_LEVEL_LABEL, stockLevel, type StockLevel } from '
 
 /** What is on the shelf in this branch: search or scan a code, filter by level, and add a product. */
 export default function StockScreen() {
+  const { wideLandscape } = useWideLandscape();
   const theme = useTheme();
   const t = useT();
   const bigText = useTextFactor() > BIG_TEXT;
@@ -77,12 +80,31 @@ export default function StockScreen() {
   const rows = list.data?.pages.flatMap((p) => p.rows) ?? [];
   const s = summary.data;
 
+  const searchControls = (
+    <>
+        {usesBarcodes && scanning ? <Scanner height={170} onCode={(c) => { setSearch(c); setScanning(false); }} /> : null}
+        <View style={{ flexDirection: 'row', gap: Spacing.two, alignItems: 'flex-end' }}>
+          <View style={{ flex: 1 }}>
+            <Field label="Search" value={search} onChangeText={setSearch} placeholder={usesBarcodes ? 'Name, code or barcode' : 'Name or code'} autoCapitalize="none" autoCorrect={false} />
+          </View>
+          {usesBarcodes ? <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t(scanning ? 'Stop the camera' : 'Scan a barcode')}
+            onPress={() => setScanning((v) => !v)}
+            style={{ width: 48, height: 48, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: scanning ? theme.brand : theme.card, borderWidth: 1, borderColor: scanning ? theme.brand : theme.inputBorder }}>
+            <Icon name="ScanLine" size={22} color={scanning ? theme.onBrand : theme.brand} />
+          </Pressable> : null}
+        </View>
+    </>
+  );
+
   const header = (
     <View style={{ gap: Spacing.three, padding: Spacing.three }}>
-      <View style={{ flexDirection: 'row', flexWrap: bigText ? 'wrap' : 'nowrap', gap: Spacing.two }}>
-        <Tile label="Items" icon="Package" value={s ? String(s.lines) : '…'} selected={filter === 'all'} onPress={() => setFilter('all')} />
-        <Tile label="Low" value={s ? String(s.low_stock) : '…'} tone={s && s.low_stock > 0 ? 'warn' : undefined} icon="TriangleAlert" selected={filter === 'low'} onPress={() => pick('low')} />
-        <Tile label="Out" value={s ? String(s.out_of_stock) : '…'} tone={s && s.out_of_stock > 0 ? 'bad' : undefined} icon="Cancel" selected={filter === 'out'} onPress={() => pick('out')} />
+      {wideLandscape ? searchControls : null}
+      <View style={{ flexDirection: wideLandscape ? 'column' : 'row', flexWrap: !wideLandscape && bigText ? 'wrap' : 'nowrap', gap: Spacing.two }}>
+        <Tile compact={wideLandscape} label="Items" icon="Package" value={s ? String(s.lines) : '…'} selected={filter === 'all'} onPress={() => setFilter('all')} />
+        <Tile compact={wideLandscape} label="Low" value={s ? String(s.low_stock) : '…'} tone={s && s.low_stock > 0 ? 'warn' : undefined} icon="TriangleAlert" selected={filter === 'low'} onPress={() => pick('low')} />
+        <Tile compact={wideLandscape} label="Out" value={s ? String(s.out_of_stock) : '…'} tone={s && s.out_of_stock > 0 ? 'bad' : undefined} icon="Cancel" selected={filter === 'out'} onPress={() => pick('out')} />
       </View>
       {s?.stock_value ? (
         <ThemedText type="small" themeColor="textMuted">
@@ -90,19 +112,7 @@ export default function StockScreen() {
         </ThemedText>
       ) : null}
 
-      {usesBarcodes && scanning ? <Scanner height={170} onCode={(c) => { setSearch(c); setScanning(false); }} /> : null}
-      <View style={{ flexDirection: 'row', gap: Spacing.two, alignItems: 'flex-end' }}>
-        <View style={{ flex: 1 }}>
-          <Field label="Search" value={search} onChangeText={setSearch} placeholder={usesBarcodes ? 'Name, code or barcode' : 'Name or code'} autoCapitalize="none" autoCorrect={false} />
-        </View>
-        {usesBarcodes ? <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t(scanning ? 'Stop the camera' : 'Scan a barcode')}
-          onPress={() => setScanning((v) => !v)}
-          style={{ width: 48, height: 48, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: scanning ? theme.brand : theme.card, borderWidth: 1, borderColor: scanning ? theme.brand : theme.inputBorder }}>
-          <Icon name="ScanLine" size={22} color={scanning ? theme.onBrand : theme.brand} />
-        </Pressable> : null}
-      </View>
+      {!wideLandscape ? searchControls : null}
 
       {list.isError ? <ErrorState message={t('Could not load the stock.')} onRetry={() => void list.refetch()} /> : null}
     </View>
@@ -112,7 +122,7 @@ export default function StockScreen() {
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
       <Stack.Screen options={{ headerRight: canAdd ? () => <HeaderAction title="Add" icon="Plus" onPress={() => router.push('/add-product')} /> : undefined }} />
       <View style={{ flex: 1 }}>
-        <FlatList
+        <AdaptiveList landscapeSidebar
           contentInsetAdjustmentBehavior="automatic"
           data={rows}
           keyExtractor={(r) => r.id}
@@ -135,7 +145,7 @@ export default function StockScreen() {
           refreshing={list.isRefetching && !list.isFetchingNextPage}
           onRefresh={() => void Promise.all([list.refetch(), summary.refetch()])}
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}
+          contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four }}
         />
         <ActionSheet title={picked ? stockName(picked) : null} actions={picked ? [{ title: 'Sell this', icon: 'Plus', onPress: () => void sellThis(picked) }] : []} onClose={() => setPicked(null)} />
       </View>
