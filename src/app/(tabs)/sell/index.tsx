@@ -103,6 +103,8 @@ export default function SellScreen() {
   const [sheetEditingKey, setSheetEditingKey] = useState<string | null>(null);
   const [lastItemKey, setLastItemKey] = useState<string | null>(null);
   const sheetTill = splitTill && tablet.layout === 'sheet';
+  const invoiceBesideProducts = sheetTill && width >= 960;
+  const orderPaneWidth = Math.min(500, Math.round(width * 0.47));
   const expressTill = splitTill && tablet.layout === 'express';
   const [notice, setNotice] = useState<string | null>(null);
   const [scanNote, setScanNote] = useState<ScanNote | null>(null);
@@ -616,12 +618,14 @@ export default function SellScreen() {
 
   const cartCard = (
         <Card style={{ gap: 4, padding: 12 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 4, paddingBottom: 4 }}>
-            <ThemedText type="smallMedium">Cart</ThemedText>
-            <ThemedText type="small" themeColor="textMuted">
-              {t(itemCount(cart) === 1 ? '1 item' : '{n} items', { n: itemCount(cart) })}
-            </ThemedText>
-          </View>
+          {!splitTill || mode === 'pay' ? (
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 4, paddingBottom: 4 }}>
+              <ThemedText type="smallMedium">Cart</ThemedText>
+              <ThemedText type="small" themeColor="textMuted">
+                {t(itemCount(cart) === 1 ? '1 item' : '{n} items', { n: itemCount(cart) })}
+              </ThemedText>
+            </View>
+          ) : null}
           {cart.length === 0 ? (
             // Waits for a removed row to finish leaving, so the two never overlap.
             <Animated.View entering={FadeIn.delay(200).duration(200)}>
@@ -785,6 +789,8 @@ export default function SellScreen() {
     </>
   );
 
+  const activeLayoutTitle = TABLET_LAYOUTS.find((layout) => layout.id === tablet.layout)?.title;
+  const orderCount = t(itemCount(cart) === 1 ? '1 item' : '{n} items', { n: itemCount(cart) });
   const lastItem = cart.find((line) => line.key === lastItemKey) ?? cart.at(-1);
   const orderSheet = (
     <TabletOrderSheet cart={cart} onQuantity={(key, value) => setCart((c) => setQuantity(c, key, value))} onRemove={removeWithUndo}
@@ -807,7 +813,12 @@ export default function SellScreen() {
           <HeaderAction title="Till tools" onPress={() => { Keyboard.dismiss(); setToolsOpen(true); }} />
         </View>
       ) : focusExit }} />
-      {splitTill && mode === 'scan' ? <ThemedText type="bodyMedium">{TABLET_LAYOUTS.find((layout) => layout.id === tablet.layout)?.title}</ThemedText> : null}
+      {mode === 'scan' ? (
+        <View style={{ gap: 4 }}>
+          <ThemedText type="heading">Products</ThemedText>
+          {splitTill && activeLayoutTitle ? <ThemedText type="small" themeColor="textMuted">{activeLayoutTitle}</ThemedText> : null}
+        </View>
+      ) : splitTill && mode === 'pay' ? <ThemedText type="heading">Review order</ThemedText> : null}
       <SaleGuide mode={mode} cartEmpty={isEmpty(cart)} usesBarcodes={usesBarcodes} />
       {mode === 'scan' ? (
         <>
@@ -835,7 +846,12 @@ export default function SellScreen() {
               preview: showCamera ? <Scanner feedbackHandled height={splitTill ? 160 : 180} onCode={(c) => void onCode(c)} paused={scanNote !== null || again !== null || toolsOpen} /> : undefined,
             } : undefined}
           />
-          {sheetTill ? orderSheet : null}
+          {sheetTill && !invoiceBesideProducts ? (
+            <View style={{ gap: 8 }}>
+              <ThemedText type="bodyMedium">Invoice</ThemedText>
+              {orderSheet}
+            </View>
+          ) : null}
         </>
       ) : null}
 
@@ -907,7 +923,11 @@ export default function SellScreen() {
       {showBar ? <View style={{ height: Math.max(124, barHeight + 16) }} /> : null}
     </Screen>
     {splitTill ? (
-      <View style={{ width: '47%', maxWidth: 500, backgroundColor: theme.canvas, borderStartWidth: 1, borderColor: theme.border }}>
+      <View style={{ width: orderPaneWidth, backgroundColor: theme.canvas, borderStartWidth: 1, borderColor: theme.border }}>
+        <View style={{ minHeight: 56, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, backgroundColor: theme.card, borderBottomWidth: 1, borderBottomColor: theme.border }}>
+          <ThemedText type="bodyMedium">{mode === 'pay' ? 'Payment' : invoiceBesideProducts ? 'Invoice' : 'Current order'}</ThemedText>
+          <ThemedText type="small" themeColor="textMuted" literal>{orderCount}</ThemedText>
+        </View>
         <KeyboardAwareScrollView keyboardShouldPersistTaps="handled" bottomOffset={24} contentContainerStyle={{ padding: 12, gap: 12 }}>
           {mode === 'pay' ? paymentPanel : (
             <>
@@ -919,20 +939,17 @@ export default function SellScreen() {
                   {lastItem ? <ThemedText type="bodyMedium">{formatBDT(lastItem.unitPrice)}</ThemedText> : null}
                 </Card>
               ) : null}
-              {sheetTill ? (
-                <Card style={{ gap: 4 }}>
-                  <ThemedText type="bodyMedium">Invoice</ThemedText>
-                  <ThemedText type="small" themeColor="textMuted">{t(itemCount(cart) === 1 ? '1 item' : '{n} items', { n: itemCount(cart) })}</ThemedText>
-                </Card>
-              ) : cartCard}
+              {sheetTill ? (invoiceBesideProducts ? orderSheet : null) : cartCard}
               {cartActions}
             </>
           )}
         </KeyboardAwareScrollView>
         <View style={{ padding: 12, gap: 8, backgroundColor: theme.card, borderTopWidth: 1, borderColor: theme.border }}>
           {paymentStatus}
-          {totalSummary}
-          {paymentAction}
+          <View style={{ flexDirection: orderPaneWidth >= 400 ? 'row' : 'column', alignItems: orderPaneWidth >= 400 ? 'center' : 'stretch', gap: 12 }}>
+            <View style={orderPaneWidth >= 400 ? { flex: 1 } : undefined}>{totalSummary}</View>
+            {paymentAction}
+          </View>
         </View>
       </View>
     ) : null}
