@@ -71,12 +71,17 @@ export default function PurchasesScreen() {
     );
   });
 
+  const searchControls = (
+    <Field label="Search" value={search} onChangeText={setSearch} placeholder="Order number, invoice or supplier" autoCapitalize="none" autoCorrect={false} />
+  );
+
   const header = (
     <View style={{ gap: Spacing.three, padding: Spacing.three }}>
+      {wideLandscape ? searchControls : null}
       <View style={{ flexDirection: wideLandscape ? 'column' : 'row', flexWrap: !wideLandscape && bigText ? 'wrap' : 'nowrap', gap: Spacing.two }}>
-        <Tile label="Bought" icon="Package" value={s ? formatBDT(s.total, { dp: 0, symbol: false }) : '…'} note={s ? (s.count === 1 ? t('1 order') : t('{n} orders', { n: s.count })) : undefined} />
-        <Tile label="Paid" icon="Cash" tone="good" value={s ? formatBDT(s.paid, { dp: 0, symbol: false }) : '…'} />
-        <Tile label="You owe" icon="Users" tone={s && compareMoney(s.due, '0') > 0 ? 'bad' : undefined} value={s ? formatBDT(s.due, { dp: 0, symbol: false }) : '…'} />
+        <Tile compact={wideLandscape} label="Bought" icon="Package" value={s ? formatBDT(s.total, { dp: 0, symbol: false }) : '…'} note={s ? (s.count === 1 ? t('1 order') : t('{n} orders', { n: s.count })) : undefined} />
+        <Tile compact={wideLandscape} label="Paid" icon="Cash" tone="good" value={s ? formatBDT(s.paid, { dp: 0, symbol: false }) : '…'} />
+        <Tile compact={wideLandscape} label="You owe" icon="Users" tone={s && compareMoney(s.due, '0') > 0 ? 'bad' : undefined} value={s ? formatBDT(s.due, { dp: 0, symbol: false }) : '…'} />
       </View>
       {wideLandscape ? (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two }}>{statusChips}</View>
@@ -85,7 +90,7 @@ export default function PurchasesScreen() {
           {statusChips}
         </ScrollView>
       )}
-      <Field label="Search" value={search} onChangeText={setSearch} placeholder="Order number, invoice or supplier" autoCapitalize="none" autoCorrect={false} />
+      {!wideLandscape ? searchControls : null}
       {list.isError ? <ErrorState message={t('Could not load the orders.')} onRetry={() => void list.refetch()} /> : null}
     </View>
   );

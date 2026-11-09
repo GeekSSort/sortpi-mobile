@@ -80,12 +80,31 @@ export default function StockScreen() {
   const rows = list.data?.pages.flatMap((p) => p.rows) ?? [];
   const s = summary.data;
 
+  const searchControls = (
+    <>
+        {usesBarcodes && scanning ? <Scanner height={170} onCode={(c) => { setSearch(c); setScanning(false); }} /> : null}
+        <View style={{ flexDirection: 'row', gap: Spacing.two, alignItems: 'flex-end' }}>
+          <View style={{ flex: 1 }}>
+            <Field label="Search" value={search} onChangeText={setSearch} placeholder={usesBarcodes ? 'Name, code or barcode' : 'Name or code'} autoCapitalize="none" autoCorrect={false} />
+          </View>
+          {usesBarcodes ? <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t(scanning ? 'Stop the camera' : 'Scan a barcode')}
+            onPress={() => setScanning((v) => !v)}
+            style={{ width: 48, height: 48, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: scanning ? theme.brand : theme.card, borderWidth: 1, borderColor: scanning ? theme.brand : theme.inputBorder }}>
+            <Icon name="ScanLine" size={22} color={scanning ? theme.onBrand : theme.brand} />
+          </Pressable> : null}
+        </View>
+    </>
+  );
+
   const header = (
     <View style={{ gap: Spacing.three, padding: Spacing.three }}>
+      {wideLandscape ? searchControls : null}
       <View style={{ flexDirection: wideLandscape ? 'column' : 'row', flexWrap: !wideLandscape && bigText ? 'wrap' : 'nowrap', gap: Spacing.two }}>
-        <Tile label="Items" icon="Package" value={s ? String(s.lines) : '…'} selected={filter === 'all'} onPress={() => setFilter('all')} />
-        <Tile label="Low" value={s ? String(s.low_stock) : '…'} tone={s && s.low_stock > 0 ? 'warn' : undefined} icon="TriangleAlert" selected={filter === 'low'} onPress={() => pick('low')} />
-        <Tile label="Out" value={s ? String(s.out_of_stock) : '…'} tone={s && s.out_of_stock > 0 ? 'bad' : undefined} icon="Cancel" selected={filter === 'out'} onPress={() => pick('out')} />
+        <Tile compact={wideLandscape} label="Items" icon="Package" value={s ? String(s.lines) : '…'} selected={filter === 'all'} onPress={() => setFilter('all')} />
+        <Tile compact={wideLandscape} label="Low" value={s ? String(s.low_stock) : '…'} tone={s && s.low_stock > 0 ? 'warn' : undefined} icon="TriangleAlert" selected={filter === 'low'} onPress={() => pick('low')} />
+        <Tile compact={wideLandscape} label="Out" value={s ? String(s.out_of_stock) : '…'} tone={s && s.out_of_stock > 0 ? 'bad' : undefined} icon="Cancel" selected={filter === 'out'} onPress={() => pick('out')} />
       </View>
       {s?.stock_value ? (
         <ThemedText type="small" themeColor="textMuted">
@@ -93,19 +112,7 @@ export default function StockScreen() {
         </ThemedText>
       ) : null}
 
-      {usesBarcodes && scanning ? <Scanner height={170} onCode={(c) => { setSearch(c); setScanning(false); }} /> : null}
-      <View style={{ flexDirection: 'row', gap: Spacing.two, alignItems: 'flex-end' }}>
-        <View style={{ flex: 1 }}>
-          <Field label="Search" value={search} onChangeText={setSearch} placeholder={usesBarcodes ? 'Name, code or barcode' : 'Name or code'} autoCapitalize="none" autoCorrect={false} />
-        </View>
-        {usesBarcodes ? <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t(scanning ? 'Stop the camera' : 'Scan a barcode')}
-          onPress={() => setScanning((v) => !v)}
-          style={{ width: 48, height: 48, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: scanning ? theme.brand : theme.card, borderWidth: 1, borderColor: scanning ? theme.brand : theme.inputBorder }}>
-          <Icon name="ScanLine" size={22} color={scanning ? theme.onBrand : theme.brand} />
-        </Pressable> : null}
-      </View>
+      {!wideLandscape ? searchControls : null}
 
       {list.isError ? <ErrorState message={t('Could not load the stock.')} onRetry={() => void list.refetch()} /> : null}
     </View>

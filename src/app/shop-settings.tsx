@@ -38,7 +38,7 @@ const paperLabel = (width: string) => width === 'a4' ? 'A4' : width.replace('mm'
 
 /** The settings a shop owner needs most: tax, discount, daily target, how customers pay, and a few rules about selling and stock. Each change is saved as it is made. */
 export default function ShopSettingsScreen() {
-  const { contentWidth } = useWideLandscape();
+  const { contentWidth, wideLandscape } = useWideLandscape();
   const theme = useTheme();
   const { t, setGuideDone } = usePrefs();
   const router = useRouter();
@@ -109,69 +109,78 @@ export default function ShopSettingsScreen() {
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
       <Stack.Screen options={{ title: t('Settings') }} />
       <ScrollView contentInsetAdjustmentBehavior="automatic" refreshControl={canSee ? <RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} /> : undefined} contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four, maxWidth: Math.min(contentWidth, 1080), width: '100%', alignSelf: 'center' }}>
-        <Section title="On this device" />
-        {canSetPaper && androidPosDevice ? (
-          <ValueRow icon="Store" tone="info" title="POS device" hint="Detected from this Android device." value={[androidPosDevice.name, androidPosDevice.model].filter(Boolean).join(' · ')} />
-        ) : null}
-        {canSetPaper ? (
-          <>
-            <ValueRow icon="Receipt" tone="info" title="Receipt paper" hint={hasBuiltInPrinterSupport ? "Matches the built-in roll until you choose a size." : "Paper size used when printing receipts from this device."} value={paperLabel(paper)} onPress={() => setPaperOpen(true)} />
-            {hasSunmiDiagnostics ? (
-              <ValueRow icon="Receipt" tone="info" title="Built-in printer" hint={[sunmiPrinter.data?.model || 'SUNMI', sunmiPrinter.data?.width && paperLabel(sunmiPrinter.data.width)].filter(Boolean).join(' · ')} value={sunmiPrinter.isPending ? t('Checking…') : t(sunmiPrinterStatus(sunmiPrinter.data?.status))} onPress={() => void sunmiPrinter.refetch()} />
+        <View style={{ flexDirection: wideLandscape ? 'row' : 'column', gap: wideLandscape ? Spacing.three : 0, paddingHorizontal: wideLandscape ? Spacing.three : 0 }}>
+          <View style={{ flex: wideLandscape ? 1 : undefined, minWidth: 0 }}>
+            <Section title="On this device" />
+            {canSetPaper && androidPosDevice ? (
+              <ValueRow icon="Store" tone="info" title="POS device" hint="Detected from this Android device." value={[androidPosDevice.name, androidPosDevice.model].filter(Boolean).join(' · ')} />
             ) : null}
-            {hasBuiltInPrinterSupport ? (
-              <SwitchRow icon="Receipt" tone="info" title="Use Android printing" hint="Open the print dialog to choose an external printer." on={systemPrinting.data === true} locked={false} disabled={systemPrinting.isPending || chooseSystemPrinting.isPending || printing} onLocked={() => undefined} onChange={(enabled) => chooseSystemPrinting.mutate(enabled)} />
+            {canSetPaper ? (
+              <>
+                <ValueRow icon="Receipt" tone="info" title="Receipt paper" hint={hasBuiltInPrinterSupport ? "Matches the built-in roll until you choose a size." : "Paper size used when printing receipts from this device."} value={paperLabel(paper)} onPress={() => setPaperOpen(true)} />
+                {hasSunmiDiagnostics ? (
+                  <ValueRow icon="Receipt" tone="info" title="Built-in printer" hint={[sunmiPrinter.data?.model || 'SUNMI', sunmiPrinter.data?.width && paperLabel(sunmiPrinter.data.width)].filter(Boolean).join(' · ')} value={sunmiPrinter.isPending ? t('Checking…') : t(sunmiPrinterStatus(sunmiPrinter.data?.status))} onPress={() => void sunmiPrinter.refetch()} />
+                ) : null}
+                {hasBuiltInPrinterSupport ? (
+                  <SwitchRow icon="Receipt" tone="info" title="Use Android printing" hint="Open the print dialog to choose an external printer." on={systemPrinting.data === true} locked={false} disabled={systemPrinting.isPending || chooseSystemPrinting.isPending || printing} onLocked={() => undefined} onChange={(enabled) => chooseSystemPrinting.mutate(enabled)} />
+                ) : null}
+                <ValueRow icon="Receipt" tone="info" title="Print test" hint="Print a sample with the current paper size." value={printing ? t('Opening…') : ''} onPress={printing ? undefined : () => {
+                  setPrinting(true);
+                  void printTestReceipt().finally(() => {
+                    setPrinting(false);
+                    if (hasSunmiDiagnostics) void sunmiPrinter.refetch();
+                  });
+                }} />
+              </>
             ) : null}
-            <ValueRow icon="Receipt" tone="info" title="Print test" hint="Print a sample with the current paper size." value={printing ? t('Opening…') : ''} onPress={printing ? undefined : () => {
-              setPrinting(true);
-              void printTestReceipt().finally(() => {
-                setPrinting(false);
-                if (hasSunmiDiagnostics) void sunmiPrinter.refetch();
-              });
+            {biometricAvailable ? (
+              <SwitchRow icon="ScanFace" tone="info" title={process.env.EXPO_OS === 'ios' ? 'Unlock with Face ID' : 'Unlock with fingerprint'} hint="Keeps your shop safe if someone else picks up your phone." on={biometricEnabled} locked={false} disabled={false} onLocked={() => undefined} onChange={(value) => {
+                void setBiometricEnabled(value).catch(() => showToast({ text: t('Could not save this setting.') }));
+              }} />
+            ) : null}
+            <ValueRow icon="ChevronRight" tone="info" title="Show the help again" hint="Show the selling guide the next time you open Sell." value="" onPress={() => {
+              void setGuideDone(false).then(() => showToast({ text: t('Saved') }));
             }} />
-          </>
-        ) : null}
-        {biometricAvailable ? (
-          <SwitchRow icon="ScanFace" tone="info" title={process.env.EXPO_OS === 'ios' ? 'Unlock with Face ID' : 'Unlock with fingerprint'} hint="Keeps your shop safe if someone else picks up your phone." on={biometricEnabled} locked={false} disabled={false} onLocked={() => undefined} onChange={(value) => {
-            void setBiometricEnabled(value).catch(() => showToast({ text: t('Could not save this setting.') }));
-          }} />
-        ) : null}
-        <ValueRow icon="ChevronRight" tone="info" title="Show the help again" hint="Show the selling guide the next time you open Sell." value="" onPress={() => {
-          void setGuideDone(false).then(() => showToast({ text: t('Saved') }));
-        }} />
-        {canSee && (!canEdit || q.isError) ? (
-          <View style={{ gap: Spacing.three, padding: Spacing.three }}>
-            {!canEdit ? <Notice kind="info">You can look at these, but only the owner can change them.</Notice> : null}
-            {q.isError ? <ErrorState message={t('Could not load your settings.')} onRetry={() => void q.refetch()} /> : null}
+            {canSee && (!canEdit || q.isError) ? (
+              <View style={{ gap: Spacing.three, padding: Spacing.three }}>
+                {!canEdit ? <Notice kind="info">You can look at these, but only the owner can change them.</Notice> : null}
+                {q.isError ? <ErrorState message={t('Could not load your settings.')} onRetry={() => void q.refetch()} /> : null}
+              </View>
+            ) : null}
+            {!shop ? (
+              canSee && q.isPending ? <SkeletonRows /> : null
+            ) : (
+              <>
+                <Section title="Your shop" />
+                <ValueRow icon="Store" tone="info" title="Shop details" hint="Name, phone, tax number and address on your bills." value={company.data?.name ?? ''} onPress={() => router.push('/company')} />
+                <ValueRow icon="Ticket" tone="good" title="Coupons" hint="Codes you give customers to take something off the bill." value={coupons.data ? t('{n} coupons', { n: coupons.data.length }) : ''} onPress={() => router.push('/coupons')} />
+
+              </>
+            )}
           </View>
-        ) : null}
-        {!shop ? (
-          canSee && q.isPending ? <SkeletonRows /> : null
-        ) : (
-          <>
-            <Section title="Your shop" />
-            <ValueRow icon="Store" tone="info" title="Shop details" hint="Name, phone, tax number and address on your bills." value={company.data?.name ?? ''} onPress={() => router.push('/company')} />
-            <ValueRow icon="Ticket" tone="good" title="Coupons" hint="Codes you give customers to take something off the bill." value={coupons.data ? t('{n} coupons', { n: coupons.data.length }) : ''} onPress={() => router.push('/coupons')} />
+          {shop ? (
+            <View style={{ flex: wideLandscape ? 1 : undefined, minWidth: 0 }}>
 
-            <Section title="Prices and tax" />
-            <ValueRow icon="Percent" tone="good" title="Default VAT" hint="Added to every sale unless a supervisor changes it for one sale." value={`${shop.vat}%`} locked={own(KEYS.vat)} onPress={canEdit ? () => (own(KEYS.vat) ? lockedNote() : setEditing('vat')) : undefined} />
-            {toggle(KEYS.vatIncluded, 'Receipt', 'good', 'Shelf prices already include VAT', shop.vatIncluded ? 'The price on the shelf already has VAT in it.' : 'VAT is added on top of the price at the till.', shop.vatIncluded, { title: 'Change how VAT is worked out?', body: 'This changes the total of every new sale. Old sales stay as they were.' })}
-            <ValueRow icon="Tag" tone="warn" title="Biggest discount allowed" hint="A cashier cannot give more than this at the till." value={`${shop.maxDiscount}%`} locked={own(KEYS.maxDiscount)} onPress={canEdit ? () => (own(KEYS.maxDiscount) ? lockedNote() : setEditing('maxDiscount')) : undefined} />
-            <ValueRow icon="Flag" tone="good" title="Daily sales target" hint="What you hope to sell in a day. Home measures today against it." value={shop.target ? formatBDT(shop.target, { dp: 0 }) : t('Not set')} locked={own(KEYS.target)} onPress={canEdit ? () => (own(KEYS.target) ? lockedNote() : setEditing('target')) : undefined} />
+              <Section title="Prices and tax" />
+              <ValueRow icon="Percent" tone="good" title="Default VAT" hint="Added to every sale unless a supervisor changes it for one sale." value={`${shop.vat}%`} locked={own(KEYS.vat)} onPress={canEdit ? () => (own(KEYS.vat) ? lockedNote() : setEditing('vat')) : undefined} />
+              {toggle(KEYS.vatIncluded, 'Receipt', 'good', 'Shelf prices already include VAT', shop.vatIncluded ? 'The price on the shelf already has VAT in it.' : 'VAT is added on top of the price at the till.', shop.vatIncluded, { title: 'Change how VAT is worked out?', body: 'This changes the total of every new sale. Old sales stay as they were.' })}
+              <ValueRow icon="Tag" tone="warn" title="Biggest discount allowed" hint="A cashier cannot give more than this at the till." value={`${shop.maxDiscount}%`} locked={own(KEYS.maxDiscount)} onPress={canEdit ? () => (own(KEYS.maxDiscount) ? lockedNote() : setEditing('maxDiscount')) : undefined} />
+              <ValueRow icon="Flag" tone="good" title="Daily sales target" hint="What you hope to sell in a day. Home measures today against it." value={shop.target ? formatBDT(shop.target, { dp: 0 }) : t('Not set')} locked={own(KEYS.target)} onPress={canEdit ? () => (own(KEYS.target) ? lockedNote() : setEditing('target')) : undefined} />
 
-            <Section title="Getting paid" />
-            <ValueRow icon="CreditCard" tone="info" title="Ways to pay" hint="Cash is always there. These are the other ways a customer can pay." value={t('{n} ways', { n: shop.methods.length })} onPress={() => router.push('/payment-methods')} />
-            <ValueRow icon="Gift" tone="good" title="Customer points" hint="Customers earn points on what they buy and spend them at the till." value={readPoints(q.data ?? []).enabled ? t('On') : t('Off')} onPress={() => router.push('/points')} />
-            {toggle(KEYS.partial, 'Users', 'info', 'Allow part payment', 'A customer can pay less than the bill. The rest is written on their account.', shop.partial)}
-            {toggle(KEYS.roundWhole, 'Cash', 'info', 'Round the bill to a whole taka', '৳100.40 becomes ৳101, and ৳100.39 becomes ৳100.', shop.roundWhole)}
-            {toggle(KEYS.refundPaid, 'Undo', 'info', 'Give money back only on paid bills', 'If a bill is not paid yet, collect the money first, then take the goods back.', shop.refundPaid)}
+              <Section title="Getting paid" />
+              <ValueRow icon="CreditCard" tone="info" title="Ways to pay" hint="Cash is always there. These are the other ways a customer can pay." value={t('{n} ways', { n: shop.methods.length })} onPress={() => router.push('/payment-methods')} />
+              <ValueRow icon="Gift" tone="good" title="Customer points" hint="Customers earn points on what they buy and spend them at the till." value={readPoints(q.data ?? []).enabled ? t('On') : t('Off')} onPress={() => router.push('/points')} />
+              {toggle(KEYS.partial, 'Users', 'info', 'Allow part payment', 'A customer can pay less than the bill. The rest is written on their account.', shop.partial)}
+              {toggle(KEYS.roundWhole, 'Cash', 'info', 'Round the bill to a whole taka', '৳100.40 becomes ৳101, and ৳100.39 becomes ৳100.', shop.roundWhole)}
+              {toggle(KEYS.refundPaid, 'Undo', 'info', 'Give money back only on paid bills', 'If a bill is not paid yet, collect the money first, then take the goods back.', shop.refundPaid)}
 
-            <Section title="Stock" />
-            {toggle(KEYS.negativeStock, 'TriangleAlert', 'warn', 'Allow selling more than is in stock', shop.negativeStock ? 'The till sells anyway and the count goes below zero until the next delivery.' : 'The till will not sell more than the shelf holds.', shop.negativeStock, { title: 'Change this?', body: 'It decides whether the till may sell goods that are not in stock.' })}
-            {toggle(KEYS.barcodes, 'ScanLine', 'info', 'Use barcodes', 'Turn this off if you do not put barcodes on your items. Nothing is lost.', shop.barcodes)}
-            {perms.includes('unit.view') ? <ValueRow icon="Ruler" tone="info" title="Stock types" hint="Piece, kilogram, litre. Decides if you can sell half of something." value={activeUnit ? activeUnit.name : units.data ? t('{n} types', { n: units.data.length }) : ''} onPress={() => router.push('/stock-types')} /> : null}
-          </>
-        )}
+              <Section title="Stock" />
+              {toggle(KEYS.negativeStock, 'TriangleAlert', 'warn', 'Allow selling more than is in stock', shop.negativeStock ? 'The till sells anyway and the count goes below zero until the next delivery.' : 'The till will not sell more than the shelf holds.', shop.negativeStock, { title: 'Change this?', body: 'It decides whether the till may sell goods that are not in stock.' })}
+              {toggle(KEYS.barcodes, 'ScanLine', 'info', 'Use barcodes', 'Turn this off if you do not put barcodes on your items. Nothing is lost.', shop.barcodes)}
+              {perms.includes('unit.view') ? <ValueRow icon="Ruler" tone="info" title="Stock types" hint="Piece, kilogram, litre. Decides if you can sell half of something." value={activeUnit ? activeUnit.name : units.data ? t('{n} types', { n: units.data.length }) : ''} onPress={() => router.push('/stock-types')} /> : null}
+            </View>
+          ) : null}
+        </View>
       </ScrollView>
       <BottomSheet visible={paperOpen} onClose={() => setPaperOpen(false)} title="Receipt paper">
         <View style={{ paddingHorizontal: Spacing.three, gap: Spacing.two }}>

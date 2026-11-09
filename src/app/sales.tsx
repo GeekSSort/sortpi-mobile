@@ -63,11 +63,16 @@ export default function SalesScreen() {
     );
   }
 
+  const searchControls = (
+    <Field label="Search" value={search} onChangeText={setSearch} placeholder="Invoice, name or phone" autoCapitalize="none" autoCorrect={false} />
+  );
+
   const header = (
     <View style={{ gap: Spacing.three, padding: Spacing.three }}>
+      {wideLandscape ? searchControls : null}
       <View style={{ flexDirection: wideLandscape ? 'column' : 'row', flexWrap: !wideLandscape && bigText ? 'wrap' : 'nowrap', gap: Spacing.two }}>
-        <Tile label="Sold" icon="Cash" tone="good" value={s ? formatBDT(s.total, { dp: 0 }) : '…'} note={s ? (s.count === 1 ? t('1 sale') : t('{n} sales', { n: s.count })) : undefined} />
-        <Tile label="Still owed" icon="Users" tone={s && Number(s.amount_due) > 0 ? 'bad' : undefined} value={s ? formatBDT(s.amount_due, { dp: 0 }) : '…'} />
+        <Tile compact={wideLandscape} label="Sold" icon="Cash" tone="good" value={s ? formatBDT(s.total, { dp: 0 }) : '…'} note={s ? (s.count === 1 ? t('1 sale') : t('{n} sales', { n: s.count })) : undefined} />
+        <Tile compact={wideLandscape} label="Still owed" icon="Users" tone={s && Number(s.amount_due) > 0 ? 'bad' : undefined} value={s ? formatBDT(s.amount_due, { dp: 0 }) : '…'} />
       </View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two }}>
         {RANGES.map((r) => {
@@ -81,7 +86,7 @@ export default function SalesScreen() {
           );
         })}
       </View>
-      <Field label="Search" value={search} onChangeText={setSearch} placeholder="Invoice, name or phone" autoCapitalize="none" autoCorrect={false} />
+      {!wideLandscape ? searchControls : null}
       {list.isError ? <ErrorState message={t('Could not load sales.')} onRetry={() => void list.refetch()} /> : null}
     </View>
   );

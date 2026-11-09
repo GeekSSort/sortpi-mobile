@@ -61,14 +61,19 @@ export default function CustomersScreen() {
 
   const open = (c: CustomerRow) => router.push({ pathname: '/customer/[id]', params: { id: c.id } });
 
+  const searchControls = (
+    <Field label="Search" value={search} onChangeText={setSearch} placeholder="Name, code or phone" autoCapitalize="none" autoCorrect={false} />
+  );
+
   const header = (
     <View style={{ gap: Spacing.three, padding: Spacing.three }}>
+      {wideLandscape ? searchControls : null}
       <View style={{ flexDirection: wideLandscape ? 'column' : 'row', flexWrap: !wideLandscape && bigText ? 'wrap' : 'nowrap', gap: Spacing.two }}>
-        <Tile label="Customers" icon="Users" value={s ? String(s.total_customers) : '…'} selected={!owes} onPress={() => setOwes(false)} />
-        <Tile label="Owe money" icon="Users" tone={s && s.with_due > 0 ? 'bad' : undefined} value={s ? String(s.with_due) : '…'} selected={owes} onPress={() => setOwes((v) => !v)} />
-        <Tile label="To collect" value={s ? formatBDT(s.total_receivable, { dp: 0, symbol: false }) : '…'} icon="Cash" tone={s && amountDue(s.total_receivable) !== '0.00' ? 'bad' : undefined} selected={owes} onPress={() => setOwes((v) => !v)} />
+        <Tile compact={wideLandscape} label="Customers" icon="Users" value={s ? String(s.total_customers) : '…'} selected={!owes} onPress={() => setOwes(false)} />
+        <Tile compact={wideLandscape} label="Owe money" icon="Users" tone={s && s.with_due > 0 ? 'bad' : undefined} value={s ? String(s.with_due) : '…'} selected={owes} onPress={() => setOwes((v) => !v)} />
+        <Tile compact={wideLandscape} label="To collect" value={s ? formatBDT(s.total_receivable, { dp: 0, symbol: false }) : '…'} icon="Cash" tone={s && amountDue(s.total_receivable) !== '0.00' ? 'bad' : undefined} selected={owes} onPress={() => setOwes((v) => !v)} />
       </View>
-      <Field label="Search" value={search} onChangeText={setSearch} placeholder="Name, code or phone" autoCapitalize="none" autoCorrect={false} />
+      {!wideLandscape ? searchControls : null}
       {list.isError ? <ErrorState message={t('Could not load customers.')} onRetry={() => void list.refetch()} /> : null}
     </View>
   );

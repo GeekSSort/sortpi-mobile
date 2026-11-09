@@ -108,8 +108,8 @@ export default function ProductsScreen() {
         </View>
       ) : !search.trim() && !scanning ? (
         <View style={{ flexDirection: wideLandscape ? 'column' : 'row', gap: Spacing.two }}>
-          <ToneTile label="Items" icon="Package" value={sum ? String(sum.total_products) : '…'} />
-          {sum?.stock_value !== undefined ? <ToneTile label="Stock is worth" icon="Cash" tone="good" value={formatBDT(sum.stock_value, { dp: 0 })} note="At what you paid" /> : null}
+          <ToneTile compact={wideLandscape} label="Items" icon="Package" value={sum ? String(sum.total_products) : '…'} />
+          {sum?.stock_value !== undefined ? <ToneTile compact={wideLandscape} label="Stock is worth" icon="Cash" tone="good" value={formatBDT(sum.stock_value, { dp: 0 })} note="At what you paid" /> : null}
         </View>
       ) : null}
       {active.isError ? <ErrorState message={t('Could not load items.')} onRetry={() => void active.refetch()} /> : null}
