@@ -18,9 +18,9 @@ const FACING_KEY = 'scan.facing';
 
 const TYPES: BarcodeType[] = ['qr', 'ean13', 'ean8', 'upc_a', 'upc_e', 'code128', 'code39'];
 
-type Props = { onCode: (code: string) => void; paused?: boolean; height?: number };
+type Props = { onCode: (code: string) => void; paused?: boolean; height?: number; feedbackHandled?: boolean };
 
-export function Scanner({ onCode, paused = false, height = 220 }: Props) {
+export function Scanner({ onCode, paused = false, height = 220, feedbackHandled = false }: Props) {
   const t = useT();
   const theme = useTheme();
   const [permission, requestPermission] = useCameraPermissions();
@@ -74,7 +74,7 @@ export function Scanner({ onCode, paused = false, height = 220 }: Props) {
     const { accept, last: next } = nextRead(last.current, data, Date.now());
     last.current = next; // updated on every read, so a code held in view stays "seen" and does not repeat
     if (!accept) return;
-    Vibration.vibrate(40);
+    if (!feedbackHandled) Vibration.vibrate(40);
     onCode(data);
   }
 

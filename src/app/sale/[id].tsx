@@ -14,7 +14,7 @@ import { MONTHS, saleWhen } from '@/home/week';
 import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
 import { formatBDT } from '@/lib/money';
-import { PaperSheet } from '@/sell/paper-sheet';
+import { printReceipt } from '@/sell/print';
 import { receiptText } from '@/sell/receipt';
 import { describeSellError } from '@/sell/messages';
 import { showToast } from '@/ui/toast';
@@ -35,13 +35,13 @@ export default function SaleScreen() {
     <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: theme.canvas }} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
       {sale.isPending ? <SkeletonRows count={4} /> : null}
       {sale.isError ? <ErrorState message={t('Could not load this sale.')} onRetry={() => void sale.refetch()} /> : null}
-      {s ? <Body sale={s} lang={lang} shop={me?.organization?.name ?? 'SortPi'} canRefund={(me?.permissions?.includes('sale.refund') ?? false) && canReturn(s)} canCancel={(me?.permissions?.includes('sale.cancel') ?? false) && s.status === 'COMPLETED'} /> : null}
+      {s ? <Body sale={s} lang={lang} shop={me?.organization?.name ?? 'SortPi'} branchName={me?.active_branch?.name} canRefund={(me?.permissions?.includes('sale.refund') ?? false) && canReturn(s)} canCancel={(me?.permissions?.includes('sale.cancel') ?? false) && s.status === 'COMPLETED'} /> : null}
       {s?.status === 'CANCELLED' ? <Notice kind="info">{s.cancel_reason ? t('This sale was cancelled: {reason}', { reason: s.cancel_reason }) : t('This sale was cancelled.')}</Notice> : null}
     </ScrollView>
   );
 }
 
-function Body({ sale, lang, shop, canRefund, canCancel }: { sale: Sale; lang: 'en' | 'bn'; shop: string; canRefund: boolean; canCancel: boolean }) {
+function Body({ sale, lang, shop, branchName, canRefund, canCancel }: { sale: Sale; lang: 'en' | 'bn'; shop: string; branchName?: string; canRefund: boolean; canCancel: boolean }) {
   const theme = useTheme();
   const router = useRouter();
   const { t } = usePrefs();
@@ -138,8 +138,10 @@ function Body({ sale, lang, shop, canRefund, canCancel }: { sale: Sale; lang: 'e
 
       {canCancel ? <Button title="Cancel this sale" variant="secondary" loading={cancelling} onPress={confirmCancel} /> : null}
       {canRefund ? <Button title="Return & Refunds" variant="secondary" onPress={() => router.push({ pathname: '/return/[id]', params: { id: sale.id } })} /> : null}
-      <Button title="Print receipt" onPress={() => setPrinting(true)} />
-      <PaperSheet saleId={printing ? sale.id : null} onClose={() => setPrinting(false)} />
+      <Button title="Print receipt" loading={printing} onPress={() => {
+        setPrinting(true);
+        void printReceipt(sale.id, { shopName: shop, branchName }).finally(() => setPrinting(false));
+      }} />
       <Button
         title="Share receipt"
         variant="secondary"

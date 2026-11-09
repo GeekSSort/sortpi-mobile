@@ -19,10 +19,9 @@ export function fitToPaper(html: string, width: ReceiptWidth): string {
   return `<style>html,body{width:${mm}mm !important;max-width:${mm}mm !important;margin-left:auto !important;margin-right:auto !important}</style>${html}`;
 }
 
-/** What this phone remembers about the receipt paper: a real size prints straight away, `ask` asks every time, null means never chosen yet. */
-export type PaperPref = ReceiptWidth | 'ask' | null;
+export const DEFAULT_RECEIPT_WIDTH: ReceiptWidth = '80mm';
 
-export function parsePaperPref(raw: string | null | undefined): PaperPref {
-  if (raw === 'ask') return 'ask';
-  return PAPERS.some((p) => p.width === raw) ? (raw as ReceiptWidth) : null;
+/** Unset, invalid and legacy "ask" preferences all use the default size. */
+export function parsePaperPref(raw: string | null | undefined): ReceiptWidth {
+  return PAPERS.find((paper) => paper.width === raw)?.width ?? DEFAULT_RECEIPT_WIDTH;
 }

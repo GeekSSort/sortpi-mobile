@@ -11,11 +11,11 @@ import { useTheme } from '@/hooks/use-theme';
 
 export default function LockScreen() {
   const theme = useTheme();
-  const { unlock, signOut, unlocking, unlockError } = useSession();
+  const { unlock, signOut, unlocking, unlockError, manualLock } = useSession();
 
   useEffect(() => {
-    void unlock(); // ask straight away; the button is there if it is cancelled
-  }, [unlock]);
+    if (!manualLock) void unlock();
+  }, [unlock, manualLock]);
 
   return (
     <AuthFrame title="SortPi is locked" subtitle={process.env.EXPO_OS === 'ios' ? 'Use Face ID to continue.' : 'Use your fingerprint to continue.'}>

@@ -23,14 +23,18 @@ export async function savePending(p: PendingSale): Promise<void> {
 export const clearPending = () => SecureStore.deleteItemAsync(PENDING).catch(() => undefined);
 
 export const loadDraft = async (userId: string, branchId: string): Promise<DraftCart | null> => decodeDraft(await read(DRAFT), userId, branchId, Date.now());
-export async function saveDraft(d: DraftCart): Promise<void> {
-  try {
-    await SecureStore.setItemAsync(DRAFT, JSON.stringify(d));
-  } catch {
-    // a draft is a convenience: failing to save it never stops a sale
-  }
+let draftWrites = Promise.resolve();
+
+function writeDraft(operation: () => Promise<void>, required: boolean) {
+  const next = draftWrites.then(operation);
+  draftWrites = next.catch(() => undefined);
+  return required ? next : draftWrites;
 }
-export const clearDraft = () => SecureStore.deleteItemAsync(DRAFT).catch(() => undefined);
+
+export function saveDraft(d: DraftCart, required = false): Promise<void> {
+  return writeDraft(() => SecureStore.setItemAsync(DRAFT, JSON.stringify(d)), required);
+}
+export const clearDraft = (required = false) => writeDraft(() => SecureStore.deleteItemAsync(DRAFT), required);
 
 /** Sign-out and a switch of person: nothing of the last sale stays on the phone. */
 export async function clearSaleMemory(): Promise<void> {

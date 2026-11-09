@@ -6,9 +6,10 @@ import { groupMenu, MENU, visibleMenu } from './items.ts';
 const same = (s: string) => s;
 
 test('a person sees only what their permissions allow', () => {
-  assert.deepEqual(visibleMenu(MENU, ['sale.view_own'], '', same).map((i) => i.id), ['sales']);
+  assert.deepEqual(visibleMenu(MENU, ['sale.view_own'], '', same).map((i) => i.id), ['sales', 'shop-settings']);
   assert.ok(visibleMenu(MENU, ['pos.access'], '', same).every((i) => i.id !== 'pos')); // the till needs both codes
   assert.deepEqual(visibleMenu(MENU, undefined, '', same), []);
+  assert.deepEqual(visibleMenu(MENU, [], '', same).map((item) => item.id), ['shop-settings']);
   assert.equal(visibleMenu(MENU, MENU.flatMap((i) => i.needs), '', same, MENU.flatMap((i) => (i.trade ? [i.trade] : []))).length, MENU.length);
 });
 
@@ -27,7 +28,7 @@ test('search matches the English or the translated words, in any case', () => {
 
 test('groups keep their order and empty ones are dropped', () => {
   const g = groupMenu(visibleMenu(MENU, ['product.create', 'sale.view'], '', same));
-  assert.deepEqual(g.map((x) => x.group), ['dashboard', 'inventory', 'sales']);
+  assert.deepEqual(g.map((x) => x.group), ['dashboard', 'inventory', 'sales', 'settings']);
 });
 
 test('a row of one trade shows only in shops whose trade has it', () => {

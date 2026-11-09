@@ -10,6 +10,7 @@ import { getCompany, resolvedSettings } from '@/settings/api';
 
 import { receiptHtml } from './api';
 import { fitToPaper, type ReceiptWidth } from './paper';
+import { loadPaperPref } from './paper-pref';
 
 /** Words for a receipt that would not print, in the shop's terms. */
 export function printErrorText(e: unknown): string {
@@ -37,8 +38,9 @@ async function designedHtml(saleId: string, width: ReceiptWidth, who: Who): Prom
 }
 
 /** Prints the receipt (roll or A4) through Android's print screen (a Wi-Fi printer, a print app, or Save as PDF). */
-export async function printReceipt(saleId: string, width: ReceiptWidth, who: Who): Promise<void> {
+export async function printReceipt(saleId: string, who: Who): Promise<void> {
   try {
+    const width = await loadPaperPref();
     let html: string;
     try {
       html = await designedHtml(saleId, width, who);
@@ -47,6 +49,18 @@ export async function printReceipt(saleId: string, width: ReceiptWidth, who: Who
       html = fitToPaper(await receiptHtml(saleId, width), width); // anything else: the server's own receipt rather than none
     }
     await Print.printAsync({ html });
+  } catch (e) {
+    Alert.alert('Receipt not printed', printErrorText(e));
+  }
+}
+
+/** A sample receipt for checking the selected paper and printer without creating a sale. */
+export async function printTestReceipt(): Promise<void> {
+  try {
+    const width = await loadPaperPref();
+    const label = width === 'a4' ? 'A4' : width.replace('mm', ' mm');
+    const sample = `<!doctype html><html><meta charset="utf-8"><style>body{font:14px monospace;padding:4mm;box-sizing:border-box}h2{font-size:16px}hr{border:0;border-top:1px dashed}</style><body><h2>SortPi · Print test</h2><p>Paper: ${label}</p><hr><p>Sample item × 1</p><p>0123456789 · ABC abc</p><hr><p>Sample only</p></body></html>`;
+    await Print.printAsync({ html: fitToPaper(sample, width) });
   } catch (e) {
     Alert.alert('Receipt not printed', printErrorText(e));
   }
