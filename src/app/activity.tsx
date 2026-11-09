@@ -1,8 +1,9 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, FlatList, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 
+import { AdaptiveList } from '@/components/adaptive-list';
 import { useSession } from '@/auth/session-provider';
 import { EmptyState } from '@/components/empty-state';
 import { ErrorState } from '@/components/error-state';
@@ -11,7 +12,7 @@ import { Notice } from '@/components/notice';
 import { SkeletonRows } from '@/components/skeleton';
 import { Tap } from '@/components/tap';
 import { ThemedText } from '@/components/themed-text';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, Spacing } from '@/constants/theme';
 import { ACTION_CHIPS, amountOf, describeAction, detailLine, type Tone } from '@/admin/logic';
 import { listActivity, type AuditRow } from '@/admin/api';
 import { MONTHS, saleWhen } from '@/home/week';
@@ -62,7 +63,7 @@ export default function ActivityScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
       <Stack.Screen options={{ title: t('Activity Log') }} />
-      <FlatList
+      <AdaptiveList
         contentInsetAdjustmentBehavior="automatic"
         data={rows}
         keyExtractor={(r) => r.id}
@@ -74,7 +75,7 @@ export default function ActivityScreen() {
         onEndReachedThreshold={0.4}
         refreshing={list.isRefetching && !list.isFetchingNextPage}
         onRefresh={() => void list.refetch()}
-        contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}
+        contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four }}
       />
     </View>
   );

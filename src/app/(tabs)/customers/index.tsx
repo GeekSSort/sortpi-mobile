@@ -2,8 +2,10 @@ import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Linking } from 'react-native';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
+import { useWideLandscape } from '@/hooks/use-wide-landscape';
+import { AdaptiveList } from '@/components/adaptive-list';
 import { useSession } from '@/auth/session-provider';
 import { useDebounced } from '@/lib/use-debounced';
 import { ActionSheet } from '@/components/action-sheet';
@@ -15,7 +17,7 @@ import { ErrorState } from '@/components/error-state';
 import { ToneTile as Tile } from '@/components/tone-tile';
 import { SkeletonRows } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
-import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { BottomTabInset, Radius, Spacing } from '@/constants/theme';
 import { amountDue } from '@/customers/logic';
 import { customerSummary, listCustomers, type CustomerRow } from '@/customers/api';
 import { useTheme } from '@/hooks/use-theme';
@@ -26,6 +28,7 @@ import { formatBDT } from '@/lib/money';
 
 /** Who owes what: search, "owes money" filter, open one to take a payment, add a customer. */
 export default function CustomersScreen() {
+  const { wideLandscape } = useWideLandscape();
   const theme = useTheme();
   const t = useT();
   const bigText = useTextFactor() > BIG_TEXT;
@@ -58,14 +61,19 @@ export default function CustomersScreen() {
 
   const open = (c: CustomerRow) => router.push({ pathname: '/customer/[id]', params: { id: c.id } });
 
+  const searchControls = (
+    <Field label="Search" value={search} onChangeText={setSearch} placeholder="Name, code or phone" autoCapitalize="none" autoCorrect={false} />
+  );
+
   const header = (
     <View style={{ gap: Spacing.three, padding: Spacing.three }}>
-      <View style={{ flexDirection: 'row', flexWrap: bigText ? 'wrap' : 'nowrap', gap: Spacing.two }}>
-        <Tile label="Customers" icon="Users" value={s ? String(s.total_customers) : '…'} selected={!owes} onPress={() => setOwes(false)} />
-        <Tile label="Owe money" icon="Users" tone={s && s.with_due > 0 ? 'bad' : undefined} value={s ? String(s.with_due) : '…'} selected={owes} onPress={() => setOwes((v) => !v)} />
-        <Tile label="To collect" value={s ? formatBDT(s.total_receivable, { dp: 0, symbol: false }) : '…'} icon="Cash" tone={s && amountDue(s.total_receivable) !== '0.00' ? 'bad' : undefined} selected={owes} onPress={() => setOwes((v) => !v)} />
+      {wideLandscape ? searchControls : null}
+      <View style={{ flexDirection: wideLandscape ? 'column' : 'row', flexWrap: !wideLandscape && bigText ? 'wrap' : 'nowrap', gap: Spacing.two }}>
+        <Tile compact={wideLandscape} label="Customers" icon="Users" value={s ? String(s.total_customers) : '…'} selected={!owes} onPress={() => setOwes(false)} />
+        <Tile compact={wideLandscape} label="Owe money" icon="Users" tone={s && s.with_due > 0 ? 'bad' : undefined} value={s ? String(s.with_due) : '…'} selected={owes} onPress={() => setOwes((v) => !v)} />
+        <Tile compact={wideLandscape} label="To collect" value={s ? formatBDT(s.total_receivable, { dp: 0, symbol: false }) : '…'} icon="Cash" tone={s && amountDue(s.total_receivable) !== '0.00' ? 'bad' : undefined} selected={owes} onPress={() => setOwes((v) => !v)} />
       </View>
-      <Field label="Search" value={search} onChangeText={setSearch} placeholder="Name, code or phone" autoCapitalize="none" autoCorrect={false} />
+      {!wideLandscape ? searchControls : null}
       {list.isError ? <ErrorState message={t('Could not load customers.')} onRetry={() => void list.refetch()} /> : null}
     </View>
   );
@@ -74,7 +82,7 @@ export default function CustomersScreen() {
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
       <Stack.Screen options={{ headerRight: canAdd ? () => <HeaderAction title="Add" icon="Plus" onPress={() => router.push('/add-customer')} /> : undefined }} />
       <View style={{ flex: 1 }}>
-        <FlatList
+        <AdaptiveList landscapeSidebar
           contentInsetAdjustmentBehavior="automatic"
           data={rows}
           keyExtractor={(r) => r.id}
@@ -97,7 +105,7 @@ export default function CustomersScreen() {
           refreshing={list.isRefetching && !list.isFetchingNextPage}
           onRefresh={() => void Promise.all([list.refetch(), summary.refetch()])}
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}
+          contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four }}
         />
         <ActionSheet
           title={picked?.name ?? null}

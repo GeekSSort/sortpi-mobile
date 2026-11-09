@@ -1,3 +1,4 @@
+import { useWideLandscape } from '@/hooks/use-wide-landscape';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack, usePreventRemove } from 'expo-router';
 import { useState } from 'react';
@@ -14,7 +15,7 @@ import { Notice } from '@/components/notice';
 import { SkeletonRows } from '@/components/skeleton';
 import { Tap } from '@/components/tap';
 import { ThemedText } from '@/components/themed-text';
-import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
 import { haptics } from '@/lib/haptics';
@@ -32,6 +33,7 @@ const GENEROUS = 10;
 
 /** How customers earn points and what the points are worth at the till. Every rule is the server's; this only sets them. */
 export default function PointsScreen() {
+  const { contentWidth } = useWideLandscape();
   const theme = useTheme();
   const { t } = usePrefs();
   const queryClient = useQueryClient();
@@ -97,7 +99,7 @@ export default function PointsScreen() {
       <Stack.Screen options={{ title: t('Customer points') }} />
       <SafeAreaView edges={['bottom']} style={{ flex: 1 }}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
-          <KeyboardAwareScrollView bottomOffset={24} contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} />} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
+          <KeyboardAwareScrollView bottomOffset={24} contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} />} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, maxWidth: Math.min(contentWidth, 1080), width: '100%', alignSelf: 'center' }}>
             {q.isError ? <ErrorState message={t('Could not load your settings.')} onRetry={() => void q.refetch()} /> : null}
             {q.isPending ? <SkeletonRows /> : null}
             {now ? (

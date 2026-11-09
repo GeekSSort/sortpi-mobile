@@ -1,3 +1,4 @@
+import { useWideLandscape } from '@/hooks/use-wide-landscape';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
@@ -13,7 +14,7 @@ import { Notice } from '@/components/notice';
 import { Step } from '@/components/quantity-step';
 import { SkeletonRows } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
-import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
 import { localDateISO } from '@/lib/dates';
@@ -28,6 +29,7 @@ type Result = { reference: string | null; credit: string | null };
 
 /** Send goods back to the supplier: choose what and how many, see about what it is worth, confirm. The server prices it at the cost the goods came in at. */
 export default function SendBackScreen() {
+  const { contentWidth } = useWideLandscape();
   const theme = useTheme();
   const { t } = usePrefs();
   const { me } = useSession();
@@ -39,7 +41,7 @@ export default function SendBackScreen() {
   const [done, setDone] = useState<Result | null>(null);
 
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled" style={{ backgroundColor: theme.canvas }} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
+    <ScrollView contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled" style={{ backgroundColor: theme.canvas }} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six, maxWidth: Math.min(contentWidth, 1080), width: '100%', alignSelf: 'center' }}>
       {purchase.isPending ? <SkeletonRows count={3} /> : null}
       {purchase.isError ? <ErrorState message={t('Could not load this order.')} onRetry={() => void purchase.refetch()} /> : null}
       {done ? <Done done={done} /> : null}

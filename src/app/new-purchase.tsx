@@ -11,6 +11,7 @@ import { BottomSheet } from '@/components/bottom-sheet';
 import { Button } from '@/components/button';
 import { ErrorState } from '@/components/error-state';
 import { Field } from '@/components/field';
+import { FormColumns } from '@/components/form-columns';
 import { Icon } from '@/components/icons/icon';
 import { Notice } from '@/components/notice';
 import { SkeletonRows } from '@/components/skeleton';
@@ -130,6 +131,7 @@ export default function NewPurchaseScreen() {
       <SafeAreaView edges={['bottom']} style={{ flex: 1 }}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
           <KeyboardAwareScrollView bottomOffset={24} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six }} keyboardShouldPersistTaps="handled">
+            <FormColumns primary={<>
             <Tap accessibilityRole="button" onPress={() => setChoosing(true)} disabled={created} style={{ minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.lg, borderCurve: 'continuous', borderWidth: 1.5, borderColor: supplier ? theme.border : theme.brand, backgroundColor: theme.card }}>
               <Icon name="Package" size={22} color={theme.brand} />
               <View style={{ flex: 1 }}>
@@ -175,6 +177,7 @@ export default function NewPurchaseScreen() {
               <Button title={lines.length ? 'Add another item' : 'Add an item'} variant="secondary" disabled={created} onPress={() => setAdding(true)} trailing={<Icon name="Plus" size={20} color={theme.textSecondary} />} />
             </View>
 
+            </>} secondary={<>
             <View style={{ gap: Spacing.two }}>
               <ThemedText type="smallMedium">Which day?</ThemedText>
               <View style={{ flexDirection: 'row', gap: Spacing.two }}>
@@ -240,6 +243,7 @@ export default function NewPurchaseScreen() {
 
             {canPlace ? <Button title={created ? 'Finish the purchase' : 'Save the purchase'} variant="success" size="lg" loading={busy} disabled={!ready} onPress={() => go.mutate('full')} /> : null}
             <Button title="Save as a draft" variant="secondary" disabled={!ready || busy || created} onPress={() => go.mutate('draft')} />
+            </>} />
           </KeyboardAwareScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>

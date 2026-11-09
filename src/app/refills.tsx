@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, Linking, StyleSheet, View } from 'react-native';
+import { Linking, StyleSheet, View } from 'react-native';
 
+import { AdaptiveList } from '@/components/adaptive-list';
 import { useSession } from '@/auth/session-provider';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
@@ -11,7 +12,7 @@ import { Notice } from '@/components/notice';
 import { SkeletonRows } from '@/components/skeleton';
 import { Tap } from '@/components/tap';
 import { ThemedText } from '@/components/themed-text';
-import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { BottomTabInset, Radius, Spacing } from '@/constants/theme';
 import { listRefills, markTold, type Refill } from '@/groups/api';
 import { refillLook, whatsappLink } from '@/groups/logic';
 import { useTheme } from '@/hooks/use-theme';
@@ -63,7 +64,7 @@ export default function RefillsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
       <Stack.Screen options={{ title: t('Refills') }} />
-      <FlatList
+      <AdaptiveList
         contentInsetAdjustmentBehavior="automatic"
         data={list.data ?? []}
         keyExtractor={(r) => `${r.customer_id}-${r.variant_id}-${r.due_on}`}
@@ -72,7 +73,7 @@ export default function RefillsScreen() {
         ListEmptyComponent={list.isPending ? <SkeletonRows /> : list.isError ? undefined : <EmptyState icon="CheckCircle" title="Nobody is running out" hint="Customers who need a refill soon show here." />}
         refreshing={list.isRefetching}
         onRefresh={() => void list.refetch()}
-        contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}
+        contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four }}
       />
     </View>
   );

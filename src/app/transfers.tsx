@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
+import { AdaptiveList } from '@/components/adaptive-list';
 import { useSession } from '@/auth/session-provider';
 import { HeaderAction } from '@/components/header-action';
 import { EmptyState } from '@/components/empty-state';
@@ -13,7 +14,7 @@ import { SkeletonRows } from '@/components/skeleton';
 import { Tap } from '@/components/tap';
 import { ThemedText } from '@/components/themed-text';
 import { ToneTile } from '@/components/tone-tile';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, Spacing } from '@/constants/theme';
 import { MONTHS, saleWhen } from '@/home/week';
 import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
@@ -70,7 +71,7 @@ export default function TransfersScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
       <Stack.Screen options={{ title: t('Transfers'), headerRight: () => <HeaderAction title="New" icon="Plus" onPress={() => router.push('/new-transfer')} /> }} />
-      <FlatList
+      <AdaptiveList
         contentInsetAdjustmentBehavior="automatic"
         data={rows}
         keyExtractor={(r) => r.id}
@@ -79,7 +80,7 @@ export default function TransfersScreen() {
         ListEmptyComponent={list.isPending ? <SkeletonRows /> : <EmptyState icon="Package" title={chip.status ? 'Nothing here' : 'No transfers yet'} hint={chip.status ? 'No transfer is in this group.' : 'When goods are sent between your branches or shelves, they show up here.'} />}
         refreshing={list.isRefetching}
         onRefresh={() => void Promise.all([list.refetch(), totals.refetch()])}
-        contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}
+        contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four }}
       />
     </View>
   );

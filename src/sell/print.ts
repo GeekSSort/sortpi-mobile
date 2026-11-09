@@ -1,4 +1,3 @@
-import * as Print from 'expo-print';
 import { Alert } from 'react-native';
 
 import { ApiError } from '@/api/client';
@@ -11,9 +10,11 @@ import { getCompany, resolvedSettings } from '@/settings/api';
 import { receiptHtml } from './api';
 import { fitToPaper, type ReceiptWidth } from './paper';
 import { loadPaperPref } from './paper-pref';
+import { printReceiptHtml, BuiltInPrintError, builtInPaperWidth } from './device-printer';
 
 /** Words for a receipt that would not print, in the shop's terms. */
 export function printErrorText(e: unknown): string {
+  if (e instanceof BuiltInPrintError) return e.message;
   if (e instanceof ApiError) {
     if (e.code === 'NETWORK_ERROR' || e.code === 'TIMEOUT') return 'No connection. Check the internet and try again.';
     if (e.status === 403 || e.code === 'PERMISSION_DENIED') return 'You do not have permission to print this receipt.';
@@ -37,10 +38,11 @@ async function designedHtml(saleId: string, width: ReceiptWidth, who: Who): Prom
   return width === 'a4' ? renderSheetHtml(buildReceipt({ ...full, layout: 'sheet' })) : renderSlipHtml(buildReceipt({ ...full, paper: width }));
 }
 
-/** Prints the receipt (roll or A4) through Android's print screen (a Wi-Fi printer, a print app, or Save as PDF). */
+/** Use the built-in printer for its configured roll size, or Android printing for other paper. */
 export async function printReceipt(saleId: string, who: Who): Promise<void> {
   try {
-    const width = await loadPaperPref();
+    const builtIn = await builtInPaperWidth();
+    const width = await loadPaperPref(builtIn);
     let html: string;
     try {
       html = await designedHtml(saleId, width, who);
@@ -48,7 +50,7 @@ export async function printReceipt(saleId: string, who: Who): Promise<void> {
       if (e instanceof ApiError && (e.code === 'NETWORK_ERROR' || e.code === 'TIMEOUT')) throw e;
       html = fitToPaper(await receiptHtml(saleId, width), width); // anything else: the server's own receipt rather than none
     }
-    await Print.printAsync({ html });
+    await printReceiptHtml(html, width, builtIn);
   } catch (e) {
     Alert.alert('Receipt not printed', printErrorText(e));
   }
@@ -57,10 +59,11 @@ export async function printReceipt(saleId: string, who: Who): Promise<void> {
 /** A sample receipt for checking the selected paper and printer without creating a sale. */
 export async function printTestReceipt(): Promise<void> {
   try {
-    const width = await loadPaperPref();
+    const builtIn = await builtInPaperWidth();
+    const width = await loadPaperPref(builtIn);
     const label = width === 'a4' ? 'A4' : width.replace('mm', ' mm');
     const sample = `<!doctype html><html><meta charset="utf-8"><style>body{font:14px monospace;padding:4mm;box-sizing:border-box}h2{font-size:16px}hr{border:0;border-top:1px dashed}</style><body><h2>SortPi · Print test</h2><p>Paper: ${label}</p><hr><p>Sample item × 1</p><p>0123456789 · ABC abc</p><hr><p>Sample only</p></body></html>`;
-    await Print.printAsync({ html: fitToPaper(sample, width) });
+    await printReceiptHtml(fitToPaper(sample, width), width, builtIn);
   } catch (e) {
     Alert.alert('Receipt not printed', printErrorText(e));
   }

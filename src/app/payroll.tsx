@@ -1,3 +1,4 @@
+import { useWideLandscape } from '@/hooks/use-wide-landscape';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
@@ -13,7 +14,7 @@ import { Notice } from '@/components/notice';
 import { SkeletonRows } from '@/components/skeleton';
 import { Tap } from '@/components/tap';
 import { ThemedText } from '@/components/themed-text';
-import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { BottomTabInset, Radius, Spacing } from '@/constants/theme';
 import { MONTHS } from '@/home/week';
 import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
@@ -25,6 +26,7 @@ const money = (v: string) => formatBDT(v, { dp: 0 });
 
 /** Wages month by month: who is owed, who is paid, pay one person, or calculate a month. Pay and calculate need `hrm.payroll`; amounts need `hrm.view_salary`. */
 export default function PayrollScreen() {
+  const { contentWidth } = useWideLandscape();
   const theme = useTheme();
   const { t, lang } = usePrefs();
   const qc = useQueryClient();
@@ -66,7 +68,7 @@ export default function PayrollScreen() {
   }
 
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: theme.canvas }} contentContainerStyle={{ gap: Spacing.three, padding: Spacing.three, paddingBottom: BottomTabInset + Spacing.four, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
+    <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: theme.canvas }} contentContainerStyle={{ gap: Spacing.three, padding: Spacing.three, paddingBottom: BottomTabInset + Spacing.four, maxWidth: Math.min(contentWidth, 1080), width: '100%', alignSelf: 'center' }}>
       <Stack.Screen options={{ title: t('Payroll') }} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Spacing.two }}>
         {choices.map((m) => {

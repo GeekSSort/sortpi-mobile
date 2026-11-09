@@ -24,14 +24,14 @@ export function TabletOrderSheet({ cart, onQuantity, onRemove, onEditing }: {
     <Card style={{ padding: 0, overflow: 'hidden' }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, gap: 8, minHeight: 44, backgroundColor: theme.canvas }}>
         <ThemedText type="smallMedium" style={{ flex: 2 }}>Product</ThemedText>
-        <ThemedText type="smallMedium" style={{ width: 56 }}>Qty</ThemedText>
+        <ThemedText type="smallMedium" style={{ width: 56, textAlign: 'center' }}>Qty</ThemedText>
         <ThemedText type="smallMedium" style={{ flex: 1, textAlign: 'right' }}>Price</ThemedText>
         <ThemedText type="smallMedium" style={{ flex: 1, textAlign: 'right' }}>Total</ThemedText>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 44 }} />
       </View>
       {cart.length === 0 ? <ThemedText type="small" themeColor="textMuted" style={{ padding: 12 }}>Find a product to start the invoice.</ThemedText> : null}
-      {cart.map((line) => (
-        <View key={line.key} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 48, paddingHorizontal: 8, borderTopWidth: 1, borderColor: theme.border }}>
+      {cart.map((line, index) => (
+        <View key={line.key} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 48, paddingHorizontal: 8, borderTopWidth: 1, borderColor: theme.border, backgroundColor: index % 2 === 0 ? theme.card : theme.canvas }}>
           <View style={{ flex: 2 }}>
             <ThemedText type="smallMedium" literal numberOfLines={2}>{line.name}{line.unitLabel ? ` (${line.unitLabel})` : ''}</ThemedText>
             <ThemedText type="caption" themeColor="textMuted" literal numberOfLines={1}>{line.sku}</ThemedText>
@@ -39,7 +39,7 @@ export function TabletOrderSheet({ cart, onQuantity, onRemove, onEditing }: {
           <QuantityCell line={line} onChange={(value) => onQuantity(line.key, value)} onEditing={(editing) => onEditing(line.key, editing)} />
           <ThemedText type="small" style={{ flex: 1, textAlign: 'right' }} numberOfLines={1} adjustsFontSizeToFit>{formatBDT(line.unitPrice)}</ThemedText>
           <ThemedText type="smallMedium" style={{ flex: 1, textAlign: 'right' }} numberOfLines={1} adjustsFontSizeToFit>{formatBDT(lineEstimate(line))}</ThemedText>
-          <Tap accessibilityRole="button" accessibilityLabel={t('Remove {name}', { name: line.name })} onPress={() => { onEditing(line.key, false); onRemove(line.key, line.name); }} style={{ width: 40, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}>
+          <Tap accessibilityRole="button" accessibilityLabel={t('Remove {name}', { name: line.name })} onPress={() => { onEditing(line.key, false); onRemove(line.key, line.name); }} style={{ width: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}>
             <Icon name="Trash2" size={18} color={theme.danger} />
           </Tap>
         </View>

@@ -1,8 +1,10 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
+import { useWideLandscape } from '@/hooks/use-wide-landscape';
+import { AdaptiveList } from '@/components/adaptive-list';
 import { useSession } from '@/auth/session-provider';
 import { useDebounced } from '@/lib/use-debounced';
 import { EmptyState } from '@/components/empty-state';
@@ -13,7 +15,7 @@ import { SkeletonRows } from '@/components/skeleton';
 import { Tap } from '@/components/tap';
 import { ThemedText } from '@/components/themed-text';
 import { ToneTile as Tile } from '@/components/tone-tile';
-import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { BottomTabInset, Radius, Spacing } from '@/constants/theme';
 import { MONTHS, saleWhen } from '@/home/week';
 import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
@@ -30,6 +32,7 @@ const RANGES: { key: SalesRange; label: string }[] = [
 
 /** Every sale, newest first: pick a period, search an invoice or a customer, open one to see what was sold and how it was paid. */
 export default function SalesScreen() {
+  const { wideLandscape } = useWideLandscape();
   const theme = useTheme();
   const { t, lang } = usePrefs();
   const router = useRouter();
@@ -60,11 +63,16 @@ export default function SalesScreen() {
     );
   }
 
+  const searchControls = (
+    <Field label="Search" value={search} onChangeText={setSearch} placeholder="Invoice, name or phone" autoCapitalize="none" autoCorrect={false} />
+  );
+
   const header = (
     <View style={{ gap: Spacing.three, padding: Spacing.three }}>
-      <View style={{ flexDirection: 'row', flexWrap: bigText ? 'wrap' : 'nowrap', gap: Spacing.two }}>
-        <Tile label="Sold" icon="Cash" tone="good" value={s ? formatBDT(s.total, { dp: 0 }) : '…'} note={s ? (s.count === 1 ? t('1 sale') : t('{n} sales', { n: s.count })) : undefined} />
-        <Tile label="Still owed" icon="Users" tone={s && Number(s.amount_due) > 0 ? 'bad' : undefined} value={s ? formatBDT(s.amount_due, { dp: 0 }) : '…'} />
+      {wideLandscape ? searchControls : null}
+      <View style={{ flexDirection: wideLandscape ? 'column' : 'row', flexWrap: !wideLandscape && bigText ? 'wrap' : 'nowrap', gap: Spacing.two }}>
+        <Tile compact={wideLandscape} label="Sold" icon="Cash" tone="good" value={s ? formatBDT(s.total, { dp: 0 }) : '…'} note={s ? (s.count === 1 ? t('1 sale') : t('{n} sales', { n: s.count })) : undefined} />
+        <Tile compact={wideLandscape} label="Still owed" icon="Users" tone={s && Number(s.amount_due) > 0 ? 'bad' : undefined} value={s ? formatBDT(s.amount_due, { dp: 0 }) : '…'} />
       </View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two }}>
         {RANGES.map((r) => {
@@ -78,14 +86,14 @@ export default function SalesScreen() {
           );
         })}
       </View>
-      <Field label="Search" value={search} onChangeText={setSearch} placeholder="Invoice, name or phone" autoCapitalize="none" autoCorrect={false} />
+      {!wideLandscape ? searchControls : null}
       {list.isError ? <ErrorState message={t('Could not load sales.')} onRetry={() => void list.refetch()} /> : null}
     </View>
   );
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
-      <FlatList
+      <AdaptiveList landscapeSidebar
         contentInsetAdjustmentBehavior="automatic"
         data={rows}
         keyExtractor={(r) => r.id}
@@ -106,7 +114,7 @@ export default function SalesScreen() {
         refreshing={list.isRefetching && !list.isFetchingNextPage}
         onRefresh={() => void Promise.all([list.refetch(), totals.refetch()])}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}
+        contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four }}
       />
     </View>
   );

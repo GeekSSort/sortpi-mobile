@@ -1,10 +1,11 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { listBranches, listRoles, listUsers, type BranchRow, type RoleRow, type UserRow } from '@/admin/api';
 import { lastSeen } from '@/admin/logic';
+import { AdaptiveList } from '@/components/adaptive-list';
 import { useSession } from '@/auth/session-provider';
 import { EmptyState } from '@/components/empty-state';
 import { ErrorState } from '@/components/error-state';
@@ -15,7 +16,7 @@ import { SkeletonRows } from '@/components/skeleton';
 import { Tap } from '@/components/tap';
 import { ThemedText } from '@/components/themed-text';
 import { ToneTile } from '@/components/tone-tile';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
 import { Pill } from '@/products/variant-card';
@@ -84,7 +85,7 @@ export default function AccessScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
       <Stack.Screen options={{ title: t('Users & Roles'), headerRight: addFor ? () => <HeaderAction title="Add" icon="Plus" onPress={() => router.push(addFor)} /> : undefined }} />
-      <FlatList
+      <AdaptiveList
         contentInsetAdjustmentBehavior="automatic"
         data={data}
         keyExtractor={(r) => r.id}
@@ -96,7 +97,7 @@ export default function AccessScreen() {
         onEndReachedThreshold={0.4}
         refreshing={q.isRefetching && !(tab === 'users' && users.isFetchingNextPage)}
         onRefresh={() => void q.refetch()}
-        contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}
+        contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four }}
       />
     </View>
   );

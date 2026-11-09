@@ -1,10 +1,11 @@
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { useRef, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 
 import { newIdempotencyKey } from '@/api/idempotency';
 import { ApiError } from '@/api/client';
+import { AdaptiveList } from '@/components/adaptive-list';
 import { useSession } from '@/auth/session-provider';
 import { ActionSheet } from '@/components/action-sheet';
 import { BottomSheet } from '@/components/bottom-sheet';
@@ -17,7 +18,7 @@ import { Notice } from '@/components/notice';
 import { SkeletonRows } from '@/components/skeleton';
 import { Tap } from '@/components/tap';
 import { ThemedText } from '@/components/themed-text';
-import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { BottomTabInset, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
 import { localDateISO } from '@/lib/dates';
@@ -90,7 +91,7 @@ export default function GiftCardsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
       <Stack.Screen options={{ title: t('Gift Cards'), headerRight: perms.includes('sale.create') ? () => <HeaderAction title="Sell" icon="Plus" onPress={() => { setError(null); setSelling(true); }} /> : undefined }} />
-      <FlatList
+      <AdaptiveList
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
         data={rows}
@@ -121,7 +122,7 @@ export default function GiftCardsScreen() {
         onEndReachedThreshold={0.4}
         refreshing={list.isRefetching && !list.isFetchingNextPage}
         onRefresh={() => void list.refetch()}
-        contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}
+        contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four }}
       />
       <ActionSheet
         title={picked?.code ?? null}

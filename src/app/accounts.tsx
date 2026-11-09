@@ -1,3 +1,4 @@
+import { useWideLandscape } from '@/hooks/use-wide-landscape';
 import { useQuery } from '@tanstack/react-query';
 import { Stack, useRouter } from 'expo-router';
 import { SectionList, StyleSheet, View } from 'react-native';
@@ -13,13 +14,14 @@ import { Notice } from '@/components/notice';
 import { SkeletonRows } from '@/components/skeleton';
 import { Tap } from '@/components/tap';
 import { ThemedText } from '@/components/themed-text';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
 import { formatBDT } from '@/lib/money';
 
 /** The shop's accounts by kind, with what each holds. Needs `account.view`; adding needs `account.create`. */
 export default function AccountsScreen() {
+  const { contentWidth } = useWideLandscape();
   const theme = useTheme();
   const { t } = usePrefs();
   const router = useRouter();
@@ -73,7 +75,7 @@ export default function AccountsScreen() {
         ListEmptyComponent={list.isPending ? <SkeletonRows /> : list.isError ? undefined : <EmptyState icon="Cash" title="No accounts yet" hint="Accounts hold your money: cash, bank and so on." />}
         refreshing={list.isRefetching}
         onRefresh={() => void list.refetch()}
-        contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}
+        contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four, maxWidth: Math.min(contentWidth, 1080), width: '100%', alignSelf: 'center' }}
       />
     </View>
   );

@@ -1,3 +1,4 @@
+import { useWideLandscape } from '@/hooks/use-wide-landscape';
 import { useQuery } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
@@ -12,7 +13,7 @@ import { SkeletonRows } from '@/components/skeleton';
 import { Tap } from '@/components/tap';
 import { ThemedText } from '@/components/themed-text';
 import { ToneTile } from '@/components/tone-tile';
-import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { MONTHS } from '@/home/week';
 import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
@@ -27,6 +28,7 @@ const money = (v: string) => formatBDT(v, { dp: 0 });
 
 /** One day's takings on one sheet: what sold, how it was paid, the cash in the drawer against the count, and a button to send it as a message. */
 export default function DayReportScreen() {
+  const { contentWidth } = useWideLandscape();
   const theme = useTheme();
   const { t, lang } = usePrefs();
   const { me } = useSession();
@@ -45,7 +47,7 @@ export default function DayReportScreen() {
   }
 
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: theme.canvas }} refreshControl={<RefreshControl refreshing={report.isRefetching} onRefresh={() => void report.refetch()} />} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
+    <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: theme.canvas }} refreshControl={<RefreshControl refreshing={report.isRefetching} onRefresh={() => void report.refetch()} />} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six, maxWidth: Math.min(contentWidth, 1080), width: '100%', alignSelf: 'center' }}>
       <Stack.Screen options={{ title: t('Day report') }} />
       {!allowed ? <Notice>You are not allowed to see reports. Ask the owner or manager.</Notice> : null}
       {allowed ? (

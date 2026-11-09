@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as SecureStore from 'expo-secure-store';
 import Animated, { FadeIn, FadeInDown, FadeInUp, FadeOutLeft, LinearTransition, useAnimatedStyle, useSharedValue, withSpring, ZoomIn } from 'react-native-reanimated';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Keyboard, Platform, Pressable, Share, useColorScheme, useWindowDimensions, View } from 'react-native';
 
 import { newIdempotencyKey } from '@/api/idempotency';
@@ -40,6 +40,8 @@ import { amountDueNow, buildPayments, walletReference, WALLETS, type PayChoice }
 import { clearDraft, clearPending, loadDraft, loadPending, saveDraft, savePending } from '@/sell/journal-store';
 import { mayHaveCommitted, type PendingSale } from '@/sell/journal';
 import { printReceipt } from '@/sell/print';
+import { androidPosDevice } from '@/sell/device-printer';
+import { sunmiHandheldScanHint, useSunmiCustomerDisplay, useSunmiScanner } from '@/sell/use-sunmi-peripherals';
 import { receiptText } from '@/sell/receipt';
 import { haptics } from '@/lib/haptics';
 import { showToast } from '@/ui/toast';
@@ -97,9 +99,12 @@ export default function SellScreen() {
   const splitTill = wideTill && mode !== 'done';
   const tablet = useTabletLayout(wideTill);
   const [layoutOpen, setLayoutOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
   const [sheetEditingKey, setSheetEditingKey] = useState<string | null>(null);
   const [lastItemKey, setLastItemKey] = useState<string | null>(null);
   const sheetTill = splitTill && tablet.layout === 'sheet';
+  const invoiceBesideProducts = sheetTill && width >= 960;
+  const orderPaneWidth = Math.min(500, Math.round(width * 0.47));
   const expressTill = splitTill && tablet.layout === 'express';
   const [notice, setNotice] = useState<string | null>(null);
   const [scanNote, setScanNote] = useState<ScanNote | null>(null);
@@ -110,11 +115,11 @@ export default function SellScreen() {
   useEffect(() => {
     cartRef.current = cart;
   }, [cart]);
-  // On the wide till, keep the catalogue in view until the cashier opens the camera.
+  // Keep the catalogue in view on wide tills and compact Android POS terminals unless camera scanning is selected.
   const [cameraPermission] = useCameraPermissions();
   const [cameraChoice, setCameraChoice] = useState<{ mode: typeof scannerMode; open: boolean }>();
   const showCamera = cameraChoice?.mode === scannerMode ? cameraChoice.open
-    : !!cameraPermission?.granted && (scannerMode === 'auto' || (scannerMode === 'device' && !splitTill));
+    : !!cameraPermission?.granted && (scannerMode === 'auto' || (scannerMode === 'device' && !splitTill && !androidPosDevice));
   const usesBarcodes = useUsesBarcodes();
   const [openingCash, setOpeningCash] = useState('0');
   const [method, setMethod] = useState<PayChoice>('CASH');
@@ -524,6 +529,24 @@ export default function SellScreen() {
     setForced(null);
   }
 
+  const hardwareScannerEnabled = !!ctx && !!shift && ready && usesBarcodes && mode === 'scan'
+    && scannerMode !== 'manual' && !cartOpen && !heldOpen && !favoritesOpen && !layoutOpen && !toolsOpen && !busy && !pending;
+  const { acceptKeyboardCode, subscribeToBroadcast } = useSunmiScanner(hardwareScannerEnabled, (code) => void onCode(code));
+  const customerTotal = pending && mode === 'pay' ? pending.total : ((mode === 'pay' ? payTotal : undefined) ?? serverTotal ?? estimate);
+  const displayTotal = formatBDT(customerTotal);
+  const digits = formatBDT(customerTotal, { symbol: false }).replace(/,/g, '');
+  const segmentTotal = /^\d+(\.\d+)?$/.test(digits) && digits.replace('.', '').length <= 7 ? digits : null;
+  const displayTitle = me?.organization.name ?? 'SortPi';
+  const displayTotalLabel = t('Total');
+  const displayBasket = useMemo(() => ({
+    title: displayTitle,
+    lines: cart.map((line) => `${line.quantity} × ${line.name}`),
+    totalLabel: displayTotalLabel,
+    total: displayTotal,
+    segmentTotal,
+  }), [cart, displayTitle, displayTotalLabel, displayTotal, segmentTotal]);
+  useSunmiCustomerDisplay(!!me && !!ctx && !!shift && ready && mode !== 'done', displayBasket);
+
   // ---- states before selling ----
   if (ctxQuery.isPending || shiftQuery.isPending) {
     return (
@@ -595,12 +618,14 @@ export default function SellScreen() {
 
   const cartCard = (
         <Card style={{ gap: 4, padding: 12 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 4, paddingBottom: 4 }}>
-            <ThemedText type="smallMedium">Cart</ThemedText>
-            <ThemedText type="small" themeColor="textMuted">
-              {t(itemCount(cart) === 1 ? '1 item' : '{n} items', { n: itemCount(cart) })}
-            </ThemedText>
-          </View>
+          {!splitTill || mode === 'pay' ? (
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 4, paddingBottom: 4 }}>
+              <ThemedText type="smallMedium">Cart</ThemedText>
+              <ThemedText type="small" themeColor="textMuted">
+                {t(itemCount(cart) === 1 ? '1 item' : '{n} items', { n: itemCount(cart) })}
+              </ThemedText>
+            </View>
+          ) : null}
           {cart.length === 0 ? (
             // Waits for a removed row to finish leaving, so the two never overlap.
             <Animated.View entering={FadeIn.delay(200).duration(200)}>
@@ -764,6 +789,8 @@ export default function SellScreen() {
     </>
   );
 
+  const activeLayoutTitle = TABLET_LAYOUTS.find((layout) => layout.id === tablet.layout)?.title;
+  const orderCount = t(itemCount(cart) === 1 ? '1 item' : '{n} items', { n: itemCount(cart) });
   const lastItem = cart.find((line) => line.key === lastItemKey) ?? cart.at(-1);
   const orderSheet = (
     <TabletOrderSheet cart={cart} onQuantity={(key, value) => setCart((c) => setQuantity(c, key, value))} onRemove={removeWithUndo}
@@ -783,20 +810,24 @@ export default function SellScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           {focusExit?.()}
           {splitTill ? <HeaderAction title="POS layout" icon="Sliders" onPress={() => { Keyboard.dismiss(); setLayoutOpen(true); }} /> : null}
-          <HeaderAction title="Day Close" onPress={() => router.push('/end-shift')} />
+          <HeaderAction title="Till tools" onPress={() => { Keyboard.dismiss(); setToolsOpen(true); }} />
         </View>
       ) : focusExit }} />
-      {splitTill && mode === 'scan' ? <ThemedText type="bodyMedium">{TABLET_LAYOUTS.find((layout) => layout.id === tablet.layout)?.title}</ThemedText> : null}
+      {mode === 'scan' ? (
+        <View style={{ gap: 4 }}>
+          <ThemedText type="heading">Products</ThemedText>
+          {splitTill && activeLayoutTitle ? <ThemedText type="small" themeColor="textMuted">{activeLayoutTitle}</ThemedText> : null}
+        </View>
+      ) : splitTill && mode === 'pay' ? <ThemedText type="heading">Review order</ThemedText> : null}
       <SaleGuide mode={mode} cartEmpty={isEmpty(cart)} usesBarcodes={usesBarcodes} />
       {mode === 'scan' ? (
         <>
-          {usesBarcodes && showCamera ? <Scanner feedbackHandled height={splitTill ? 160 : undefined} onCode={(c) => void onCode(c)} paused={scanNote !== null || again !== null} /> : null}
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {me?.permissions?.includes('product.view') ? <Button title="Price Check" variant="secondary" onPress={() => router.push('/price-check')} /> : null}
-            {canHold ? <Button title={heldCount > 0 ? t('Held carts ({n})', { n: heldCount }) : 'Held carts'} variant="secondary" onPress={() => setHeldOpen(true)} /> : null}
-            <Button title="Favorite products" variant="secondary" onPress={() => setFavoritesOpen(true)} />
-          </View>
+          {hardwareScannerEnabled && sunmiHandheldScanHint ? (
+            <ThemedText type="small" themeColor="textMuted">Use the side button to scan</ThemedText>
+          ) : null}
           <ItemPicker
+            acceptKeyboardCode={acceptKeyboardCode}
+            subscribeToBroadcast={subscribeToBroadcast}
             layout={splitTill ? tablet.layout : undefined}
             favorites={favorites.favorites}
             favoritesBusy={favorites.busy}
@@ -809,9 +840,18 @@ export default function SellScreen() {
             onCode={(c) => void onCode(c, false)}
             wholesale={!!customer?.wholesale}
             branchId={ctx?.branchId}
-            scan={usesBarcodes ? { open: showCamera, toggle: () => setCameraChoice({ mode: scannerMode, open: !showCamera }) } : undefined}
+            scan={usesBarcodes ? {
+              open: showCamera,
+              toggle: () => setCameraChoice({ mode: scannerMode, open: !showCamera }),
+              preview: showCamera ? <Scanner feedbackHandled height={splitTill ? 160 : 180} onCode={(c) => void onCode(c)} paused={scanNote !== null || again !== null || toolsOpen} /> : undefined,
+            } : undefined}
           />
-          {sheetTill ? orderSheet : null}
+          {sheetTill && !invoiceBesideProducts ? (
+            <View style={{ gap: 8 }}>
+              <ThemedText type="bodyMedium">Invoice</ThemedText>
+              {orderSheet}
+            </View>
+          ) : null}
         </>
       ) : null}
 
@@ -883,7 +923,11 @@ export default function SellScreen() {
       {showBar ? <View style={{ height: Math.max(124, barHeight + 16) }} /> : null}
     </Screen>
     {splitTill ? (
-      <View style={{ width: '47%', maxWidth: 500, backgroundColor: theme.canvas, borderStartWidth: 1, borderColor: theme.border }}>
+      <View style={{ width: orderPaneWidth, backgroundColor: theme.canvas, borderStartWidth: 1, borderColor: theme.border }}>
+        <View style={{ minHeight: 56, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, backgroundColor: theme.card, borderBottomWidth: 1, borderBottomColor: theme.border }}>
+          <ThemedText type="bodyMedium">{mode === 'pay' ? 'Payment' : invoiceBesideProducts ? 'Invoice' : 'Current order'}</ThemedText>
+          <ThemedText type="small" themeColor="textMuted" literal>{orderCount}</ThemedText>
+        </View>
         <KeyboardAwareScrollView keyboardShouldPersistTaps="handled" bottomOffset={24} contentContainerStyle={{ padding: 12, gap: 12 }}>
           {mode === 'pay' ? paymentPanel : (
             <>
@@ -895,20 +939,17 @@ export default function SellScreen() {
                   {lastItem ? <ThemedText type="bodyMedium">{formatBDT(lastItem.unitPrice)}</ThemedText> : null}
                 </Card>
               ) : null}
-              {sheetTill ? (
-                <Card style={{ gap: 4 }}>
-                  <ThemedText type="bodyMedium">Invoice</ThemedText>
-                  <ThemedText type="small" themeColor="textMuted">{t(itemCount(cart) === 1 ? '1 item' : '{n} items', { n: itemCount(cart) })}</ThemedText>
-                </Card>
-              ) : cartCard}
+              {sheetTill ? (invoiceBesideProducts ? orderSheet : null) : cartCard}
               {cartActions}
             </>
           )}
         </KeyboardAwareScrollView>
         <View style={{ padding: 12, gap: 8, backgroundColor: theme.card, borderTopWidth: 1, borderColor: theme.border }}>
           {paymentStatus}
-          {totalSummary}
-          {paymentAction}
+          <View style={{ flexDirection: orderPaneWidth >= 400 ? 'row' : 'column', alignItems: orderPaneWidth >= 400 ? 'center' : 'stretch', gap: 12 }}>
+            <View style={orderPaneWidth >= 400 ? { flex: 1 } : undefined}>{totalSummary}</View>
+            {paymentAction}
+          </View>
         </View>
       </View>
     ) : null}
@@ -927,6 +968,21 @@ export default function SellScreen() {
       </Animated.View>
       </KeyboardStickyView>
     ) : null}
+    <BottomSheet visible={toolsOpen && mode === 'scan'} onClose={() => setToolsOpen(false)} title="Till tools">
+      <View style={{ gap: 8, paddingHorizontal: 16 }}>
+        {me?.permissions?.includes('product.view') ? <Button title="Price Check" variant="secondary" onPress={() => { setToolsOpen(false); router.push('/price-check'); }} /> : null}
+        {me?.permissions?.includes('purchase.view') ? <Button title="Purchase List" variant="secondary" onPress={() => { setToolsOpen(false); router.push('/purchases'); }} /> : null}
+        {splitTill && tablet.layout !== 'sheet' ? (
+          <Button title="Spreadsheet till" variant="secondary" disabled={tablet.busy} onPress={() => {
+            setToolsOpen(false);
+            void selectTabletLayout('sheet');
+          }} />
+        ) : null}
+        {canHold ? <Button title={heldCount > 0 ? t('Held carts ({n})', { n: heldCount }) : 'Held carts'} variant="secondary" onPress={() => { setToolsOpen(false); setHeldOpen(true); }} /> : null}
+        <Button title="Favorite products" variant="secondary" onPress={() => { setToolsOpen(false); setFavoritesOpen(true); }} />
+        <Button title="Day Close" variant="secondary" onPress={() => { setToolsOpen(false); router.push('/end-shift'); }} />
+      </View>
+    </BottomSheet>
     <BottomSheet visible={layoutOpen && splitTill && mode === 'scan'} onClose={() => setLayoutOpen(false)} title="POS layout">
       <View style={{ gap: 8, paddingHorizontal: 16 }}>
         {TABLET_LAYOUTS.map((layout) => {

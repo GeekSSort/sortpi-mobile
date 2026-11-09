@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
-import { Alert, FlatList, StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 
 import { ApiError } from '@/api/client';
+import { AdaptiveList } from '@/components/adaptive-list';
 import { useSession } from '@/auth/session-provider';
 import { BottomSheet } from '@/components/bottom-sheet';
 import { Button } from '@/components/button';
@@ -16,7 +17,7 @@ import { Notice } from '@/components/notice';
 import { SkeletonRows } from '@/components/skeleton';
 import { Tap } from '@/components/tap';
 import { ThemedText } from '@/components/themed-text';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, Spacing } from '@/constants/theme';
 import { createPriceGroup, deletePriceGroup, listPriceGroups, updatePriceGroup, type PriceGroup } from '@/groups/api';
 import { percentWord, validateGroup } from '@/groups/logic';
 import { useTheme } from '@/hooks/use-theme';
@@ -92,7 +93,7 @@ export default function PriceGroupsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
       <Stack.Screen options={{ title: t('Price Groups'), headerRight: canEdit ? () => <HeaderAction title="Add" icon="Plus" onPress={() => open('new')} /> : undefined }} />
-      <FlatList
+      <AdaptiveList
         contentInsetAdjustmentBehavior="automatic"
         data={list.data ?? []}
         keyExtractor={(g) => g.id}
@@ -118,7 +119,7 @@ export default function PriceGroupsScreen() {
         ListEmptyComponent={list.isPending ? <SkeletonRows /> : list.isError ? undefined : <EmptyState icon="Percent" title="No price groups yet" hint="A group gets an agreed percent off, like schools or mechanics." />}
         refreshing={list.isRefetching}
         onRefresh={() => void list.refetch()}
-        contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}
+        contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four }}
       />
       <BottomSheet visible={editing !== null} onClose={() => setEditing(null)} title={editing === 'new' ? 'Add Price Group' : 'Edit Price Group'}>
         <View style={{ gap: Spacing.three }}>

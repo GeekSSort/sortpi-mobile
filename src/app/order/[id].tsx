@@ -1,3 +1,4 @@
+import { useWideLandscape } from '@/hooks/use-wide-landscape';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
@@ -15,7 +16,7 @@ import { SkeletonRows } from '@/components/skeleton';
 import { Tap } from '@/components/tap';
 import { ThemedText } from '@/components/themed-text';
 import { ToneTile } from '@/components/tone-tile';
-import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { PAYMENT_METHODS, type PaymentMethod } from '@/customers/logic';
 import { MONTHS } from '@/home/week';
 import { useTheme } from '@/hooks/use-theme';
@@ -31,6 +32,7 @@ const money = (v: string) => formatBDT(v);
 
 /** One order: who, what, the day, what has been paid and what is left, and the next step (deposit, ready, hand over, cancel). */
 export default function OrderScreen() {
+  const { contentWidth } = useWideLandscape();
   const theme = useTheme();
   const { t, lang } = usePrefs();
   const router = useRouter();
@@ -64,7 +66,7 @@ export default function OrderScreen() {
   const card = { padding: Spacing.three, gap: Spacing.two, borderRadius: Radius.lg, borderCurve: 'continuous' as const, backgroundColor: theme.card, borderWidth: 1, borderColor: theme.border };
 
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={order.isRefetching} onRefresh={() => void order.refetch()} />} style={{ backgroundColor: theme.canvas }} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
+    <ScrollView contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={order.isRefetching} onRefresh={() => void order.refetch()} />} style={{ backgroundColor: theme.canvas }} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six, maxWidth: Math.min(contentWidth, 1080), width: '100%', alignSelf: 'center' }}>
       <Stack.Screen options={{ title: t('Order') }} />
       {order.isPending ? <SkeletonRows count={3} /> : null}
       {order.isError ? <ErrorState message={t('Could not load this order.')} onRetry={() => void order.refetch()} /> : null}

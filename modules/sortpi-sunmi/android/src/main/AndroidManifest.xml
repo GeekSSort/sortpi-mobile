@@ -1,0 +1,7 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <uses-permission android:name="smartpos.deviceservice.permission.Printer" />
+  <queries>
+    <package android:name="com.imin.printerservice" />
+    <package android:name="woyou.aidlservice.jiuiv5" />
+  </queries>
+</manifest>

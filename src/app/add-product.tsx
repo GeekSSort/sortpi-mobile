@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
 import { Field } from '@/components/field';
+import { FormColumns } from '@/components/form-columns';
 import { Icon } from '@/components/icons/icon';
 import { Notice } from '@/components/notice';
 import { Picker } from '@/components/picker';
@@ -144,6 +145,7 @@ export default function AddProductScreen() {
           <KeyboardAwareScrollView bottomOffset={24} contentContainerStyle={{ paddingHorizontal: Spacing.three, paddingBottom: Spacing.five, gap: Spacing.three }} keyboardShouldPersistTaps="handled">
             {!canCreate ? <Notice>You are not allowed to add products. Ask your manager to add it.</Notice> : null}
 
+            <FormColumns primary={<>
             {/* The scanned code, shown as what it is rather than as a text box. */}
             {showCode ? (
             <View style={{ padding: Spacing.three, gap: Spacing.three, borderRadius: Radius.lg, borderCurve: 'continuous', borderWidth: 1, borderColor: theme.brandSoftBorder, backgroundColor: theme.brandSoft }}>
@@ -244,6 +246,7 @@ export default function AddProductScreen() {
               ) : null}
             </Section>
 
+            </>} secondary={<>
             <Section title="What kind of item?" hint="So you can find it later. The next item remembers your choice.">
               <Picker label="Kind of item" required value={category} onChange={setCategory} load={listCategories} queryKey="categories" error={errors.categoryId} create={canMakeCategory ? 'category' : undefined} />
               <Picker label="Sold by" required value={unit} onChange={setUnit} load={listUnits} queryKey="units" error={errors.unitId} create={canMakeUnit ? 'unit' : undefined} />
@@ -285,6 +288,7 @@ export default function AddProductScreen() {
               </Section>
             ) : null}
 
+            </>} />
             {failure ? <Notice>{failure}</Notice> : null}
           </KeyboardAwareScrollView>
         </KeyboardAvoidingView>

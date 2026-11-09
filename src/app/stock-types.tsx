@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, StyleSheet, Switch, View } from 'react-native';
+import { StyleSheet, Switch, View } from 'react-native';
 
+import { AdaptiveList } from '@/components/adaptive-list';
 import { useSession } from '@/auth/session-provider';
 import { ActionSheet } from '@/components/action-sheet';
 import { BottomSheet } from '@/components/bottom-sheet';
@@ -15,7 +16,7 @@ import { Notice } from '@/components/notice';
 import { SkeletonRows } from '@/components/skeleton';
 import { Tap } from '@/components/tap';
 import { ThemedText } from '@/components/themed-text';
-import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { BottomTabInset, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
 import { haptics } from '@/lib/haptics';
@@ -70,7 +71,7 @@ export default function StockTypesScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
       <Stack.Screen options={{ title: t('Stock types'), headerRight: canAdd ? () => <HeaderAction title="Add" icon="Plus" onPress={() => setAdding(true)} /> : undefined }} />
-      <FlatList
+      <AdaptiveList
         contentInsetAdjustmentBehavior="automatic"
         data={units.data ?? []}
         keyExtractor={(u) => u.id}
@@ -79,7 +80,7 @@ export default function StockTypesScreen() {
         ListEmptyComponent={units.isPending ? <SkeletonRows /> : <EmptyState icon="Package" title="No stock types yet" hint="Add one, like Piece or Kilogram." action={canAdd ? { title: 'Add', onPress: () => setAdding(true) } : undefined} />}
         refreshing={units.isRefetching}
         onRefresh={() => void units.refetch()}
-        contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}
+        contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four }}
       />
       <ActionSheet
         title={picked?.name ?? null}

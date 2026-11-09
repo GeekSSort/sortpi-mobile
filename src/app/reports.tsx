@@ -9,7 +9,8 @@ import { Notice } from '@/components/notice';
 import { Tap } from '@/components/tap';
 import { ThemedText } from '@/components/themed-text';
 import { ToneTile } from '@/components/tone-tile';
-import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
+import { useWideLandscape } from '@/hooks/use-wide-landscape';
 import { useTheme } from '@/hooks/use-theme';
 import { usePrefs } from '@/i18n/prefs';
 import { formatBDT, compareMoney } from '@/lib/money';
@@ -23,6 +24,7 @@ const money = (v: string) => formatBDT(v, { dp: 0 });
 /** How the shop is doing: what sold, what came in, what is owed, what was kept. Pick a time; each part loads on its own and only shows to people who may see it. */
 export default function ReportsScreen() {
   const theme = useTheme();
+  const { wideLandscape, contentWidth } = useWideLandscape();
   const { t } = usePrefs();
   const router = useRouter();
   const { me } = useSession();
@@ -56,7 +58,7 @@ export default function ReportsScreen() {
       contentInsetAdjustmentBehavior="automatic"
       style={{ backgroundColor: theme.canvas }}
       refreshControl={<RefreshControl refreshing={all.some((q) => q.isRefetching)} onRefresh={() => void Promise.all(all.map((q) => q.refetch()))} />}
-      contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' }}>
+      contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six, maxWidth: contentWidth, width: '100%', alignSelf: 'center' }}>
       <Stack.Screen options={{ title: t('Reports'), headerRight: seesSales ? () => <HeaderAction title="Day report" icon="Receipt" onPress={() => router.push('/day-report')} /> : undefined }} />
       {!seesSales && !seesPnl && !seesDues && !seesStock ? <Notice>You are not allowed to see reports. Ask the owner or manager.</Notice> : null}
 
@@ -75,6 +77,7 @@ export default function ReportsScreen() {
         </View>
       ) : null}
 
+      <View style={{ flexDirection: wideLandscape ? 'row' : 'column', flexWrap: wideLandscape ? 'wrap' : 'nowrap', alignItems: wideLandscape ? 'flex-start' : 'stretch', gap: Spacing.three }}>
       {seesSales ? (
         <>
           <ReportCard title={t('Sales')} icon="Receipt" query={summary}>
@@ -153,6 +156,7 @@ export default function ReportsScreen() {
           </ReportCard>
         </>
       ) : null}
+      </View>
     </ScrollView>
   );
 }
