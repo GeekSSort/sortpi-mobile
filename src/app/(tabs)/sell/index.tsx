@@ -3,7 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import Animated, { FadeIn, FadeInDown, FadeInUp, FadeOutLeft, LinearTransition, useAnimatedStyle, useSharedValue, withSpring, ZoomIn } from 'react-native-reanimated';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Keyboard, Platform, Pressable, Share, useColorScheme, useWindowDimensions, View } from 'react-native';
+import { Alert, Keyboard, Platform, Pressable, ScrollView, Share, useColorScheme, useWindowDimensions, View } from 'react-native';
 
 import { newIdempotencyKey } from '@/api/idempotency';
 import { useSession } from '@/auth/session-provider';
@@ -18,7 +18,7 @@ import { Icon } from '@/components/icons/icon';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
-import { PayColors } from '@/constants/palette';
+import { PayColors, WebPos } from '@/constants/palette';
 import { BottomTabInset, Fonts, MaxContentWidth, Radius } from '@/constants/theme';
 import { KeyboardAwareScrollView, KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useT } from '@/i18n/prefs';
@@ -36,14 +36,17 @@ import { totalFromRefusal } from '@/sell/discounts';
 import { useDiscounts } from '@/sell/use-discounts';
 import { SaleGuide } from '@/sell/sale-guide';
 import type { PickedCustomer } from '@/sell/customers';
-import { amountDueNow, buildPayments, walletReference, WALLETS, type PayChoice } from '@/sell/payment';
+import { amountDueNow, buildPayments, quickCashOffers, walletReference, WALLETS, type PayChoice } from '@/sell/payment';
+import { SplitPaySheet } from '@/sell/split-pay';
 import { GiftCardPay } from '@/sell/gift-card-pay';
 import { SerialEntry } from '@/sell/serial-entry';
 import { checkSerials, dealSerials, serialsNeeded } from '@/sell/serials';
 import { useGiftCardOffered } from '@/sell/use-gift-offer';
 import { clearDraft, clearPending, loadDraft, loadPending, saveDraft, savePending } from '@/sell/journal-store';
 import { mayHaveCommitted, type PendingSale } from '@/sell/journal';
-import { printReceipt } from '@/sell/print';
+import { printErrorText, printReceipt } from '@/sell/print';
+import { CashSheet } from '@/sell/cash-sheet';
+import { listSales } from '@/sales/api';
 import { androidPosDevice } from '@/sell/device-printer';
 import { sunmiHandheldScanHint, useSunmiCustomerDisplay, useSunmiScanner } from '@/sell/use-sunmi-peripherals';
 import { receiptText } from '@/sell/receipt';
@@ -51,11 +54,11 @@ import { haptics } from '@/lib/haptics';
 import { showToast } from '@/ui/toast';
 import { amountDue } from '@/customers/logic';
 import { salesToday } from '@/home/api';
-import { currentShift, dropHeld, listCounters, heldCarts, holdCart, loadSellContext, lookupBarcode, lookupCode, openShift, previewTotal, resumeHeld, sell, type SaleResult } from '@/sell/api';
+import { currentShift, dropHeld, listCounters, heldCarts, holdCart, loadSellContext, lookupBarcode, lookupCode, nextInvoiceNumber, openShift, previewTotal, resumeHeld, sell, type SaleResult } from '@/sell/api';
 import { defaultCounter } from '@/sell/counters';
 import { holdBody, holdReference, mergeHeld, type HeldCart } from '@/sell/held';
 import { HeldSheet } from '@/sell/held-sheet';
-import { addItem, changeDue, changeQuantity, setQuantity, estimateSubtotal, isEmpty, itemCount, lastQuantity, lineEstimate, lineKey, removeLine, type Cart, type CartLine, type ScannedItem } from '@/sell/cart';
+import { addItem, linePriceProblem, lineDiscountProblem, setLineDiscount, setLinePrice, shippingProblem, changeDue, discountProblem, changeQuantity, setQuantity, estimateSubtotal, isEmpty, itemCount, lastQuantity, lineEstimate, lineKey, removeLine, type Cart, type OrderDiscount, type CartLine, type PaymentInput, type ScannedItem } from '@/sell/cart';
 import { SwipeToRemove } from '@/components/swipe-to-remove';
 import { useCameraPermissions } from 'expo-camera';
 import { useUsesBarcodes } from '@/sell/use-barcodes';
@@ -68,6 +71,9 @@ import { describeSellError, LOOKUP_FAILED_TITLE, NOT_IN_CATALOGUE_TITLE, notInCa
 import { Tap } from '@/components/tap';
 import { TABLET_LAYOUTS, validTillQuantity, type TabletLayout } from '@/sell/tablet-layout';
 import { TabletOrderSheet } from '@/sell/tablet-order-sheet';
+import { BillingSummary, ExpressBar, ExpressDetails, CouponBox, ShippingBox, QuickActionsDrawer, QuickActionsPanel, QuickActionsRail, SaleOptions, StripButtons, WallCheckout, WallOrderPanel, linesAndItems, WebInvoiceTable, WebOrderColumn, WebPaymentStrip, WebToolbar, type QuickAction, type StripButton, type ToolbarTile } from '@/sell/web-sheet';
+import { useOffline } from '@/ui/connection';
+import { useShellSidebarWidth } from '@/hooks/use-desktop-shell';
 import { useTabletLayout } from '@/sell/use-tablet-layout';
 
 /** Each way of paying has its own colour and picture, so it can be picked without reading: green cash, pink bKash-style mobile, blue card, teal bank. */
@@ -81,6 +87,9 @@ const METHODS: { id: PayChoice; label: string; icon: 'Cash' | 'Phone' | 'CreditC
 type Mode = 'scan' | 'pay' | 'done';
 /** What the last scan or typed code turned up, when it was not a product. */
 type ScanNote = { kind: 'missing'; code: string; scanned: boolean } | { kind: 'failed'; text: string };
+
+/** The clock, read when a sale or a hold is recorded (in an event handler, never while drawing the screen). */
+const nowMs = (): number => Date.now();
 
 export default function SellScreen() {
   const theme = useTheme();
@@ -107,6 +116,25 @@ export default function SellScreen() {
   const [sheetEditingKey, setSheetEditingKey] = useState<string | null>(null);
   const [lastItemKey, setLastItemKey] = useState<string | null>(null);
   const sheetTill = splitTill && tablet.layout === 'sheet';
+  // The wide spreadsheet till is drawn like the web's: toolbar, invoice table, payment strip and billing summary.
+  const shellWidth = useShellSidebarWidth();
+  const webSheet = sheetTill && width - shellWidth >= 960 && mode === 'scan'; // the room beside the open menu, not the whole screen
+  const webTouch = splitTill && tablet.layout === 'touch' && width - shellWidth >= 1200 && mode === 'scan'; // categories, products, order and billing side by side
+  const webExpress = splitTill && tablet.layout === 'express' && width - shellWidth >= 1000 && mode === 'scan';
+  const webWall = splitTill && tablet.layout === 'wall' && width - shellWidth >= 1250 && mode === 'scan'; // the web's rail, product wall and order
+  const [wallCategory, setWallCategory] = useState<{ id: string; name: string } | null>(null);
+  const webPanel = webSheet || webTouch || webExpress || webWall; // a web-style till is on screen
+  const [discountFocus, setDiscountFocus] = useState(0);
+  const [shipping, setShipping] = useState(''); // delivery charged on top, as typed
+  const [cashOpen, setCashOpen] = useState(false);
+  const [orderDiscount, setOrderDiscount] = useState<OrderDiscount | null>(null);
+  const [priceMode, setPriceMode] = useState<boolean | null>(null); // wholesale prices chosen on the till, over what the customer has
+  const [splitOpen, setSplitOpen] = useState(false);
+  const [splitPlan, setSplitPlan] = useState<{ payments: PaymentInput[]; due: string } | null>(null);
+  const quickGo = useRef(false); // Quick Pay was tapped: confirm as soon as the payment screen has its total
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const [searchFocus, setSearchFocus] = useState(0);
+  const offline = useOffline();
   const invoiceBesideProducts = sheetTill && width >= 960;
   const orderPaneWidth = Math.min(500, Math.round(width * 0.47));
   const expressTill = splitTill && tablet.layout === 'express';
@@ -214,14 +242,14 @@ export default function SellScreen() {
     const id = setTimeout(() => {
       if (isEmpty(cart)) {
         if (!pending) void clearDraft();
-      } else void saveDraft({ v: 1, at: Date.now(), userId, branchId: draftBranch, cart, customer });
+      } else void saveDraft({ v: 1, at: nowMs(), userId, branchId: draftBranch, cart, customer });
     }, 400);
     return () => clearTimeout(id);
   }, [cart, customer, mode, ready, userId, draftBranch, pending]);
   useEffect(() => beforeTillLock(async () => {
     if (busy || looking.current || sheetEditingKey) throw new Error('Till busy');
     if (!ready || !userId || !draftBranch || mode === 'done') return;
-    if (!isEmpty(cart)) await saveDraft({ v: 1, at: Date.now(), userId, branchId: draftBranch, cart, customer }, true);
+    if (!isEmpty(cart)) await saveDraft({ v: 1, at: nowMs(), userId, branchId: draftBranch, cart, customer }, true);
     else if (!pending) await clearDraft(true);
   }), [beforeTillLock, busy, sheetEditingKey, ready, userId, draftBranch, mode, cart, customer, pending]);
   const counters = useQuery({ queryKey: ['counters', me?.active_branch?.id], queryFn: () => listCounters(me!.active_branch!.id), enabled: !!me?.active_branch?.id && shiftQuery.data === null, staleTime: 0, retry: false });
@@ -229,8 +257,11 @@ export default function SellScreen() {
   // The counter used last time is chosen again when it is free, so opening the day is usually one tap.
   const lastCounter = useQuery({ queryKey: ['counter-last'], queryFn: () => SecureStore.getItemAsync('sortpi.counter'), staleTime: Infinity });
   const counterId = pickedCounter ?? (counters.data && lastCounter.isSuccess ? defaultCounter(counters.data, lastCounter.data) : null);
+  const shipText = shipping.trim();
+  const shipError = shipText ? shippingProblem(shipText) : null;
+  const shipAmount = shipText && !shipError ? shipText : undefined;
   // The named customer replaces the walk-in record; a wholesale customer sells at wholesale prices (the server prices it).
-  const ctx = baseCtx ? { ...baseCtx, customerId: customer?.id ?? baseCtx.customerId, wholesale: customer?.wholesale } : undefined;
+  const ctx = baseCtx ? { ...baseCtx, customerId: customer?.id ?? baseCtx.customerId, wholesale: priceMode ?? customer?.wholesale, orderDiscount, shipping: shipAmount } : undefined;
   const shift = shiftQuery.data;
   const canPickCustomer = me?.permissions?.includes('customer.view') ?? false;
   const canHold = me?.permissions?.includes('pos.hold_sale') ?? false;
@@ -239,17 +270,20 @@ export default function SellScreen() {
 
   const signature = cart.map((l) => `${l.key}:${l.quantity}`).join(',');
   const previewQuery = useQuery({
-    queryKey: ['sell-preview', ctx?.branchId, ctx?.customerId, ctx?.wholesale ?? false, signature],
+    queryKey: ['sell-preview', ctx?.branchId, ctx?.customerId, ctx?.wholesale ?? false, orderDiscount?.kind, orderDiscount?.value, signature],
     queryFn: () => previewTotal(ctx!, cart),
     enabled: !!ctx && !isEmpty(cart),
     staleTime: 0,
     retry: false,
   });
   const serverTotal = previewQuery.data?.grand_total;
+  const invoiceQuery = useQuery({ queryKey: ['next-invoice', ctx?.branchId, result?.id ?? ''], queryFn: () => nextInvoiceNumber(ctx!.branchId), enabled: !!ctx, staleTime: 15_000, retry: false });
+  const invoiceNo = invoiceQuery.data ?? '';
   // Coupon, points and whole-taka rounding change what is paid. The server prices the sale again; if it names another total, that one wins.
-  const d = useDiscounts({ payable: serverTotal, customerId: customer?.id, active: mode === 'pay', canSettings: me?.permissions?.includes('settings.view') ?? false, canCustomer: canPickCustomer });
+  const d = useDiscounts({ payable: serverTotal, customerId: customer?.id, active: mode === 'pay' || webPanel, canSettings: me?.permissions?.includes('settings.view') ?? false, canCustomer: canPickCustomer });
   const [forced, setForced] = useState<{ amount: string; sig: string } | null>(null);
-  const payTotal = serverTotal ? (forced && forced.sig === d.sig ? forced.amount : (d.totals?.final ?? serverTotal)) : undefined;
+  const totalSig = `${d.sig}|${shipAmount ?? ''}`;
+  const payTotal = serverTotal ? (forced && forced.sig === totalSig ? forced.amount : addMoney(d.totals?.final ?? serverTotal, shipAmount ?? '0')) : undefined;
   const estimate = estimateSubtotal(cart);
   // How many of each item are in the cart, counted once per change, not once per tile on screen.
   const inCart = new Map<string, number>();
@@ -261,9 +295,11 @@ export default function SellScreen() {
     showToast({ text: t('Removed {name}', { name }), actionLabel: t('Undo'), onAction: () => setCart(before) });
   }
 
-  function addToOrder(item: ScannedItem, tap = true) {
-    setLastItemKey(lineKey(item.variantId, item.unitId));
-    setCart((c) => addItem(c, item));
+  function addToOrder(item: ScannedItem, tap = true, quantity = 1) {
+    const key = lineKey(item.variantId, item.unitId);
+    setLastItemKey(key);
+    // "3*milk" rings up three: one is added as usual, then the rest.
+    setCart((c) => { const added = addItem(c, item); return quantity > 1 ? changeQuantity(added, key, quantity - 1) : added; });
     if (tap) haptics.tap();
   }
 
@@ -278,9 +314,9 @@ export default function SellScreen() {
   }
 
   /** A tapped item goes in the cart at once; the server prices the whole cart as it always does. */
-  function pickItem(item: CatalogItem) {
+  function pickItem(item: CatalogItem, quantity = 1) {
     setScanNote(null);
-    addToOrder(toCartItem(item));
+    addToOrder(toCartItem(item), true, quantity);
   }
 
   function toggleFavorite(item: Favorite) {
@@ -306,7 +342,7 @@ export default function SellScreen() {
     }
   }
 
-  async function onCode(code: string, scanned = true) {
+  async function onCode(code: string, scanned = true, quantity = 1) {
     if (!ctx || looking.current || scanNote || again || mode !== 'scan') return;
     looking.current = true;
     setScanNote(null);
@@ -316,7 +352,7 @@ export default function SellScreen() {
       if (item && scanned && lastQuantity(cartRef.current, item) !== null) {
         setAgain(item);
       } else if (item) {
-        addToOrder(item, false);
+        addToOrder(item, false, quantity);
       } else {
         setScanNote({ kind: 'missing', code: code.trim(), scanned });
       }
@@ -354,6 +390,7 @@ export default function SellScreen() {
     setReference('');
     setPayNow('');
     setNotice(null);
+    setSplitPlan(null);
     setMode('pay');
   }
 
@@ -388,14 +425,14 @@ export default function SellScreen() {
       return;
     }
     const dealt = dealSerials(cart, sc.serials);
-    const plan = buildPayments({ choice: method, total: payTotal, payNow, reference: method === 'MOBILE' ? walletReference(wallet, reference) : reference, hasCustomer: !!customer, giftBalance: method === 'GIFT_CARD' ? giftBalance : null });
+    const plan = splitPlan ? { payments: splitPlan.payments, due: splitPlan.due, problem: null as string | null } : buildPayments({ choice: method, total: payTotal, payNow, reference: method === 'MOBILE' ? walletReference(wallet, reference) : reference, hasCustomer: !!customer, giftBalance: method === 'GIFT_CARD' ? giftBalance : null });
     if (plan.problem) {
       setNotice(plan.problem);
       return;
     }
     const args = { ...ctx, shiftId: shift.id, couponCode: d.couponCode, redeemPoints: d.points || undefined };
     const how = plan.payments.length > 1 ? 'SPLIT' : (plan.payments[0]?.payment_method ?? 'NONE');
-    const record: PendingSale = { v: 1, key: newIdempotencyKey(), at: Date.now(), userId, ctx: args, cart, payments: plan.payments, ...(needSerials.length ? { serials: dealt } : {}), total: payTotal, customerName: customer?.name ?? null };
+    const record: PendingSale = { v: 1, key: newIdempotencyKey(), at: nowMs(), userId, ctx: args, cart, payments: plan.payments, ...(needSerials.length ? { serials: dealt } : {}), total: payTotal, customerName: customer?.name ?? null };
     setBusy(true);
     setNotice(null);
     try {
@@ -416,7 +453,7 @@ export default function SellScreen() {
         const said = totalFromRefusal(e, plan.payments.reduce((sum, p) => addMoney(sum, p.amount), '0'));
         if (said) {
           // The server's total is not what the phone worked out (rounding, or a rule the phone cannot read). Show it, and charge that.
-          setForced({ amount: said, sig: d.sig });
+          setForced({ amount: said, sig: totalSig });
           setNotice(t('The total is {amount}. Check it, then confirm again.', { amount: formatBDT(said) }));
         } else {
           setNotice(describeSellError(e));
@@ -467,12 +504,12 @@ export default function SellScreen() {
     if (!ctx || isEmpty(cart) || busy) return;
     setBusy(true);
     try {
-      const attempt = holdTry.current ?? { reference: holdReference(Date.now()), unanswered: false };
+      const attempt = holdTry.current ?? { reference: holdReference(nowMs()), unanswered: false };
       holdTry.current = attempt;
       // A try that got no answer may still have reached the shop: look for it on the list before sending it a second time.
       const already = attempt.unanswered ? (await heldCarts().catch(() => [] as HeldCart[])).some((h) => h.reference === attempt.reference) : false;
       try {
-        if (!already) await holdCart(holdBody({ branchId: ctx.branchId, customerId: customer?.id, wholesale: customer?.wholesale, cart, now: Date.now(), reference: attempt.reference }));
+        if (!already) await holdCart(holdBody({ branchId: ctx.branchId, customerId: customer?.id, wholesale: customer?.wholesale, cart, now: nowMs(), reference: attempt.reference }));
       } catch (e) {
         // The shop keeps one cart per reference and says so (400 DUPLICATE_REFERENCE): an earlier try of THIS hold already went through.
         if (!(e instanceof ApiError && e.code === 'DUPLICATE_REFERENCE')) throw e;
@@ -534,6 +571,14 @@ export default function SellScreen() {
     }
   }
 
+  // Quick Pay: exact cash, and the sale goes through as soon as the payment screen has its total.
+  useEffect(() => {
+    if (!quickGo.current || mode !== 'pay' || !payTotal || busy) return;
+    quickGo.current = false;
+    void confirm();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, payTotal, busy]);
+
   function newSale() {
     setCart([]);
     setCustomer(null);
@@ -543,6 +588,10 @@ export default function SellScreen() {
     void clearDraft();
     d.reset();
     setForced(null);
+    setOrderDiscount(null);
+    setPriceMode(null);
+    setSplitPlan(null);
+    setShipping('');
   }
 
   const hardwareScannerEnabled = !!ctx && !!shift && ready && usesBarcodes && mode === 'scan'
@@ -619,7 +668,7 @@ export default function SellScreen() {
   const receivedOk = /^\d+(\.\d+)?$/.test(received);
   // Cash is judged against what is taken NOW (the whole total, or what a named customer pays now), not the full total.
   const dueNow = payTotal ? amountDueNow(payTotal, payNow, !!customer) : undefined;
-  const cashShort = method === 'CASH' && receivedOk && !!dueNow && compareMoney(received, dueNow) < 0;
+  const cashShort = !splitPlan && method === 'CASH' && receivedOk && !!dueNow && compareMoney(received, dueNow) < 0;
   const changeText = method === 'CASH' && receivedOk && !!dueNow && !cashShort ? formatBDT(changeDue(dueNow, received)) : null;
 
   const totalNote = !serverTotal
@@ -752,8 +801,25 @@ export default function SellScreen() {
             );
           })}
         </View>
+        <Tap accessibilityRole="button" accessibilityLabel={t('Multiple payment')} onPress={() => setSplitOpen(true)} style={{ overflow: 'hidden', minHeight: 48, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: splitPlan ? theme.brand : theme.inputBorder, backgroundColor: splitPlan ? theme.brandSoft : theme.card }}>
+          <ThemedText type="smallMedium" style={{ color: splitPlan ? theme.brandText : theme.textSecondary }}>{t('Multiple payment')}</ThemedText>
+        </Tap>
+        {splitPlan ? (
+          <View style={{ gap: 6, padding: 10, borderRadius: Radius.md, backgroundColor: theme.canvas }}>
+            {splitPlan.payments.map((x, i) => (
+              <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <ThemedText type="small">{t(METHODS.find((m) => m.id === x.payment_method)?.label ?? x.payment_method)}{x.reference_no ? ` · ${x.reference_no}` : ''}</ThemedText>
+                <ThemedText type="smallMedium">{formatBDT(x.amount)}</ThemedText>
+              </View>
+            ))}
+            {compareMoney(splitPlan.due, '0') > 0 ? <ThemedText type="caption" themeColor="textMuted">{t('Left on the account: {amount}', { amount: formatBDT(splitPlan.due) })}</ThemedText> : null}
+            <Tap accessibilityRole="button" onPress={() => setSplitPlan(null)} style={{ minHeight: 44, justifyContent: 'center' }}>
+              <ThemedText type="smallMedium" style={{ color: theme.brandText }}>{t('Use one way of paying instead')}</ThemedText>
+            </Tap>
+          </View>
+        ) : null}
         <SerialEntry needed={needSerials} typed={serialText} onChange={(id, text) => setSerialText((all) => ({ ...all, [id]: text }))} />
-        {giftOffered ? (
+        {!splitPlan && giftOffered ? (
           <Tap accessibilityRole="button" accessibilityState={{ selected: method === 'GIFT_CARD' }} onPress={() => { setMethod(method === 'GIFT_CARD' ? 'CASH' : 'GIFT_CARD'); setReference(''); setGiftBalance(null); }} style={{ overflow: 'hidden', minHeight: 52, flexDirection: 'row', gap: 8, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: method === 'GIFT_CARD' ? PayColors.GIFT_CARD.fill : theme.inputBorder, backgroundColor: method === 'GIFT_CARD' ? PayColors.GIFT_CARD.fill : theme.card }}>
             <Icon name="Gift" size={22} color={method === 'GIFT_CARD' ? theme.onBrand : dark ? PayColors.GIFT_CARD.ink.dark : PayColors.GIFT_CARD.ink.light} />
             <ThemedText type="smallMedium" style={{ color: method === 'GIFT_CARD' ? theme.onBrand : dark ? PayColors.GIFT_CARD.ink.dark : PayColors.GIFT_CARD.ink.light }}>
@@ -761,16 +827,16 @@ export default function SellScreen() {
             </ThemedText>
           </Tap>
         ) : null}
-        {method === 'GIFT_CARD' ? <GiftCardPay code={reference} onCode={setReference} onBalance={setGiftBalance} /> : null}
-        {customer ? (
+        {!splitPlan && method === 'GIFT_CARD' ? <GiftCardPay code={reference} onCode={setReference} onBalance={setGiftBalance} /> : null}
+        {!splitPlan && customer ? (
           <Tap accessibilityRole="button" accessibilityState={{ selected: method === 'CREDIT' }} onPress={() => setMethod(method === 'CREDIT' ? 'CASH' : 'CREDIT')} style={{ overflow: 'hidden', minHeight: 44, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: method === 'CREDIT' ? theme.brand : theme.inputBorder, backgroundColor: method === 'CREDIT' ? theme.brandSoft : theme.card }}>
             <ThemedText type="smallMedium" style={{ color: method === 'CREDIT' ? theme.brandText : theme.textSecondary }}>
               {t("Pay later (udhar): write it all on {name}'s account", { name: customer.name })}
             </ThemedText>
           </Tap>
         ) : null}
-        {customer && method !== 'CREDIT' ? <Field label="Customer pays now" value={payNow} onChangeText={setPayNow} keyboardType="decimal-pad" prefix="৳" hint="If it is less than the total, the rest is written on their account." /> : null}
-        {method === 'MOBILE' ? (
+        {!splitPlan && customer && method !== 'CREDIT' ? <Field label="Customer pays now" value={payNow} onChangeText={setPayNow} keyboardType="decimal-pad" prefix="৳" hint="If it is less than the total, the rest is written on their account." /> : null}
+        {!splitPlan && method === 'MOBILE' ? (
           <View style={{ gap: 8 }}>
             <ThemedText type="smallMedium" themeColor="textSecondary">
               Which wallet?
@@ -789,9 +855,20 @@ export default function SellScreen() {
             </View>
           </View>
         ) : null}
-        {method === 'CARD' || method === 'BANK' || method === 'MOBILE' ? <Field label="Transaction ID (optional)" value={reference} onChangeText={setReference} autoCapitalize="characters" placeholder="Transaction ID or approval code" /> : null}
-        {method === 'CASH' ? (
-          <Field label="Cash received (optional)" value={received} onChangeText={setReceived} keyboardType="decimal-pad" hint={changeText ? t('Change to give: {amount}', { amount: changeText }) : 'Enter it to see the change.'} error={cashShort ? 'That is less than the total.' : undefined} />
+        {!splitPlan && (method === 'CARD' || method === 'BANK' || method === 'MOBILE') ? <Field label="Transaction ID (optional)" value={reference} onChangeText={setReference} autoCapitalize="characters" placeholder="Transaction ID or approval code" /> : null}
+        {!splitPlan && method === 'CASH' ? (
+          <View style={{ gap: 8 }}>
+            <Field label="Cash received (optional)" value={received} onChangeText={setReceived} keyboardType="decimal-pad" hint={changeText ? t('Change to give: {amount}', { amount: changeText }) : 'Enter it to see the change.'} error={cashShort ? 'That is less than the total.' : undefined} />
+            {payTotal ? (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {quickCashOffers(payTotal).map((amount, i) => (
+                  <Tap key={amount} accessibilityRole="button" accessibilityLabel={i === 0 ? t('Exact amount') : formatBDT(amount)} onPress={() => setReceived(amount)} style={{ minHeight: 44, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.md, borderWidth: 1, borderColor: received === amount ? theme.brand : theme.border, backgroundColor: received === amount ? theme.brandSoft : theme.card }}>
+                    <ThemedText type="smallMedium" literal>{i === 0 ? t('Exact') : formatBDT(amount, { dp: 0 })}</ThemedText>
+                  </Tap>
+                ))}
+              </View>
+            ) : null}
+          </View>
         ) : null}
         <Button title="Go back" variant="secondary" disabled={busy || !!pending} onPress={() => setMode('scan')} />
       </View>
@@ -828,17 +905,308 @@ export default function SellScreen() {
     <Button variant="success" title={method === 'CREDIT' ? 'Write on account' : 'Confirm'} size="lg" loading={busy} disabled={pending ? false : !payTotal || cashShort} onPress={confirm} style={{ minWidth: 168 }} />
   );
 
+  const headerBar = (
+    <Stack.Screen options={{ headerRight: mode === 'scan' ? () => (
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        {focusExit?.()}
+        {splitTill ? <HeaderAction title="POS layout" icon="Sliders" onPress={() => { Keyboard.dismiss(); setLayoutOpen(true); }} /> : null}
+        <HeaderAction title="Till tools" onPress={() => { Keyboard.dismiss(); setToolsOpen(true); }} />
+      </View>
+    ) : focusExit }} />
+  );
+  const itemPicker = (webBar: boolean) => (
+    <ItemPicker
+      acceptKeyboardCode={acceptKeyboardCode}
+      subscribeToBroadcast={subscribeToBroadcast}
+      layout={splitTill ? tablet.layout : undefined}
+      webBar={webBar}
+      category={webBar && tablet.layout === 'wall' ? (wallCategory?.id ?? null) : undefined}
+      focusSignal={searchFocus}
+      favorites={favorites.favorites}
+      favoritesBusy={favorites.busy}
+      onFavorite={toggleFavorite}
+      onPick={pickItem}
+      qtyOf={(id) => splitTill && tablet.layout === 'touch'
+        ? Number(lastQuantity(cart, { variantId: id, unitId: null }) ?? 0)
+        : inCart.get(id) ?? 0}
+      onFewer={(item) => setCart((c) => changeQuantity(c, lineKey(item.variantId, null), -1))}
+      onCode={(c, q) => void onCode(c, false, q)}
+      onEmpty={webBar ? () => payWith(method) : undefined}
+      wholesale={!!customer?.wholesale}
+      branchId={ctx?.branchId}
+      scan={usesBarcodes ? {
+        open: showCamera,
+        toggle: () => setCameraChoice({ mode: scannerMode, open: !showCamera }),
+        preview: showCamera ? <Scanner feedbackHandled height={splitTill ? 160 : 180} onCode={(c) => void onCode(c)} paused={scanNote !== null || again !== null || toolsOpen} /> : undefined,
+      } : undefined}
+    />
+  );
+  const overlays = (
+    <>
+      <UnfinishedSaleSheet pending={mode === 'scan' && !hidePending ? pending : null} busy={busy} onFinish={() => pending && void finishPending(pending)} onLater={() => setHidePending(true)} onDiscard={discardPending} notice={notice} />
+      <ScannedAgainSheet item={mode === 'scan' ? again : null} inCart={again ? lastQuantity(cart, again) : null} onYes={() => { if (again) addToOrder(again); setAgain(null); }} onNo={() => setAgain(null)} />
+      <ScanNoteSheet note={mode === 'scan' ? scanNote : null} canAdd={me?.permissions?.includes('product.create') ?? false} onAdd={(code) => { setScanNote(null); router.push({ pathname: '/add-product', params: { code, from: 'sell' } }); }} onDismiss={() => setScanNote(null)} />
+    </>
+  );
+
+  // ---- the web-style spreadsheet till ----
+  const needItems = () => showToast({ text: t('Add an item first.') });
+  function payWith(m: PayChoice) {
+    if (isEmpty(cart) || !serverTotal) return needItems();
+    if (m === 'CREDIT' && !customer) return showToast({ text: t('Choose a customer first.') });
+    setMethod(m);
+    startPayment();
+  }
+  function resetSale() {
+    if (isEmpty(cart)) return needItems();
+    Alert.alert(t('Remove everything?'), t('This takes every item out of the cart.'), [{ text: t('Cancel'), style: 'cancel' }, { text: t('Yes, remove'), style: 'destructive', onPress: () => { const before = cart; setCart([]); showToast({ text: t('Cart cleared'), actionLabel: t('Undo'), onAction: () => setCart(before) }); } }]);
+  }
+  const can = (p: string) => me?.permissions?.includes(p) ?? false;
+  function quickPay() {
+    if (isEmpty(cart) || !serverTotal) return needItems();
+    setMethod('CASH');
+    startPayment();
+    quickGo.current = true;
+  }
+  function multiplePay() {
+    if (isEmpty(cart) || !serverTotal) return needItems();
+    setMethod('CASH');
+    startPayment();
+    setSplitOpen(true);
+  }
+  const applyDiscount = (kind: 'PCT' | 'AMT', typed: string): string | null => {
+    const problem = discountProblem(kind, typed);
+    if (problem) return problem;
+    setOrderDiscount({ kind, value: typed.trim() });
+    return null;
+  };
+  const discountShown = previewQuery.data?.discount_amount && Number(previewQuery.data.discount_amount) > 0 ? formatBDT(previewQuery.data.discount_amount) : undefined;
+  const commitLinePrice = (key: string, typed: string) => {
+    if (!typed) return setCart((c) => setLinePrice(c, key, null));
+    const problem = linePriceProblem(typed);
+    if (problem) return showToast({ text: t(problem) });
+    setCart((c) => setLinePrice(c, key, typed));
+  };
+  const commitLineDiscount = (key: string, typed: string) => {
+    if (!typed) return setCart((c) => setLineDiscount(c, key, null));
+    const line = cart.find((l) => l.key === key);
+    const problem = lineDiscountProblem(typed, line ? lineEstimate({ ...line, lineDiscount: undefined }) : '0');
+    if (problem) return showToast({ text: t(problem) });
+    setCart((c) => setLineDiscount(c, key, typed));
+  };
+  async function printLast() {
+    try {
+      const last = (await listSales({ search: '', range: 'all', page: 1 })).rows[0];
+      if (!last) return showToast({ text: t('No sale yet.') });
+      await printReceipt(last.id, { shopName: me?.organization.name ?? 'SortPi', branchName: me?.active_branch?.name });
+    } catch (e) {
+      showToast({ text: t(printErrorText(e)) });
+    }
+  }
+  const shippingBox = <ShippingBox value={shipping} onChange={setShipping} problem={shipError} />;
+  const saleOptions = can('pos.manual_discount')
+    ? <SaleOptions focusSignal={discountFocus} discount={orderDiscount} applied={discountShown} onApply={applyDiscount} onClear={() => setOrderDiscount(null)} extra={<><CouponBox d={d} />{shippingBox}</>} />
+    : <View style={{ gap: 10, padding: 10, borderWidth: 1, borderColor: theme.border }}><CouponBox d={d} />{shippingBox}</View>;
+  const goHold = () => (isEmpty(cart) ? needItems() : void putOnHold());
+  const toolbarTiles: ToolbarTile[] = [
+    { key: 'invoices', label: 'Invoices', icon: 'Receipt', color: WebPos.teal, hidden: !seeSales, onPress: () => router.push('/sales') },
+    { key: 'refund', label: 'Refund', icon: 'Undo', color: WebPos.pink, hidden: !can('sale.refund'), onPress: () => router.push('/sales') },
+    { key: 'hold', label: 'Hold', icon: 'Pause', color: WebPos.amber, hidden: !canHold, onPress: goHold },
+    { key: 'held', label: 'Held', badge: String(heldCount), icon: 'History', color: WebPos.violet, hidden: !canHold, onPress: () => setHeldOpen(true) },
+    { key: 'cash', label: 'Cash in/out', icon: 'Cash', color: WebPos.yellow, ink: WebPos.ink, hidden: !can('finance.manage_accounts') || !shift, onPress: () => setCashOpen(true) },
+    { key: 'report', label: 'Report', icon: 'BarChart', color: WebPos.green, hidden: !can('report.sales'), onPress: () => router.push('/day-report') },
+    { key: 'home', label: 'Home', icon: 'Dashboard', color: WebPos.blue, onPress: () => router.navigate('/') },
+    { key: 'products', label: 'Products', icon: 'Package', color: WebPos.purple, hidden: !can('product.view'), onPress: () => router.push('/products') },
+    { key: 'scanners', label: 'Scanners', icon: 'ScanLine', color: WebPos.cyan, hidden: !usesBarcodes, onPress: () => setCameraChoice({ mode: scannerMode, open: !showCamera }) },
+  ];
+  const payButtons: StripButton[] = [
+    { key: 'cash', label: 'Pay · Cash', color: WebPos.blue, onPress: () => payWith('CASH') },
+    { key: 'card', label: 'Eftpos', color: WebPos.orange, onPress: () => payWith('CARD') },
+    { key: 'multiple', label: 'Multiple', color: WebPos.slate, onPress: multiplePay },
+    { key: 'credit', label: 'Credit', color: WebPos.hotPink, onPress: () => payWith('CREDIT') },
+  ];
+  const actionButtons: StripButton[] = [
+    ...(canHold ? [{ key: 'hold', label: 'Hold', color: '#f97316', onPress: goHold }, { key: 'recall', label: heldCount > 0 ? `Recall (${heldCount})` : 'Recall', color: WebPos.teal, onPress: () => setHeldOpen(true) }] : []),
+    { key: 'reset', label: 'Reset', color: WebPos.rose, onPress: resetSale },
+    ...(seeSales ? [{ key: 'recent', label: 'Recent', color: WebPos.sky, onPress: () => router.push('/sales') }] : []),
+  ];
+  const quickActions: QuickAction[] = [
+    { key: 'search', label: 'Product Search', icon: 'Search', onPress: () => setSearchFocus((n) => n + 1) },
+    { key: 'customer', label: 'Customer', icon: 'Users', hidden: !canPickCustomer, onPress: () => setPicking(true) },
+    { key: 'pay', label: 'Payment Method', icon: 'Cash', onPress: () => payWith('CASH') },
+    { key: 'hold', label: 'Hold Sale', icon: 'Pause', hidden: !canHold, onPress: goHold },
+    { key: 'resume', label: 'Resume', icon: 'History', hidden: !canHold, onPress: () => setHeldOpen(true) },
+    { key: 'reset', label: 'Reset Sale', icon: 'Trash2', onPress: resetSale },
+    { key: 'browse', label: 'Browse Products', icon: 'Package', hidden: !can('product.view'), onPress: () => router.push('/products') },
+    { key: 'price', label: 'Price Check', icon: 'ScanLine', hidden: !can('product.view'), onPress: () => router.push('/price-check') },
+    { key: 'fav', label: 'Favorite products', icon: 'Star', onPress: () => setFavoritesOpen(true) },
+    { key: 'layout', label: 'POS layout', icon: 'Sliders', onPress: () => setLayoutOpen(true) },
+    { key: 'tools', label: 'Till tools', icon: 'Sliders', onPress: () => setToolsOpen(true) },
+    { key: 'close', label: 'Day Close', icon: 'Lock', onPress: () => router.push('/end-shift') },
+  ];
+  const billTotal = formatBDT(addMoney((webPanel ? d.totals?.final : undefined) ?? serverTotal ?? estimate, shipAmount ?? '0'));
+  const lineDiscounts = previewQuery.data?.lines?.length === cart.length ? cart.map((_, i) => { const v = previewQuery.data?.lines?.[i]?.discount_amount; return v && Number(v) > 0 ? v : undefined; }) : undefined;
+  const couponShown = d.coupon ? formatBDT(d.coupon.discount) : undefined;
+  const railSale: QuickAction[] = [
+    { key: 'search', label: 'Product search', icon: 'Search', onPress: () => setSearchFocus((n) => n + 1) },
+    { key: 'customer', label: 'Customer', icon: 'Users', hidden: !canPickCustomer, onPress: () => setPicking(true) },
+    { key: 'pay', label: 'Payment method', icon: 'Cash', onPress: () => payWith('CASH') },
+    { key: 'hold', label: 'Hold sale', icon: 'Pause', hidden: !canHold, onPress: goHold },
+    { key: 'resume', label: 'Resume', icon: 'History', hidden: !canHold, badge: heldCount > 0 ? String(heldCount) : undefined, onPress: () => setHeldOpen(true) },
+    { key: 'discount', label: 'Order discount', icon: 'Percent', hidden: !can('pos.manual_discount'), onPress: () => setDiscountFocus((n) => n + 1) },
+    { key: 'reset', label: 'Reset sale', icon: 'Trash2', onPress: resetSale },
+    { key: 'browse', label: 'Browse products', icon: 'Package', hidden: !can('product.view'), onPress: () => router.push('/products') },
+  ];
+  const railTill: QuickAction[] = [
+    { key: 'recent', label: 'Recent sales', icon: 'Receipt', hidden: !seeSales, onPress: () => router.push('/sales') },
+    { key: 'refund', label: 'Refund', icon: 'Undo', hidden: !can('sale.refund'), onPress: () => router.push('/sales') },
+    { key: 'print', label: 'Print last receipt', icon: 'Receipt', hidden: !seeSales, onPress: () => void printLast() },
+    { key: 'cashmove', label: 'Cash in/out', icon: 'Cash', hidden: !can('finance.manage_accounts'), onPress: () => setCashOpen(true) },
+    { key: 'close', label: 'Day Close', icon: 'Lock', onPress: () => router.push('/end-shift') },
+    { key: 'price', label: 'Price Check', icon: 'ScanLine', hidden: !can('product.view'), onPress: () => router.push('/price-check') },
+    { key: 'fav', label: 'Favorite products', icon: 'Star', onPress: () => setFavoritesOpen(true) },
+    { key: 'layout', label: 'POS layout', icon: 'Sliders', onPress: () => setLayoutOpen(true) },
+    { key: 'tools', label: 'Till tools', icon: 'Sliders', onPress: () => setToolsOpen(true) },
+  ];
+  const showRail = width >= 1400; // room for the web's permanent quick-actions panel
+  const webLayout = (
+    <View style={{ flex: 1, backgroundColor: theme.canvas }}>
+      {headerBar}
+      <WebToolbar cashier={me?.full_name || me?.email || undefined} shift={shift?.counter_name ?? me?.active_branch?.name ?? '—'} invoice={invoiceNo} tiles={toolbarTiles} wholesale={!!ctx?.wholesale} onPriceMode={setPriceMode} online={!offline}
+        onRefresh={() => { void queryClient.invalidateQueries(); void heldQuery.refetch(); }} onActions={() => setActionsOpen(true)} onEndShift={() => router.push('/end-shift')} />
+      <View style={{ flex: 1, flexDirection: 'row' }}>
+        {showRail ? <View style={{ width: 270, padding: 12, paddingEnd: 0 }}><QuickActionsPanel sale={railSale} till={railTill} /></View> : null}
+        <View style={{ flex: 1, minWidth: 0, padding: 12, gap: 10 }}>
+          <ScrollView keyboardShouldPersistTaps="handled" style={{ flexGrow: 0, maxHeight: 320 }}>{itemPicker(true)}</ScrollView>
+          {notice ? <Notice>{notice}</Notice> : null}
+          <WebInvoiceTable cart={cart} discounts={lineDiscounts} canPrice={can('pos.price_override')} canDiscount={can('pos.manual_discount')} onPrice={commitLinePrice} onDiscount={commitLineDiscount} onQuantity={(key, value) => setCart((c) => setQuantity(c, key, value))} onRemove={removeWithUndo}
+            onEditing={(key, editing) => setSheetEditingKey((current) => editing ? key : current === key ? null : current)} />
+          <WebPaymentStrip total={billTotal} pay={payButtons} actions={actionButtons} />
+        </View>
+        <View style={{ width: 340 }}>
+          <BillingSummary invoice={invoiceNo} wholesale={!!ctx?.wholesale} customer={customer?.name ?? null}
+            owes={customer && amountDue(customer.balance) !== '0.00' ? t('Owes {amount}', { amount: formatBDT(amountDue(customer.balance)) }) : undefined}
+            onCustomer={canPickCustomer ? () => setPicking(true) : undefined} lines={cart.length} items={itemCount(cart)}
+            subtotal={formatBDT(previewQuery.data?.subtotal ?? estimate)} discount={discountShown ?? (orderDiscount ? formatBDT('0') : undefined)} tax={previewQuery.data ? formatBDT(previewQuery.data.tax_amount) : undefined}
+            coupon={couponShown} shipping={shipAmount ? formatBDT(shipAmount) : undefined} onFind={canPickCustomer ? () => setPicking(true) : undefined} onAdd={can('customer.create') ? () => router.push('/add-customer') : undefined} grand={billTotal} note={!serverTotal && !isEmpty(cart) ? totalNote : null}>{saleOptions}</BillingSummary>
+        </View>
+      </View>
+      {overlays}
+    </View>
+  );
+
+  const webTouchLayout = (
+    <View style={{ flex: 1, backgroundColor: theme.canvas }}>
+      {headerBar}
+      <WebToolbar cashier={me?.full_name || me?.email || undefined} shift={shift?.counter_name ?? me?.active_branch?.name ?? '—'} invoice={invoiceNo} tiles={toolbarTiles} wholesale={!!ctx?.wholesale} onPriceMode={setPriceMode} online={!offline}
+        onRefresh={() => { void queryClient.invalidateQueries(); void heldQuery.refetch(); }} onActions={() => setActionsOpen(true)} onEndShift={() => router.push('/end-shift')} />
+      <View style={{ flex: 1, flexDirection: 'row' }}>
+        <ScrollView keyboardShouldPersistTaps="handled" style={{ flex: 1, minWidth: 0 }} contentContainerStyle={{ padding: 12, gap: 10 }}>
+          {itemPicker(true)}
+          {notice ? <Notice>{notice}</Notice> : null}
+        </ScrollView>
+        <View style={{ width: 300 }}>
+          <WebOrderColumn cart={cart} onStep={(key, by) => setCart((c) => changeQuantity(c, key, by))} onRemove={removeWithUndo} onClear={resetSale} />
+        </View>
+        <View style={{ width: 330 }}>
+          <BillingSummary invoice={invoiceNo} wholesale={!!ctx?.wholesale} customer={customer?.name ?? null}
+            owes={customer && amountDue(customer.balance) !== '0.00' ? t('Owes {amount}', { amount: formatBDT(amountDue(customer.balance)) }) : undefined}
+            onCustomer={canPickCustomer ? () => setPicking(true) : undefined} lines={cart.length} items={itemCount(cart)}
+            subtotal={formatBDT(previewQuery.data?.subtotal ?? estimate)} discount={discountShown ?? (orderDiscount ? formatBDT('0') : undefined)} tax={previewQuery.data ? formatBDT(previewQuery.data.tax_amount) : undefined}
+            coupon={couponShown} shipping={shipAmount ? formatBDT(shipAmount) : undefined} onFind={canPickCustomer ? () => setPicking(true) : undefined} onAdd={can('customer.create') ? () => router.push('/add-customer') : undefined} grand={billTotal} note={!serverTotal && !isEmpty(cart) ? totalNote : null}
+            footer={(
+              <>
+                <StripButtons columns={2} buttons={payButtons} />
+                <Button title={`${t('Place order')} ${billTotal}`} variant="success" size="lg" disabled={isEmpty(cart) || !serverTotal} onPress={() => payWith(method)} />
+                <StripButtons buttons={actionButtons} />
+              </>
+            )} />
+        </View>
+      </View>
+      {overlays}
+    </View>
+  );
+
+  const expressTiles: ToolbarTile[] = [
+    { key: 'home', label: 'Home', icon: 'Dashboard', color: WebPos.blue, onPress: () => router.navigate('/') },
+    { key: 'hold', label: 'Hold', icon: 'Pause', color: '#ea580c', hidden: !canHold, onPress: goHold },
+    { key: 'shortcut', label: 'Actions', icon: 'Sliders', color: '#7c3aed', onPress: () => setActionsOpen(true) },
+    { key: 'back', label: 'Back', icon: 'Undo', color: '#64748b', onPress: () => (router.canGoBack() ? router.back() : router.navigate('/')) },
+    { key: 'full', label: 'Full Screen', icon: 'ArrowUpRight', color: '#4f46e5', onPress: () => setTillFocus(true) },
+    { key: 'scanner', label: 'Scanner', icon: 'ScanLine', color: '#0ea5e9', hidden: !usesBarcodes, onPress: () => setCameraChoice({ mode: scannerMode, open: !showCamera }) },
+    { key: 'layout', label: 'Layout', icon: 'Layers', color: WebPos.blue, onPress: () => setLayoutOpen(true) },
+    { key: 'online', label: offline ? 'Offline' : 'Online', icon: offline ? 'WifiOff' : 'Activity', color: offline ? WebPos.red : '#16a34a', onPress: () => void queryClient.invalidateQueries() },
+    { key: 'notify', label: 'Notification', icon: 'Bell', color: '#e11d48', hidden: !can('notification.view'), onPress: () => router.push('/notifications') },
+  ];
+  const webExpressLayout = (
+    <View style={{ flex: 1, backgroundColor: theme.canvas }}>
+      {headerBar}
+      <ExpressBar shift={shift?.counter_name ?? me?.active_branch?.name ?? '—'} invoice={invoiceNo} tiles={expressTiles} />
+      <View style={{ flex: 1, flexDirection: 'row', padding: 10, paddingTop: 0, gap: 10 }}>
+        <View style={{ flex: 1, minWidth: 0, gap: 10, padding: 12, backgroundColor: theme.card, borderWidth: 1, borderColor: theme.border }}>
+          <ScrollView keyboardShouldPersistTaps="handled" style={{ flexGrow: 0, maxHeight: 300 }}>{itemPicker(true)}</ScrollView>
+          {notice ? <Notice>{notice}</Notice> : null}
+          {isEmpty(cart) ? (
+            <View style={{ alignItems: 'center', gap: 4, padding: 16, backgroundColor: theme.canvas, borderWidth: 1, borderColor: theme.border }}>
+              <ThemedText type="heading">{t('Ready for the next customer')}</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: 'center' }}>{t('Scan the first item. Pin items you sell without a barcode as quick keys.')}</ThemedText>
+            </View>
+          ) : null}
+          <View style={{ flex: 1, borderWidth: 1, borderColor: theme.border }}>
+            <WebOrderColumn cart={cart} onStep={(key, by) => setCart((c) => changeQuantity(c, key, by))} onRemove={removeWithUndo} onClear={resetSale} />
+          </View>
+          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 10 }}>
+            <ThemedText type="small" themeColor="textSecondary">{linesAndItems(t, cart.length, itemCount(cart))}</ThemedText>
+            <ThemedText type="heading">{billTotal}</ThemedText>
+          </View>
+        </View>
+        <View style={{ width: 380 }}>
+          <ExpressDetails counter={shift?.counter_name ?? me?.active_branch?.name ?? '—'} invoice={invoiceNo} onPriceMode={setPriceMode} options={saleOptions} customer={customer?.name ?? null}
+            owes={customer && amountDue(customer.balance) !== '0.00' ? t('Owes {amount}', { amount: formatBDT(amountDue(customer.balance)) }) : undefined}
+            onCustomer={canPickCustomer ? () => setPicking(true) : undefined} onAddCustomer={can('customer.create') ? () => router.push('/add-customer') : undefined}
+            wholesale={!!ctx?.wholesale} lines={cart.length} items={itemCount(cart)} total={billTotal} empty={isEmpty(cart)} onClear={resetSale}
+            buttons={{ pay: () => payWith('CASH'), quick: quickPay, credit: () => payWith('CREDIT'), recent: seeSales ? () => router.push('/sales') : undefined, hold: canHold ? goHold : undefined, reset: resetSale }} />
+        </View>
+      </View>
+      {overlays}
+    </View>
+  );
+
+  const wallButtons = { pay: () => payWith('CASH'), quick: quickPay, credit: () => payWith('CREDIT'), recent: seeSales ? () => router.push('/sales') : undefined, hold: canHold ? goHold : undefined, reset: resetSale };
+  const webWallLayout = (
+    <View style={{ flex: 1, backgroundColor: theme.canvas }}>
+      {headerBar}
+      <ExpressBar shift={shift?.counter_name ?? me?.active_branch?.name ?? '—'} invoice={invoiceNo} tiles={expressTiles} />
+      <View style={{ flex: 1, flexDirection: 'row', padding: 10, paddingTop: 0, gap: 10 }}>
+        <View style={{ width: 290 }}>
+          <QuickActionsRail actions={quickActions} picked={wallCategory} onPickCategory={setWallCategory} onClearCategory={() => setWallCategory(null)} />
+        </View>
+        <View style={{ flex: 1, minWidth: 0, backgroundColor: theme.card, borderWidth: 1, borderColor: theme.border }}>
+          <ScrollView keyboardShouldPersistTaps="handled" style={{ flex: 1 }} contentContainerStyle={{ padding: 12, gap: 10 }}>
+            {itemPicker(true)}
+            {notice ? <Notice>{notice}</Notice> : null}
+          </ScrollView>
+          <WallCheckout options={saleOptions} items={itemCount(cart)} unique={cart.length} total={billTotal} empty={isEmpty(cart)} buttons={wallButtons} />
+        </View>
+        <View style={{ width: 400 }}>
+          <WallOrderPanel counter={shift?.counter_name ?? me?.active_branch?.name ?? '—'} invoice={invoiceNo} onPriceMode={setPriceMode} customer={customer?.name ?? null}
+            owes={customer && amountDue(customer.balance) !== '0.00' ? t('Owes {amount}', { amount: formatBDT(amountDue(customer.balance)) }) : undefined}
+            onCustomer={canPickCustomer ? () => setPicking(true) : undefined} onAddCustomer={can('customer.create') ? () => router.push('/add-customer') : undefined}
+            wholesale={!!ctx?.wholesale} lines={cart.length} empty={isEmpty(cart)} onClear={resetSale}>
+            <WebOrderColumn cart={cart} onStep={(key, by) => setCart((c) => changeQuantity(c, key, by))} onRemove={removeWithUndo} onClear={resetSale} />
+          </WallOrderPanel>
+        </View>
+      </View>
+      {overlays}
+    </View>
+  );
+
   return (
     <View style={{ flex: 1 }}>
     <View style={{ flex: 1, flexDirection: splitTill ? 'row' : 'column', backgroundColor: theme.canvas }}>
+    {webSheet ? webLayout : webTouch ? webTouchLayout : webExpress ? webExpressLayout : webWall ? webWallLayout : (<>
     <Screen topInset={false} keyboardGap={showBar ? barHeight + 40 : 24}>
-      <Stack.Screen options={{ headerRight: mode === 'scan' ? () => (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          {focusExit?.()}
-          {splitTill ? <HeaderAction title="POS layout" icon="Sliders" onPress={() => { Keyboard.dismiss(); setLayoutOpen(true); }} /> : null}
-          <HeaderAction title="Till tools" onPress={() => { Keyboard.dismiss(); setToolsOpen(true); }} />
-        </View>
-      ) : focusExit }} />
+      {headerBar}
       {mode === 'scan' ? (
         <View style={{ gap: 4 }}>
           <ThemedText type="heading">Products</ThemedText>
@@ -851,27 +1219,7 @@ export default function SellScreen() {
           {hardwareScannerEnabled && sunmiHandheldScanHint ? (
             <ThemedText type="small" themeColor="textMuted">Use the side button to scan</ThemedText>
           ) : null}
-          <ItemPicker
-            acceptKeyboardCode={acceptKeyboardCode}
-            subscribeToBroadcast={subscribeToBroadcast}
-            layout={splitTill ? tablet.layout : undefined}
-            favorites={favorites.favorites}
-            favoritesBusy={favorites.busy}
-            onFavorite={toggleFavorite}
-            onPick={pickItem}
-            qtyOf={(id) => splitTill && tablet.layout === 'touch'
-              ? Number(lastQuantity(cart, { variantId: id, unitId: null }) ?? 0)
-              : inCart.get(id) ?? 0}
-            onFewer={(item) => setCart((c) => changeQuantity(c, lineKey(item.variantId, null), -1))}
-            onCode={(c) => void onCode(c, false)}
-            wholesale={!!customer?.wholesale}
-            branchId={ctx?.branchId}
-            scan={usesBarcodes ? {
-              open: showCamera,
-              toggle: () => setCameraChoice({ mode: scannerMode, open: !showCamera }),
-              preview: showCamera ? <Scanner feedbackHandled height={splitTill ? 160 : 180} onCode={(c) => void onCode(c)} paused={scanNote !== null || again !== null || toolsOpen} /> : undefined,
-            } : undefined}
-          />
+          {itemPicker(false)}
           {sheetTill && !invoiceBesideProducts ? (
             <View style={{ gap: 8 }}>
               <ThemedText type="bodyMedium">Invoice</ThemedText>
@@ -881,9 +1229,7 @@ export default function SellScreen() {
         </>
       ) : null}
 
-      <UnfinishedSaleSheet pending={mode === 'scan' && !hidePending ? pending : null} busy={busy} onFinish={() => pending && void finishPending(pending)} onLater={() => setHidePending(true)} onDiscard={discardPending} notice={notice} />
-      <ScannedAgainSheet item={mode === 'scan' ? again : null} inCart={again ? lastQuantity(cart, again) : null} onYes={() => { if (again) addToOrder(again); setAgain(null); }} onNo={() => setAgain(null)} />
-      <ScanNoteSheet note={mode === 'scan' ? scanNote : null} canAdd={me?.permissions?.includes('product.create') ?? false} onAdd={(code) => { setScanNote(null); router.push({ pathname: '/add-product', params: { code, from: 'sell' } }); }} onDismiss={() => setScanNote(null)} />
+      {overlays}
       {notice ? <Notice>{notice}</Notice> : null}
 
       {mode === 'done' && result ? (
@@ -979,6 +1325,7 @@ export default function SellScreen() {
         </View>
       </View>
     ) : null}
+    </>)}
     </View>
     {/* Stays on screen while the cart scrolls, so paying is one tap away however long the bill is. */}
     {showBar ? (
@@ -994,6 +1341,9 @@ export default function SellScreen() {
       </Animated.View>
       </KeyboardStickyView>
     ) : null}
+    <CashSheet visible={cashOpen} shiftId={shift?.id} onClose={() => setCashOpen(false)} onDone={() => { setCashOpen(false); showToast({ text: t('Cash recorded.') }); void queryClient.invalidateQueries({ queryKey: ['shift'] }); }} />
+    <SplitPaySheet visible={splitOpen && mode === 'pay'} total={payTotal ?? '0'} hasCustomer={!!customer} onClose={() => setSplitOpen(false)} onUse={(plan) => { setSplitPlan({ payments: plan.payments, due: plan.due }); setSplitOpen(false); }} />
+    <QuickActionsDrawer visible={actionsOpen && (webSheet || webTouch || webExpress || webWall)} onClose={() => setActionsOpen(false)} actions={quickActions} />
     <BottomSheet visible={toolsOpen && mode === 'scan'} onClose={() => setToolsOpen(false)} title="Till tools">
       <View style={{ gap: 8, paddingHorizontal: 16 }}>
         {me?.permissions?.includes('product.view') ? <Button title="Price Check" variant="secondary" onPress={() => { setToolsOpen(false); router.push('/price-check'); }} /> : null}

@@ -1,4 +1,4 @@
-import { compareMoney, subMoney, type Money } from '../lib/money.ts';
+import { addMoney, compareMoney, parseMoney, subMoney, type Money } from '../lib/money.ts';
 import type { PaymentInput, PaymentMethod } from './cart.ts';
 
 export type PayChoice = PaymentMethod | 'CREDIT';
@@ -55,3 +55,38 @@ export const walletReference = (wallet: string | null, txn: string): string => {
   const room = MAX_REFERENCE - (wallet ? wallet.length + 1 : 0);
   return [wallet, txn.trim().slice(0, Math.max(0, room))].filter(Boolean).join(' ');
 };
+
+export type SplitRow = { method: 'CASH' | 'CARD' | 'MOBILE' | 'BANK'; amount: string; reference: string };
+
+/**
+ * Several ways of paying for one sale ("Multiple payment"): each row is a method and an amount. The parts may not come to more than the
+ * total; when they come to less, the rest goes on a named customer's account, and a walk-in must pay it all. Empty rows are ignored.
+ */
+export function buildSplitPayments(rows: SplitRow[], total: Money, hasCustomer: boolean): { payments: PaymentInput[]; due: Money; problem: string | null } {
+  const used = rows.filter((r) => r.amount.trim() !== '');
+  if (used.some((r) => !isAmount(r.amount) || compareMoney(r.amount, '0') <= 0)) return { payments: [], due: total, problem: 'Enter each amount like 500 or 500.50.' };
+  if (used.length < 2) return { payments: [], due: total, problem: 'Split the bill between at least two ways of paying.' };
+  const sum = used.reduce((n, r) => addMoney(n, r.amount.trim()), '0');
+  if (compareMoney(sum, total) > 0) return { payments: [], due: total, problem: 'The parts come to more than the total.' };
+  const due = subMoney(total, sum);
+  if (compareMoney(due, '0') > 0 && !hasCustomer) return { payments: [], due, problem: 'The parts come to less than the total. Choose a customer to leave the rest on their account, or make them add up.' };
+  const payments: PaymentInput[] = used.map((r) => {
+    const ref = r.reference.trim().slice(0, MAX_REFERENCE);
+    return { payment_method: r.method, amount: r.amount.trim(), ...(ref && r.method !== 'CASH' ? { reference_no: ref } : {}) };
+  });
+  return { payments, due, problem: null };
+}
+
+/** The cash a customer is most likely to hand over for `total`: exactly the bill, then the next round notes above it (50, 100, 500, 1000, 2000). */
+export function quickCashOffers(total: Money): Money[] {
+  const t = parseMoney(total);
+  const out: Money[] = [t.toFixed(2)];
+  for (const step of [50, 100, 500, 1000, 2000]) {
+    const up = t.div(step).round(0, 3).times(step); // rounded up to a whole step
+    const v = up.eq(t) ? up.plus(step) : up;
+    const f = v.toFixed(2);
+    if (!out.includes(f)) out.push(f);
+    if (out.length === 5) break;
+  }
+  return out;
+}

@@ -1,8 +1,8 @@
-import { looksLikeCode } from './code-input';
+import { looksLikeCode, splitQuantity } from './code-input';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
-import { useEffect, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { useEffect, useRef, useState, type ComponentRef } from 'react';
+import { ScrollView, TextInput, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
@@ -12,6 +12,7 @@ import { Icon } from '@/components/icons/icon';
 import { SkeletonRows } from '@/components/skeleton';
 import { Tap } from '@/components/tap';
 import { ThemedText } from '@/components/themed-text';
+import { WebPos } from '@/constants/palette';
 import { Radius, Spacing } from '@/constants/theme';
 import { listCategories } from '@/catalog/api';
 import { useTheme } from '@/hooks/use-theme';
@@ -27,11 +28,11 @@ import type { Favorite } from './use-favorite-products';
  * Selling without a barcode: type a name or code and tap the result, or tap an item from the shop's own list (most sold first),
  * narrowed by category. The camera is one optional button next to the search box.
  */
-export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId, scan, acceptKeyboardCode, subscribeToBroadcast, layout, favorites, favoritesBusy, onFavorite }: {
-  onPick: (item: CatalogItem) => void;
+export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId, scan, acceptKeyboardCode, subscribeToBroadcast, layout, favorites, favoritesBusy, onFavorite, webBar, focusSignal, category: pickedCategory, onEmpty }: {
+  onPick: (item: CatalogItem, quantity?: number) => void;
   onFewer?: (item: CatalogItem) => void;
   qtyOf: (variantId: string) => number;
-  onCode: (code: string) => void;
+  onCode: (code: string, quantity?: number) => void;
   wholesale: boolean;
   branchId?: string;
   scan?: { open: boolean; toggle: () => void; preview?: React.ReactNode };
@@ -41,6 +42,14 @@ export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId
   favorites: Favorite[];
   favoritesBusy: boolean;
   onFavorite: (item: CatalogItem) => void;
+  /** The web till's search bar: a framed box with a Search button. */
+  webBar?: boolean;
+  /** A new number takes the cursor to the search box. */
+  focusSignal?: number;
+  /** The category chosen outside (the web's side rail); the chips are then not shown. */
+  category?: string | null;
+  /** Enter on an empty search box (the web till goes to payment). */
+  onEmpty?: () => void;
 }) {
   const theme = useTheme();
   const { t } = usePrefs();
@@ -51,13 +60,20 @@ export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId
   const columns = gridWidth >= 660 && !touch ? 4 : gridWidth >= 500 ? 3 : 2;
   const tileWidth = layout && gridWidth > 0 ? Math.floor((gridWidth - Spacing.two * (columns - 1)) / columns) : undefined;
   const [text, setText] = useState('');
+  const inputRef = useRef<ComponentRef<typeof TextInput>>(null);
+  useEffect(() => {
+    if (!focusSignal) return;
+    const id = setTimeout(() => inputRef.current?.focus(), 250); // after a closing panel has let go of the keyboard
+    return () => clearTimeout(id);
+  }, [focusSignal]);
   const [typed, setTyped] = useState('');
   useEffect(() => subscribeToBroadcast?.((code) => {
     setText((current) => current.trim() === code ? '' : current);
   }), [subscribeToBroadcast]);
-  const [category, setCategory] = useState<string | null>(null);
+  const [ownCategory, setCategory] = useState<string | null>(null);
+  const category = pickedCategory !== undefined ? pickedCategory : ownCategory;
   useEffect(() => {
-    const id = setTimeout(() => setTyped(text.trim()), 250);
+    const id = setTimeout(() => setTyped(splitQuantity(text).text.trim()), 250);
     return () => clearTimeout(id);
   }, [text]);
 
@@ -78,21 +94,25 @@ export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId
 
   /** Enter on what was typed: a code (barcode or SKU) is looked up exactly; with words, one match on screen is taken. */
   function submit(value: string) {
-    const q = value.trim();
-    if (!q) return;
+    const { quantity, text: q } = splitQuantity(value);
+    const word = q.trim();
+    if (!word) {
+      onEmpty?.();
+      return;
+    }
     // A scanner's code plus Enter arrives before the search below has even started: look the code up exactly, now, not in the list on screen.
-    const code = looksLikeCode(q);
-    const match = typed === q && !list.isPlaceholderData && items.length === 1;
-    const allowed = acceptKeyboardCode?.(q, code || match) !== false;
+    const code = looksLikeCode(word);
+    const match = typed === word && !list.isPlaceholderData && items.length === 1;
+    const allowed = acceptKeyboardCode?.(word, code || match) !== false;
     if (allowed && !code && !match) return;
     if (allowed) {
-      if (code) onCode(q);
-      else onPick(items[0]);
+      if (code) onCode(word, quantity);
+      else onPick(items[0], quantity);
     }
     setText('');
   }
 
-  const filters = !typed && !express && !sheet && (categories.data?.length ?? 0) > 0 ? (
+  const filters = !typed && !express && !sheet && pickedCategory === undefined && (categories.data?.length ?? 0) > 0 ? (
     [{ id: null as string | null, name: t('All') }, ...(categories.data ?? [])].map((c) => {
       const on = category === c.id;
       return (
@@ -107,7 +127,19 @@ export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId
     <View style={{ gap: Spacing.three }}>
       <View style={{ flexDirection: 'row', gap: Spacing.two, alignItems: 'flex-end' }}>
         <View style={{ flex: 1 }}>
-          <Field label={express ? "Scan or enter a code" : "Find an item"} value={text} disableFullscreenUI onChangeText={setText} placeholder="Name or code" autoCapitalize="none" autoCorrect={false} returnKeyType="search" submitBehavior="submit" onSubmitEditing={(event) => submit(event.nativeEvent.text)} />
+          {webBar ? (
+            <View style={{ flexDirection: 'row', alignItems: 'stretch', height: 48, borderWidth: 2, borderColor: WebPos.blue, backgroundColor: theme.card }}>
+              <View style={{ width: 44, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.brandSoft }}>
+                <Icon name="Search" size={18} color={theme.brandText} />
+              </View>
+              <TextInput ref={inputRef} accessibilityLabel={t('Find an item')} value={text} disableFullscreenUI onChangeText={setText} placeholder={t('Scan or type a product · Enter on empty: pay')} placeholderTextColor={theme.textMuted} autoCapitalize="none" autoCorrect={false} returnKeyType="search" submitBehavior="submit" onSubmitEditing={(event) => submit(event.nativeEvent.text)} style={{ flex: 1, minWidth: 0, paddingHorizontal: 12, color: theme.text, fontSize: 15 }} />
+              <Tap accessibilityRole="button" accessibilityLabel={t('Search')} onPress={() => submit(text)} style={{ paddingHorizontal: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: WebPos.blue }}>
+                <ThemedText type="smallMedium" style={{ color: '#ffffff', letterSpacing: 0.6 }}>{t('SEARCH')}</ThemedText>
+              </Tap>
+            </View>
+          ) : (
+            <Field label={express ? "Scan or enter a code" : "Find an item"} value={text} disableFullscreenUI onChangeText={setText} placeholder="Name or code" autoCapitalize="none" autoCorrect={false} returnKeyType="search" submitBehavior="submit" onSubmitEditing={(event) => submit(event.nativeEvent.text)} />
+          )}
         </View>
         {scan ? (
           <Tap accessibilityRole="button" accessibilityLabel={t(scan.open ? 'Stop the camera' : 'Scan a barcode')} onPress={scan.toggle} style={{ width: 48, height: 48, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: scan.open ? theme.brand : theme.card, borderWidth: 1, borderColor: scan.open ? theme.brand : theme.inputBorder }}>

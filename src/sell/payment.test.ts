@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { buildPayments } from './payment.ts';
+import { buildPayments, buildSplitPayments, quickCashOffers } from './payment.ts';
 
 const base = { total: '1000.00', payNow: '', reference: '', hasCustomer: false };
 
@@ -99,4 +99,25 @@ test('a shop is offered gift cards by its trade or by its payment list', () => {
   assert.equal(giftCardOffered(['expiry'], 'Card, bKash, Nagad'), false);
   assert.equal(giftCardOffered(undefined, undefined), false);
   assert.equal(giftCardOffered([], 42), false);
+});
+
+test('multiple payment: the parts add up to the total, each with its own reference', () => {
+  const r = buildSplitPayments([{ method: 'CASH', amount: '300', reference: 'x' }, { method: 'MOBILE', amount: '700', reference: ' TRX9 ' }, { method: 'CARD', amount: '', reference: '' }], '1000.00', false);
+  assert.equal(r.problem, null);
+  assert.deepEqual(r.payments, [{ payment_method: 'CASH', amount: '300' }, { payment_method: 'MOBILE', amount: '700', reference_no: 'TRX9' }]);
+  assert.equal(r.due, '0');
+});
+
+test('multiple payment: more than the total, one part only, or a walk-in short are refused', () => {
+  const two = (a: string, b: string) => [{ method: 'CASH' as const, amount: a, reference: '' }, { method: 'CARD' as const, amount: b, reference: '' }];
+  assert.match(buildSplitPayments(two('600', '600'), '1000', true).problem ?? '', /more than/);
+  assert.match(buildSplitPayments(two('1000', ''), '1000', true).problem ?? '', /at least two/);
+  assert.match(buildSplitPayments(two('300', '300'), '1000', false).problem ?? '', /less than/);
+  assert.equal(buildSplitPayments(two('300', '300'), '1000', true).due, '400');
+  assert.match(buildSplitPayments(two('abc', '300'), '1000', true).problem ?? '', /Enter each amount/);
+});
+
+test('quick cash offers the exact bill, then round notes above it', () => {
+  assert.deepEqual(quickCashOffers('368.14'), ['368.14', '400.00', '500.00', '1000.00', '2000.00']);
+  assert.deepEqual(quickCashOffers('500'), ['500.00', '550.00', '600.00', '1000.00', '2000.00']);
 });
