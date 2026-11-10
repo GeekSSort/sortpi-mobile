@@ -1,7 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 
 import { setReachable } from '../ui/connection';
-import { ApiError, createApiClient, type TokenStore } from './client';
+import { ApiError, createApiClient, type SessionEndReason, type TokenStore } from './client';
 
 const ACCESS = 'sortpi.access';
 const REFRESH = 'sortpi.refresh';
@@ -22,7 +22,7 @@ export const secureTokens: TokenStore = {
 };
 
 let baseUrl: string | null = null;
-let sessionEndListener: (() => void) | undefined;
+let sessionEndListener: ((reason: SessionEndReason) => void) | undefined;
 
 export { workspaceToBaseUrl } from './workspace-url';
 
@@ -36,12 +36,12 @@ export async function setWorkspace(url: string): Promise<void> {
 }
 /** Sign out: tokens only; the workspace address is remembered. */
 export const endSession = () => secureTokens.clear();
-export const onSessionEnd = (fn: () => void) => void (sessionEndListener = fn);
+export const onSessionEnd = (fn: (reason: SessionEndReason) => void) => void (sessionEndListener = fn);
 
 export const api = createApiClient({
   baseUrl: () => baseUrl,
   tokens: secureTokens,
-  onSessionEnd: () => sessionEndListener?.(),
+  onSessionEnd: (reason) => sessionEndListener?.(reason),
   onReach: setReachable,
 });
 

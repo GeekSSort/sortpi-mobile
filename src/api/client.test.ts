@@ -175,3 +175,62 @@ test('a typed shop address must be https in a release build; a plain name become
   assert.throws(() => workspaceToBaseUrl('http://evil.example.com', 'sortpi.com'));
   assert.equal(workspaceToBaseUrl('http://localhost:8010', 'sortpi.com', true), 'http://localhost:8010/api/v1'); // a developer's own server
 });
+
+test('the refresh waits far longer than other calls, so a slow answer is not given up on and the old token sent again', async () => {
+  const tokens = memoryTokens('OLD', 'R1');
+  let calls = 0;
+  const client = createApiClient({
+    baseUrl: () => BASE,
+    tokens,
+    timeoutMs: 30, // an ordinary call gives up at once in this test
+    fetchImpl: async (url, init) => {
+      if (String(url).endsWith('/auth/refresh')) {
+        // answers after 120 ms: longer than the ordinary wait, well within the refresh's
+        await new Promise((resolve) => setTimeout(resolve, 120));
+        if (init?.signal?.aborted) throw new Error('aborted');
+        return json(200, { success: true, data: { access: 'NEW', refresh: 'R2' } });
+      }
+      calls += 1;
+      return calls === 1 ? json(401, { success: false, code: 'TOKEN_EXPIRED', message: 'expired' }) : json(200, { success: true, data: { ok: true } });
+    },
+  });
+  assert.deepEqual(await client.get('/auth/me'), { ok: true });
+  assert.equal(tokens.state.refresh, 'R2');
+});
+
+test('a refresh whose reply was lost, then refused as a reuse, ends the session as interrupted by the connection', async () => {
+  const tokens = memoryTokens('OLD', 'R1');
+  const reasons: string[] = [];
+  let refreshCalls = 0;
+  const client = createApiClient({
+    baseUrl: () => BASE,
+    tokens,
+    onSessionEnd: (reason) => void reasons.push(reason),
+    fetchImpl: async (url) => {
+      if (String(url).endsWith('/auth/refresh')) {
+        refreshCalls += 1;
+        if (refreshCalls === 1) throw new TypeError('Network request failed'); // the server may have swapped the token; the answer never came
+        return json(401, { success: false, code: 'REFRESH_TOKEN_REUSED', message: 'reused' });
+      }
+      return json(401, { success: false, code: 'TOKEN_EXPIRED', message: 'expired' });
+    },
+  });
+  await assert.rejects(client.get('/auth/me'), (e: unknown) => e instanceof ApiError && e.code === 'NETWORK_ERROR');
+  assert.deepEqual(reasons, []); // still signed in after one lost answer
+  assert.equal(tokens.state.refresh, 'R1');
+  await assert.rejects(client.get('/auth/me'));
+  assert.deepEqual(reasons, ['interrupted']);
+  assert.equal(tokens.state.refresh, null);
+});
+
+test('a reuse with no lost reply before it is an ordinary end of session', async () => {
+  const reasons: string[] = [];
+  const client = createApiClient({
+    baseUrl: () => BASE,
+    tokens: memoryTokens('OLD', 'R1'),
+    onSessionEnd: (reason) => void reasons.push(reason),
+    fetchImpl: async (url) => (String(url).endsWith('/auth/refresh') ? json(401, { success: false, code: 'REFRESH_TOKEN_REUSED', message: 'reused' }) : json(401, { success: false, code: 'TOKEN_EXPIRED', message: 'expired' })),
+  });
+  await assert.rejects(client.get('/auth/me'));
+  assert.deepEqual(reasons, ['other']);
+});
