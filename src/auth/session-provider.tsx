@@ -51,6 +51,8 @@ type Session = {
   unlock: () => Promise<boolean>;
   lockTill: (resume: boolean) => Promise<boolean>;
   resumeTill: boolean;
+  /** True when the sign-in screen is showing because a bad connection cut the session off. */
+  interrupted: boolean;
   manualLock: boolean;
   clearTillResume: () => void;
   beforeTillLock: (save: () => Promise<void>) => () => void;
@@ -78,6 +80,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const lockBusy = useRef(false);
   const saveTill = useRef<(() => Promise<void>) | null>(null);
   const [resumeTill, setResumeTill] = useState(false);
+  const [interrupted, setInterrupted] = useState(false); // the last session ended because a refresh was cut off, not because the person signed out
   const [manualLock, setManualLock] = useState(false);
   const clearTillResume = useCallback(() => setResumeTill(false), []);
   const beforeTillLock = useCallback((save: () => Promise<void>) => {
@@ -141,9 +144,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, [queryClient]);
 
   useEffect(() => {
-    onSessionEnd(() => {
+    onSessionEnd((reason) => {
       forgetSession();
       setMe(null);
+      setInterrupted(reason === 'interrupted');
       setStatus('signedOut');
     });
     // The status is already 'booting' the first time. Started a moment later, so nothing is set while this effect is still running.
@@ -162,6 +166,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       const pair = await api.post<{ access: string; refresh: string }>('/auth/login', { email: email.trim(), password }, { anonymous: true });
       if (!pair?.access) throw new ApiError(401, 'INVALID_CREDENTIALS', 'Email or password is incorrect.');
       await secureTokens.set(pair.access, pair.refresh);
+      setInterrupted(false);
       await loadMe();
     },
     [loadMe],
@@ -252,8 +257,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => identify(me), [me]);
 
   const value = useMemo(
-    () => ({ status, me, workspaceUrl, biometricAvailable, biometricEnabled, unlocking, unlockError, chooseWorkspace, signIn, signOut, unlock, lockTill, resumeTill, manualLock, clearTillResume, beforeTillLock, retry: boot, setBiometricEnabled }),
-    [status, me, workspaceUrl, biometricAvailable, biometricEnabled, unlocking, unlockError, chooseWorkspace, signIn, signOut, unlock, lockTill, resumeTill, manualLock, clearTillResume, beforeTillLock, boot, setBiometricEnabled],
+    () => ({ status, me, workspaceUrl, biometricAvailable, biometricEnabled, unlocking, unlockError, chooseWorkspace, signIn, signOut, unlock, lockTill, resumeTill, interrupted, manualLock, clearTillResume, beforeTillLock, retry: boot, setBiometricEnabled }),
+    [status, me, workspaceUrl, biometricAvailable, biometricEnabled, unlocking, unlockError, chooseWorkspace, signIn, signOut, unlock, lockTill, resumeTill, interrupted, manualLock, clearTillResume, beforeTillLock, boot, setBiometricEnabled],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

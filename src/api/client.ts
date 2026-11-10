@@ -30,6 +30,15 @@ const FRIENDLY: Record<string, string> = {
   SUBSCRIPTION_INACTIVE: "Your shop's SortPi plan is not active. Please contact SortPi support.",
 };
 
+/** `interrupted`: a refresh got no answer earlier, and the server then refused the old token as used twice: the connection, not the person, ended it. */
+export type SessionEndReason = 'interrupted' | 'other';
+
+/**
+ * How long a refresh may wait for its answer. The server retires the old token the moment it accepts the refresh, so giving up on a slow answer
+ * (and sending the old token again) would end the session: the refresh is the one request that must not be abandoned early.
+ */
+const REFRESH_WAIT_MS = 90_000;
+
 export type Tokens = { access: string | null; refresh: string | null };
 export type TokenStore = {
   get(): Promise<Tokens>;
@@ -49,6 +58,8 @@ export type RequestOptions = {
   idempotencyKey?: string;
   /** Act in one branch for this request only (`X-Branch`). */
   branchId?: string;
+  /** How long to wait for the answer, in ms. Most calls use the client's default; the refresh waits much longer. */
+  timeoutMs?: number;
   /** Skip the Authorization header (login, refresh, accept-invitation). */
   anonymous?: boolean;
   signal?: AbortSignal;
@@ -61,8 +72,8 @@ export type ClientOptions = {
   baseUrl: () => string | null;
   tokens: TokenStore;
   fetchImpl?: typeof fetch;
-  /** Called once when the session is over (refresh rejected). Navigate to sign-in here. */
-  onSessionEnd?: () => void;
+  /** Called once when the session is over (refresh rejected). Navigate to sign-in here. The reason says whether a lost reply on the way likely caused it. */
+  onSessionEnd?: (reason: SessionEndReason) => void;
   timeoutMs?: number;
   /** Told after every request: false when no answer came back (offline, timeout), true when the server answered at all. */
   onReach?: (reachable: boolean) => void;
@@ -72,6 +83,8 @@ export function createApiClient(opts: ClientOptions) {
   const doFetch = opts.fetchImpl ?? fetch;
   const timeoutMs = opts.timeoutMs ?? 20_000;
   let refreshInFlight: Promise<RefreshResult> | null = null;
+  // A refresh went out and no answer came back: the server may have swapped the token already, so the one on the phone may be spent.
+  let replyLost = false;
 
   function buildUrl(path: string, query?: RequestOptions['query']): string {
     const base = opts.baseUrl();
@@ -94,7 +107,7 @@ export function createApiClient(opts: ClientOptions) {
     }
 
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const timer = setTimeout(() => controller.abort(), o.timeoutMs ?? timeoutMs);
     o.signal?.addEventListener('abort', () => controller.abort());
 
     let response: Response;
@@ -146,18 +159,22 @@ export function createApiClient(opts: ClientOptions) {
       try {
         const { refresh } = await opts.tokens.get();
         if (!refresh) throw new ApiError(401, 'NO_REFRESH_TOKEN', 'Signed out.');
-        const res = await send<{ access: string; refresh?: string }>('POST', '/auth/refresh', { body: { refresh }, anonymous: true }, false);
+        const res = await send<{ access: string; refresh?: string }>('POST', '/auth/refresh', { body: { refresh }, anonymous: true, timeoutMs: REFRESH_WAIT_MS }, false);
         if (!res.data?.access) throw new ApiError(401, 'BAD_REFRESH', 'Signed out.');
         await opts.tokens.set(res.data.access, res.data.refresh);
+        replyLost = false;
         return { ok: true };
       } catch (e) {
         // The server saying the refresh token is no good (expired, used twice, revoked) ends the session. A dropped connection, a timeout, a 5xx
         // or a throttle does not: the person is still signed in, and the next request tries again. Wiping the tokens there would sign a cashier
         // out in the middle of a sale, and they could not sign back in until the connection returned.
         const definitive = e instanceof ApiError && (e.status === 400 || e.status === 401 || e.status === 403);
+        if (e instanceof ApiError && e.status === 0) replyLost = true; // no answer at all: say so, in case the next try is refused as a reuse
         if (definitive) {
+          const reason: SessionEndReason = replyLost && e instanceof ApiError && e.code === 'REFRESH_TOKEN_REUSED' ? 'interrupted' : 'other';
+          replyLost = false;
           await opts.tokens.clear();
-          opts.onSessionEnd?.();
+          opts.onSessionEnd?.(reason);
         }
         return { ok: false, ended: definitive, error: e instanceof ApiError ? e : undefined };
       } finally {
