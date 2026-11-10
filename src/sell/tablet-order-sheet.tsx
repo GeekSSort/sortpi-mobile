@@ -48,7 +48,7 @@ export function TabletOrderSheet({ cart, onQuantity, onRemove, onEditing }: {
   );
 }
 
-function QuantityCell({ line, onChange, onEditing }: { line: CartLine; onChange: (value: string) => void; onEditing: (editing: boolean) => void }) {
+export function QuantityCell({ line, onChange, onEditing }: { line: CartLine; onChange: (value: string) => void; onEditing: (editing: boolean) => void }) {
   const theme = useTheme();
   const t = useT();
   const [draft, setDraft] = useState<string | null>(null);
