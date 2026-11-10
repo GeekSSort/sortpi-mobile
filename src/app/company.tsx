@@ -33,7 +33,7 @@ const KEY = ['settings', 'company'];
 
 /** The shop's name, the name printed on bills, tax number, phone and address. Email, money and time zone are shown but changed on the computer. */
 export default function ShopDetailsScreen() {
-  const { contentWidth } = useWideLandscape();
+  const { readingWidth } = useWideLandscape();
   const theme = useTheme();
   const { t } = usePrefs();
   const queryClient = useQueryClient();
@@ -95,7 +95,7 @@ export default function ShopDetailsScreen() {
       <Stack.Screen options={{ title: t('Shop details') }} />
       <SafeAreaView edges={['bottom']} style={{ flex: 1 }}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
-          <KeyboardAwareScrollView bottomOffset={24} contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} />} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, maxWidth: Math.min(contentWidth, 1080), width: '100%', alignSelf: 'center' }}>
+          <KeyboardAwareScrollView bottomOffset={24} contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} />} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, maxWidth: Math.min(readingWidth, 1080), width: '100%', alignSelf: 'center' }}>
             {q.isError ? <ErrorState message={t('Could not load your shop details.')} onRetry={() => void q.refetch()} /> : null}
             {q.isPending && canSee ? <SkeletonRows /> : null}
             {form && company ? (

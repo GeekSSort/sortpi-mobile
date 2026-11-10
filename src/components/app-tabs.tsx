@@ -9,6 +9,7 @@ import { useSession } from '@/auth/session-provider';
 import { visibleTabs } from '@/auth/roles';
 import { Icon } from '@/components/icons/icon';
 import { Tap } from '@/components/tap';
+import { useDesktopShell, useShellAvailable } from '@/hooks/use-desktop-shell';
 import { ThemedText } from '@/components/themed-text';
 import { Colors, Radius } from '@/constants/theme';
 import { useT } from '@/i18n/prefs';
@@ -29,6 +30,8 @@ export default function AppTabs() {
   const active = segments[1] ?? 'index';
   const { width, height } = useWindowDimensions();
   const tillFocus = useTillFocus();
+  const shell = useDesktopShell(); // the open side menu replaces the bottom bar
+  const wideTill = useShellAvailable() && active === 'sell'; // the wide till has its own toolbar, so no bottom bar either
   useEffect(() => { if (active !== 'sell') setTillFocus(false); }, [active]);
   const { bottom } = useSafeAreaInsets();
   const keyboardVisible = useKeyboardState((state) => state.isVisible);
@@ -39,7 +42,7 @@ export default function AppTabs() {
   const shown = visibleTabs(me?.permissions ?? []);
   const compact = Platform.OS === 'android' && width >= 720;
   const visible = TABS.filter((tab) => shown.includes(tab.name));
-  const showCompactBar = compact && !keyboardVisible && !(tillFocus && active === 'sell' && width > height) && visible.length > 0;
+  const showCompactBar = compact && !shell && !wideTill && !keyboardVisible && !(tillFocus && active === 'sell' && width > height) && visible.length > 0;
 
   return (
     // NativeTabs still reserves the system bottom inset when its own bar is hidden.

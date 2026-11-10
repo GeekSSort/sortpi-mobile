@@ -26,7 +26,7 @@ const money = (v: string) => formatBDT(v, { dp: 0 });
 
 /** Wages month by month: who is owed, who is paid, pay one person, or calculate a month. Pay and calculate need `hrm.payroll`; amounts need `hrm.view_salary`. */
 export default function PayrollScreen() {
-  const { contentWidth } = useWideLandscape();
+  const { readingWidth } = useWideLandscape();
   const theme = useTheme();
   const { t, lang } = usePrefs();
   const qc = useQueryClient();
@@ -68,7 +68,7 @@ export default function PayrollScreen() {
   }
 
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: theme.canvas }} contentContainerStyle={{ gap: Spacing.three, padding: Spacing.three, paddingBottom: BottomTabInset + Spacing.four, maxWidth: Math.min(contentWidth, 1080), width: '100%', alignSelf: 'center' }}>
+    <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: theme.canvas }} contentContainerStyle={{ gap: Spacing.three, padding: Spacing.three, paddingBottom: BottomTabInset + Spacing.four, maxWidth: Math.min(readingWidth, 1080), width: '100%', alignSelf: 'center' }}>
       <Stack.Screen options={{ title: t('Payroll') }} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Spacing.two }}>
         {choices.map((m) => {

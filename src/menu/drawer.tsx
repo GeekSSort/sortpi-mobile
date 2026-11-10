@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { usePathname, useRouter } from 'expo-router';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -11,9 +11,13 @@ import { Icon } from '@/components/icons/icon';
 import { Tap } from '@/components/tap';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
+import { useDesktopShell } from '@/hooks/use-desktop-shell';
 import { useTheme } from '@/hooks/use-theme';
 import { useT } from '@/i18n/prefs';
 import { sameName } from '@/lib/names';
+import { MENU, visibleMenu } from '@/menu/items';
+import { routePath, SHORT_TITLE, topTasks } from '@/menu/pinned';
+import { bumpUsage, loadUsage, type Usage } from '@/menu/usage';
 
 import { ProfileSettings, TaskList } from './menu-content';
 
@@ -87,6 +91,40 @@ function SidePanel({ wanted, close, openProfile }: { wanted: boolean; close: () 
   );
 }
 
+/** The six things this person opens most, as big buttons at the top of the open menu. They rearrange only when the app starts. */
+function PinnedTasks() {
+  const theme = useTheme();
+  const t = useT();
+  const router = useRouter();
+  const path = usePathname();
+  const { me } = useSession();
+  const [counts, setCounts] = useState<Usage | null>(null);
+  const userId = me?.id;
+  useEffect(() => {
+    let alive = true;
+    if (userId) void loadUsage(userId).then((u) => { if (alive) setCounts((prev) => prev ?? u); });
+    return () => { alive = false; };
+  }, [userId]);
+  const trades = (me?.organization as { category?: { features?: string[] } } | undefined)?.category?.features;
+  const items = useMemo(() => topTasks(visibleMenu(MENU, me?.permissions, '', (x) => x, trades), counts ?? {}), [me?.permissions, trades, counts]);
+  if (items.length === 0) return null;
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, paddingHorizontal: Spacing.two, paddingVertical: Spacing.two, backgroundColor: theme.card, borderBottomWidth: 1, borderBottomColor: theme.border }}>
+      {items.map((i) => {
+        const href = routePath(i.route);
+        const on = path === href || (href !== '/' && path.startsWith(`${href}/`));
+        const label = t(SHORT_TITLE[i.id] ?? i.title);
+        return (
+          <Tap key={i.id} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected: on }} onPress={() => { bumpUsage(userId, i.id); router.navigate(i.route); }} style={{ width: '31.5%', minHeight: 60, alignItems: 'center', justifyContent: 'center', gap: 2, paddingHorizontal: 2, borderRadius: Radius.md, backgroundColor: on ? theme.brandSoft : 'transparent' }}>
+            <Icon name={i.icon} size={22} color={on ? theme.brandText : theme.brand} />
+            <ThemedText type="caption" numberOfLines={2} style={{ textAlign: 'center', color: on ? theme.brandText : theme.text }}>{label}</ThemedText>
+          </Tap>
+        );
+      })}
+    </View>
+  );
+}
+
 function MenuPanelContent({ close, openProfile, branded }: { close?: () => void; openProfile: () => void; branded?: boolean }) {
   const theme = useTheme();
   const t = useT();
@@ -114,9 +152,14 @@ function MenuPanelContent({ close, openProfile, branded }: { close?: () => void;
           </Tap>
         ) : null}
       </View>
-      <ScrollView keyboardShouldPersistTaps="handled" style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: Spacing.three }}>
-        <TaskList compact onNavigate={close} />
-      </ScrollView>
+      {branded ? <PinnedTasks /> : null}
+      <View style={{ flex: 1 }}>
+        {/* The scrollbar stays visible and a soft fade closes the list, so a row sliced by the footer reads as "more below", not as a cut. */}
+        <ScrollView keyboardShouldPersistTaps="handled" style={{ flex: 1 }} showsVerticalScrollIndicator persistentScrollbar contentContainerStyle={{ paddingBottom: branded ? 40 : Spacing.three }}>
+          <TaskList compact onNavigate={close} />
+        </ScrollView>
+        {branded ? <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 32, experimental_backgroundImage: `linear-gradient(to bottom, ${theme.canvas}00, ${theme.canvas})` }} /> : null}
+      </View>
       <Tap accessibilityRole="button" accessibilityLabel={t('Profile & quick settings')} onPress={openProfile} style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, backgroundColor: theme.card, borderTopWidth: 1, borderTopColor: theme.border }}>
         <View style={{ width: 44, height: 44, borderRadius: Radius.full, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.brandSoft }}>
           <ThemedText type="heading" style={{ color: theme.brandText }}>
@@ -143,7 +186,7 @@ export function HomeSidebar({ width, branded }: { width: number; branded?: boole
   const { openProfile } = useDrawer();
 
   return (
-    <View style={{ width, paddingTop: insets.top, backgroundColor: theme.canvas, borderEndWidth: 1, borderColor: theme.border }}>
+    <View style={{ width, paddingTop: insets.top, paddingBottom: insets.bottom, backgroundColor: theme.canvas, borderEndWidth: 1, borderColor: theme.border }}>
       <MenuPanelContent openProfile={openProfile} branded={branded} />
     </View>
   );
@@ -154,6 +197,7 @@ export function MenuButton() {
   const theme = useTheme();
   const t = useT();
   const { open } = useDrawer();
+  if (useDesktopShell()) return null; // the menu is already open beside the screen
   return (
     <Tap accessibilityRole="button" accessibilityLabel={t('Open the menu')} onPress={open} hitSlop={6} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
       <Icon name="Menu" size={24} color={theme.text} />
