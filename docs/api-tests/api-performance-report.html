@@ -1,0 +1,231 @@
+<title>SortPi API Test Report</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column, answer first, evidence after. Charts are plain CSS bars so every number is printed beside its bar. */
+:root {
+  --bg: #f6f7f9; --card: #ffffff; --ink: #14202e; --muted: #5a6878; --line: #dde2e9;
+  --accent: #0b6e8a; --accent-soft: #dff0f5; --bar: #2f7f97; --bar-hot: #c2410c;
+  --good: #15803d; --good-soft: #e3f4e8; --warn: #a16207; --warn-soft: #fbf0d3; --bad: #b42318; --bad-soft: #fbe5e2;
+  --display: 'Figtree', system-ui, -apple-system, 'Segoe UI', sans-serif; --mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1720; --card: #17212d; --ink: #e8eef5; --muted: #98a6b6; --line: #2a3745;
+  --accent: #5bc0da; --accent-soft: #173744; --bar: #4aa3bd; --bar-hot: #f08a4b;
+  --good: #52c27a; --good-soft: #173626; --warn: #e3b341; --warn-soft: #3a3014; --bad: #f2776c; --bad-soft: #3d1f1c; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0f1720; --card: #17212d; --ink: #e8eef5; --muted: #98a6b6; --line: #2a3745;
+  --accent: #5bc0da; --accent-soft: #173744; --bar: #4aa3bd; --bar-hot: #f08a4b;
+  --good: #52c27a; --good-soft: #173626; --warn: #e3b341; --warn-soft: #3a3014; --bad: #f2776c; --bad-soft: #3d1f1c; color-scheme: dark; }
+body { background: var(--bg); color: var(--ink); font-family: var(--display); font-size: 16px; line-height: 1.55; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 64px; }
+main { max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+h1 { font-size: clamp(1.7rem, 4.5vw, 2.3rem); line-height: 1.15; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+h2 { font-size: 1.25rem; margin: 0 0 4px; text-wrap: balance; }
+h3 { font-size: 1rem; margin: 0 0 6px; }
+p { margin: 0 0 10px; max-width: 68ch; } p:last-child { margin-bottom: 0; }
+.meta { color: var(--muted); font-size: 0.9rem; display: flex; flex-wrap: wrap; gap: 4px 18px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 20px; min-width: 0; }
+.verdict { border-left: 4px solid var(--accent); }
+.verdict ol { margin: 10px 0 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 8px; }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.kpi { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; background: var(--card); }
+.kpi b { display: block; font-family: var(--mono); font-size: 1.5rem; font-weight: 600; line-height: 1.2; }
+.kpi span { color: var(--muted); font-size: 0.85rem; }
+.bars { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.bar { display: grid; grid-template-columns: minmax(96px, 210px) 1fr 70px; gap: 10px; align-items: center; font-size: 0.9rem; }
+.bar .lab { overflow-wrap: anywhere; min-width: 0; } .bar .lab code { font-size: 0.82rem; }
+.bar .track { background: var(--accent-soft); border-radius: 4px; height: 16px; min-width: 0; }
+.bar .fill { background: var(--bar); height: 100%; border-radius: 4px; min-width: 2px; }
+.bar.hot .fill { background: var(--bar-hot); }
+.bar .val { font-family: var(--mono); font-size: 0.85rem; text-align: right; font-variant-numeric: tabular-nums; }
+.split { display: flex; height: 34px; border-radius: 6px; overflow: hidden; margin: 12px 0 8px; font-size: 0.78rem; font-family: var(--mono); }
+.split div { display: flex; align-items: center; justify-content: center; color: #fff; min-width: 0; overflow: hidden; white-space: nowrap; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.85rem; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.9rem; min-width: 560px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+td.n, th.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+code { font-family: var(--mono); font-size: 0.86em; background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+.pill { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 1px 9px; border-radius: 999px; white-space: nowrap; }
+.pill.high { background: var(--bad-soft); color: var(--bad); } .pill.med { background: var(--warn-soft); color: var(--warn); }
+.pill.low { background: var(--accent-soft); color: var(--accent); } .pill.fixed { background: var(--good-soft); color: var(--good); }
+.note { background: var(--warn-soft); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; font-size: 0.92rem; }
+.steps { display: flex; flex-direction: column; gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; font-size: 0.92rem; }
+.steps li { display: grid; grid-template-columns: 96px 1fr; gap: 10px; }
+.steps .t { font-family: var(--mono); color: var(--muted); font-size: 0.82rem; }
+@media (max-width: 520px) { .bar { grid-template-columns: 1fr 64px; } .bar .track { grid-column: 1 / -1; grid-row: 2; } .bar .val { grid-row: 1; grid-column: 2; } .steps li { grid-template-columns: 1fr; gap: 0; } }
+</style>
+
+<main>
+  <header>
+    <h1>SortPi API test report: why the app and the website feel slow</h1>
+    <p class="meta"><span>5 November 2026</span><span>Live shop <code>sirajdawakhana.sortpi.com</code></span><span>Local demo shop</span><span>Tested from a Mac in Bangladesh</span></p>
+  </header>
+
+  <section class="card verdict">
+    <h2>Short answer</h2>
+    <p>The SortPi code is fast. The same 146 read calls take a median of <b class="num">9 ms</b> on a local copy. On the live shop the median is <b class="num">311 ms</b>. The slowness comes from where the server sits and how it handles a burst of calls, and only partly from the apps.</p>
+    <ol>
+      <li><b>Distance.</b> The live server is in France (Contabo), about <span class="num">200 ms</span> from Bangladesh, with no CDN in front. Every call pays that, and a new connection costs about <span class="num">0.8 to 1.0 s</span> before any data arrives.</li>
+      <li><b>The server queues bursts.</b> One call takes <span class="num">292 ms</span>. Sixteen at the same moment take up to <span class="num">1.4 s</span>. The website dashboard sends 15 calls at once and the phone's Home screen sends about 7, so each one waits in line.</li>
+      <li><b>Random slow first calls.</b> Some endpoints take seconds the first time and a fraction of that on repeat: <code>/inventory/stock/</code> took <span class="num">5.0 s</span> then <span class="num">0.24 s</span>. This happened on a shop with almost no data.</li>
+      <li><b>The phone app added a wait of its own</b> after the fingerprint prompt. That part is fixed in code and still needs a check on the Pixel.</li>
+    </ol>
+  </section>
+
+  <section class="kpis" aria-label="Key numbers">
+    <div class="kpi"><b>311 ms</b><span>median live read call</span></div>
+    <div class="kpi"><b>9 ms</b><span>same call, local copy</span></div>
+    <div class="kpi"><b>200 ms</b><span>round trip to the server</span></div>
+    <div class="kpi"><b>5.08 s</b><span>phone p90 in Firebase</span></div>
+    <div class="kpi"><b>0</b><span>server errors (5xx) in 215 live requests</span></div>
+  </section>
+
+  <section class="card">
+    <h2>1. Where one call's time goes</h2>
+    <p>A typical live call takes about 311 ms. Only a few milliseconds of that are SortPi's own code.</p>
+    <div class="split" role="img" aria-label="Estimated split of a 311 millisecond call: 9 milliseconds code, 200 milliseconds network round trip, about 100 milliseconds other">
+      <div style="flex: 9; background: #15803d" title="code"></div>
+      <div style="flex: 200; background: #0b6e8a">network round trip 200 ms</div>
+      <div style="flex: 102; background: #a16207">TLS, proxy, slower server about 100 ms</div>
+    </div>
+    <div class="legend"><span><i style="background:#15803d"></i>SortPi code about 9 ms (measured locally)</span><span><i style="background:#0b6e8a"></i>distance to France 200 ms (ping)</span><span><i style="background:#a16207"></i>remainder, estimated</span></div>
+    <p style="margin-top:12px">A new connection is slower still. From the Mac: <span class="num">0.2 s</span> to connect, <span class="num">0.25 to 0.45 s</span> more for TLS, then the call itself. A reused connection answers in <span class="num">0.23 s</span>.</p>
+  </section>
+
+  <section class="card">
+    <h2>2. The server queues bursts of calls</h2>
+    <p>I sent N identical tiny read calls at the same instant and timed the slowest. A single call takes 292 ms. Past about four at once, calls start waiting for each other.</p>
+    <div class="bars" role="img" aria-label="Slowest response time by number of parallel calls">
+      <div class="bar"><span class="lab">1 call</span><span class="track"><span class="fill" style="display:block;width:16.5%"></span></span><span class="val">292 ms</span></div>
+      <div class="bar"><span class="lab">4 at once</span><span class="track"><span class="fill" style="display:block;width:25.7%"></span></span><span class="val">453 ms</span></div>
+      <div class="bar"><span class="lab">8 at once</span><span class="track"><span class="fill" style="display:block;width:47.4%"></span></span><span class="val">837 ms</span></div>
+      <div class="bar hot"><span class="lab">16 at once</span><span class="track"><span class="fill" style="display:block;width:80.6%"></span></span><span class="val">1,423 ms</span></div>
+      <div class="bar hot"><span class="lab">32 at once</span><span class="track"><span class="fill" style="display:block;width:100%"></span></span><span class="val">1,766 ms</span></div>
+    </div>
+    <p style="margin-top:12px">I could not look at the server itself, so the number of workers is an inference from this curve. Check the gunicorn <code>--workers</code> and <code>--threads</code> settings against the number of CPU cores.</p>
+  </section>
+
+  <section class="card">
+    <h2>3. The website: the page is quick, the data is not</h2>
+    <p>The dashboard page itself loads fast. The wait is for its data, which arrives in one crowded burst.</p>
+    <ul class="steps">
+      <li><span class="t">290 ms</span><span>First byte of the page</span></li>
+      <li><span class="t">360 ms</span><span>First paint (the screen shows something)</span></li>
+      <li><span class="t">709 ms</span><span>Page load event. 73 requests: scripts 327 KB over the wire, fonts 275 KB, styles 46 KB</span></li>
+      <li><span class="t">350 ms</span><span><b>15 API calls start in the same instant.</b> Each takes <span class="num">0.65 to 1.94 s</span>, against about <span class="num">0.3 s</span> alone</span></li>
+      <li><span class="t">about 2.3 s</span><span>All dashboard data is on screen</span></li>
+    </ul>
+    <div class="bars" role="img" aria-label="Duration of the slowest dashboard calls">
+      <div class="bar hot"><span class="lab"><code>/dashboard/?from_date…</code></span><span class="track"><span class="fill" style="display:block;width:100%"></span></span><span class="val">1,938 ms</span></div>
+      <div class="bar hot"><span class="lab"><code>/auth/me</code> (second call)</span><span class="track"><span class="fill" style="display:block;width:98.6%"></span></span><span class="val">1,912 ms</span></div>
+      <div class="bar"><span class="lab"><code>/inventory/stock/?stock_status=low</code></span><span class="track"><span class="fill" style="display:block;width:69%"></span></span><span class="val">1,336 ms</span></div>
+      <div class="bar"><span class="lab"><code>/settings/resolved/</code></span><span class="track"><span class="fill" style="display:block;width:64%"></span></span><span class="val">1,243 ms</span></div>
+      <div class="bar"><span class="lab"><code>/sales/?page=1&amp;limit=10</code></span><span class="track"><span class="fill" style="display:block;width:55%"></span></span><span class="val">1,072 ms</span></div>
+    </div>
+    <p style="margin-top:12px">Two calls are made twice: <code>/auth/me</code> and <code>/dashboard/</code>. The two stock calls ask for up to 200 rows each. Fonts and scripts are not the problem; scripts were already cached on the repeat visit.</p>
+  </section>
+
+  <section class="card">
+    <h2>4. The phone app</h2>
+    <p>Opening the app does the same in order: connect (about 1 s), ask <code>/auth/me</code> (0.34 to 0.69 s), then Home starts about 7 calls in one burst. On the Mac's wifi that adds up to 2.5 to 3.5 s. Mobile data makes every round trip longer, which fits the 5.08 s p90 in Firebase.</p>
+    <p>One more wait was the app's own doing. It asked <code>/auth/me</code> only after the fingerprint passed, so you looked at a lock screen with a live Unlock button, and touched again. The call now starts while the prompt is open, the button shows "Opening your shop…", and it ignores extra taps. This is in the code, tested in unit tests, and not yet tried on the real Pixel.</p>
+  </section>
+
+  <section class="card">
+    <h2>5. Slowest live endpoints</h2>
+    <p>First call against the call right after it. All 146 live reads: median 311 ms, 90th percentile 630 ms, 122 under 500 ms, 5 over 1 s.</p>
+    <div class="bars" role="img" aria-label="First call versus repeat call for the slowest endpoints">
+      <div class="bar hot"><span class="lab"><code>/inventory/stock/</code> first</span><span class="track"><span class="fill" style="display:block;width:100%"></span></span><span class="val">5,036 ms</span></div>
+      <div class="bar"><span class="lab"><code>/inventory/stock/</code> repeat</span><span class="track"><span class="fill" style="display:block;width:4.8%"></span></span><span class="val">244 ms</span></div>
+      <div class="bar hot"><span class="lab"><code>/sales/summary/</code> first</span><span class="track"><span class="fill" style="display:block;width:39.8%"></span></span><span class="val">2,005 ms</span></div>
+      <div class="bar"><span class="lab"><code>/sales/summary/</code> repeat</span><span class="track"><span class="fill" style="display:block;width:6%"></span></span><span class="val">304 ms</span></div>
+      <div class="bar hot"><span class="lab"><code>/users/</code> first</span><span class="track"><span class="fill" style="display:block;width:33.1%"></span></span><span class="val">1,668 ms</span></div>
+      <div class="bar"><span class="lab"><code>/users/</code> repeat</span><span class="track"><span class="fill" style="display:block;width:9.7%"></span></span><span class="val">490 ms</span></div>
+      <div class="bar"><span class="lab"><code>/warehouses/</code> first</span><span class="track"><span class="fill" style="display:block;width:20.9%"></span></span><span class="val">1,051 ms</span></div>
+      <div class="bar"><span class="lab"><code>/warehouses/</code> repeat</span><span class="track"><span class="fill" style="display:block;width:6.4%"></span></span><span class="val">321 ms</span></div>
+    </div>
+    <p style="margin-top:12px">On the local copy the customer list shows the same pattern at a larger size: <b class="num">8.1 s</b> once the 60-second Redis cache expires, then 8 ms. The server code says why: the list adds two sales totals per customer, which "cost a join". The live customer list is small, so it did not show there. It will grow with the shop.</p>
+  </section>
+
+  <section class="card">
+    <h2>6. What was tested</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Area</th><th>Live shop</th><th>Local copy</th></tr></thead>
+      <tbody>
+        <tr><td>Login: wrong password, unknown email, bad token, refresh, reuse of an old refresh token, logout</td><td>Browser session of the owner (password not typed by me)</td><td>All behave correctly. Reusing an old refresh token ends the whole session (<code>REFRESH_TOKEN_REUSED</code>)</td></tr>
+        <tr><td>GET, every endpoint without an ID (146)</td><td>0 server errors. 126 × 200, 10 × 401 (platform-only endpoints, expected), 7 × 400 (need a query or a device), 3 × 404</td><td>0 server errors, median 9 ms</td></tr>
+        <tr><td>POST, PUT, PATCH, DELETE</td><td>POST 20, PUT 7, PATCH 7, DELETE 9. All as expected</td><td>The same flow, 0 failures</td></tr>
+        <tr><td>Records covered</td><td colspan="2">Category, brand, unit, supplier, coupon, customer, product, stock count, held cart, price preview, cash sale, receipt, return preview, cash return</td></tr>
+        <tr><td>Safety checks</td><td colspan="2">Same <code>Idempotency-Key</code> twice returns the same sale (no double posting). Missing key refused. Empty bodies give 400. Unknown ID gives 404. HEAD and OPTIONS tried</td></tr>
+        <tr><td>Postman collection</td><td>Same requests, run in the browser session</td><td>Run in Newman: 204 requests, 463 assertions. 2 real slowness failures, 1 mistake in my test (fixed)</td></tr>
+      </tbody>
+    </table></div>
+    <h3 style="margin-top:18px">Live write timings</h3>
+    <div class="scroll"><table>
+      <thead><tr><th>Step</th><th class="n">Live</th><th class="n">Local</th></tr></thead>
+      <tbody>
+        <tr><td>Create, PATCH, PUT, DELETE of simple records</td><td class="n">260 to 890 ms</td><td class="n">6 to 14 ms</td></tr>
+        <tr><td>Create a product</td><td class="n">1,349 ms</td><td class="n">42 ms</td></tr>
+        <tr><td>Stock count (2 units / back to 0)</td><td class="n">744 / 1,212 ms</td><td class="n">86 / 61 ms</td></tr>
+        <tr><td>Sell (cash)</td><td class="n">1,393 ms</td><td class="n">149 ms</td></tr>
+        <tr><td>Same sale again, same key (replay)</td><td class="n">987 ms</td><td class="n">39 ms</td></tr>
+        <tr><td>Cash return</td><td class="n">1,360 ms</td><td class="n">85 ms</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="card">
+    <h2>7. Findings</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>#</th><th>Level</th><th>Finding</th><th>Suggested fix</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td><span class="pill high">High</span></td><td>The server handles about 4 requests at once. 16 at once take up to 1.4 s each.</td><td>Raise gunicorn workers or threads to match the CPU cores. Measure again with the burst test.</td></tr>
+        <tr><td>2</td><td><span class="pill high">High</span></td><td>Server in France, no CDN. 200 ms per call, about 1 s per new connection.</td><td>Move the server near Dhaka (for example Singapore), or put Cloudflare in front with one proxied record per shop (a wildcard cannot be proxied on a normal plan).</td></tr>
+        <tr><td>3</td><td><span class="pill high">High</span></td><td>Slow first calls: live <code>/inventory/stock/</code> 5.0 s, <code>/sales/summary/</code> 2.0 s, <code>/users/</code> 1.7 s. Local <code>/customers/</code> 8 s after cache expiry.</td><td>Warm or refresh the caches on write, lengthen the TTL, and add the customer totals without a join over all sales.</td></tr>
+        <tr><td>4</td><td><span class="pill med">Medium</span></td><td>The website dashboard sends 15 calls at once, and calls <code>/auth/me</code> and <code>/dashboard/</code> twice.</td><td>Remove the duplicates. Later, one start-up call that returns what Home needs.</td></tr>
+        <tr><td>5</td><td><span class="pill fixed">Fixed in code</span></td><td>Phone: waited for <code>/auth/me</code> only after the fingerprint, with a live Unlock button.</td><td>Done. Retest on the Pixel after the next staging build.</td></tr>
+        <tr><td>6</td><td><span class="pill med">Medium</span></td><td>Deleting a customer or supplier is a soft delete. It stays in the lists as inactive. The phone's customer list does not filter inactive ones.</td><td>Decide whether lists hide inactive records by default. Check the phone's list.</td></tr>
+        <tr><td>7</td><td><span class="pill low">Low</span></td><td><code>HEAD</code> on a list runs the whole query (8 s on a cold local cache). <code>limit=100000</code> is accepted.</td><td>Answer HEAD without the query. Set a maximum page size.</td></tr>
+        <tr><td>8</td><td><span class="pill low">Low</span></td><td><code>OPTIONS</code> and <code>DELETE</code> on a list return 403 <code>PERMISSION_DENIED</code>, not 204 and 405.</td><td>Return the standard answers.</td></tr>
+        <tr><td>9</td><td><span class="pill low">Low</span></td><td>Listed in the API spec but 404 on the live shop: <code>/customers/refills/</code>, <code>/inventory/modal/</code>, <code>/inventory/serials/</code>.</td><td>Confirm they are switched off by shop type, or remove them from the spec.</td></tr>
+        <tr><td>10</td><td><span class="pill low">Low</span></td><td>A replayed sale (same key) takes 987 ms live, against 39 ms locally. It is correct, only slow.</td><td>Follows from findings 1 to 3.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="card">
+    <h2>8. What the live test left behind</h2>
+    <p>Every record was named <code>ZZ-API-TEST</code> and removed. All clean-up deletes returned 204. The test did change the live shop in these ways:</p>
+    <ul style="margin:8px 0 0;padding-left:1.2em;max-width:68ch">
+      <li>One test sale (a 1.00 item, paid in cash) and its full cash return. They show in the sales list and in today's sales and return totals, and cancel each other out.</li>
+      <li>Two inactive records that the API cannot delete: customer <code>ZZ-API-TEST L3CPU customer</code> and supplier <code>ZZ-API-TEST L3CPU supplier</code>, both with a balance of 0.</li>
+      <li>Stock counts on the test item only. The item, its category and its unit were deleted.</li>
+    </ul>
+    <p style="margin-top:10px">I left out anything that messages people or changes the business itself: billing, users and roles, shop reset, closing the shift or the day.</p>
+  </section>
+
+  <section class="card">
+    <h2>9. What to do first</h2>
+    <ol style="margin:8px 0 0;padding-left:1.2em;display:flex;flex-direction:column;gap:6px;max-width:68ch">
+      <li><b>Server workers (finding 1).</b> Cheap, and it speeds up every burst on the website and the phone. Needs access to the server.</li>
+      <li><b>Cache the last sign-in on the phone.</b> Mobile only. Home opens at once from the last known permissions and refreshes in the background.</li>
+      <li><b>Warm the slow endpoints (finding 3)</b> and remove the website's duplicate calls (finding 4).</li>
+      <li><b>Distance (finding 2).</b> The biggest single gain, and the biggest job. Decide between a nearer server and Cloudflare with one record per shop.</li>
+    </ol>
+  </section>
+
+  <section class="card">
+    <h2>10. How this was measured, and what it cannot tell you</h2>
+    <ul style="margin:0;padding-left:1.2em;max-width:68ch;display:flex;flex-direction:column;gap:6px">
+      <li>All timings come from a Mac on wifi in Bangladesh, using the browser's own timers. They are not from the phone on mobile data. The phone figure is Firebase's 5.08 s p90, and the chain in section 4 is my reading of it.</li>
+      <li>The live shop has almost no data (most lists are empty). Heavier shops will be slower on the report endpoints.</li>
+      <li>The worker count and CPU load of the server were not inspected. Finding 1 is inferred from the burst test.</li>
+      <li>The live run used the same requests as the Postman collection, sent from the signed-in browser page. Newman ran the collection itself on the local copy.</li>
+      <li>To run it yourself: import <code>SortPi-API-full-test.postman_collection.json</code> and an environment file from <code>mobile/SortPi/docs/api-tests/</code> into your own Postman workspace, fill in <code>email</code> and <code>password</code>, and run the folders in order. Use <code>newman run</code> for the command line.</li>
+    </ul>
+  </section>
+</main>

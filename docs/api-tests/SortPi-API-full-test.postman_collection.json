@@ -1,0 +1,5855 @@
+{
+ "info": {
+  "name": "SortPi API - full test",
+  "_postman_id": "375e0daf-f793-4241-aff5-5e920ee38b2e",
+  "description": "Login, every GET list/report, full create/read/PATCH/PUT/DELETE flow with a sale, return, idempotent replay, and negative checks. Records are named ZZ-API-TEST. Set email and password in the environment; run folders in order.",
+  "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+ },
+ "auth": {
+  "type": "bearer",
+  "bearer": [
+   {
+    "key": "token",
+    "value": "{{accessToken}}",
+    "type": "string"
+   }
+  ]
+ },
+ "event": [
+  {
+   "listen": "prerequest",
+   "script": {
+    "type": "text/javascript",
+    "exec": [
+     "const exp = Number(pm.environment.get('tokenExp') || 0);",
+     "if (!pm.environment.get('accessToken') || Date.now() / 1000 > exp - 30) {",
+     "  pm.sendRequest({ url: pm.environment.get('baseUrl') + '/auth/login', method: 'POST', header: { 'Content-Type': 'application/json' },",
+     "    body: { mode: 'raw', raw: JSON.stringify({ email: pm.environment.get('email'), password: pm.environment.get('password') }) } }, (err, res) => {",
+     "    if (err || res.code !== 200) { console.error('login failed', err || res.code); return; }",
+     "    const d = res.json().data; pm.environment.set('accessToken', d.access);",
+     "    try { pm.environment.set('tokenExp', JSON.parse(atob(d.access.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).exp); } catch (e) {}",
+     "  });",
+     "}"
+    ]
+   }
+  },
+  {
+   "listen": "test",
+   "script": {
+    "type": "text/javascript",
+    "exec": [
+     "pm.test('no server error (< 500)', () => pm.expect(pm.response.code).to.be.below(500));",
+     "pm.test('answers within 2 s', () => pm.expect(pm.response.responseTime).to.be.below(2000));"
+    ]
+   }
+  }
+ ],
+ "item": [
+  {
+   "name": "1 Login",
+   "item": [
+    {
+     "name": "login: wrong password -> 401",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/auth/login",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "auth",
+        "login"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"email\": \"{{email}}\",\n \"password\": \"definitely-wrong\"\n}"
+      },
+      "auth": {
+       "type": "noauth"
+      }
+     },
+     "event": [
+      {
+       "listen": "prerequest",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "// does not need a token"
+        ]
+       }
+      },
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 401\", () => pm.expect([401]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "login: unknown email -> 401",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/auth/login",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "auth",
+        "login"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"email\": \"nobody@example.invalid\",\n \"password\": \"x\"\n}"
+      },
+      "auth": {
+       "type": "noauth"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 401\", () => pm.expect([401]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "login: correct",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/auth/login",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "auth",
+        "login"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"email\": \"{{email}}\",\n \"password\": \"{{password}}\"\n}"
+      },
+      "auth": {
+       "type": "noauth"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 200\", () => pm.expect([200]).to.include(pm.response.code));",
+         "if (pm.response.code < 300) { try { const j = pm.response.json(); pm.environment.set(\"accessToken\", j.data.access); } catch (e) {} }",
+         "if (pm.response.code < 300) { try { const j = pm.response.json(); pm.environment.set(\"refreshToken\", j.data.refresh); } catch (e) {} }"
+        ]
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "2 Reads (146 GET)",
+   "item": [
+    {
+     "name": "account-transactions /account-transactions/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/account-transactions/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "account-transactions",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "account-transactions /account-transactions/totals/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/account-transactions/totals/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "account-transactions",
+        "totals",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "account-transfers /account-transfers/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/account-transfers/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "account-transfers",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "account-transfers /account-transfers/summary/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/account-transfers/summary/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "account-transfers",
+        "summary",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "accounts /accounts/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/accounts/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "accounts",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "audit-logs /audit-logs/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/audit-logs/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "audit-logs",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "auth /auth/me",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/auth/me",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "auth",
+        "me"
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "auth /auth/signup/email",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/auth/signup/email",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "auth",
+        "signup",
+        "email"
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "auth /auth/signup/plans",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/auth/signup/plans",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "auth",
+        "signup",
+        "plans"
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "auth /auth/signup/subdomain",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/auth/signup/subdomain",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "auth",
+        "signup",
+        "subdomain"
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "auth /auth/workspace",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/auth/workspace",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "auth",
+        "workspace"
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "billing /billing/invoices/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/billing/invoices/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "billing",
+        "invoices",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "billing /billing/plans/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/billing/plans/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "billing",
+        "plans",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "billing /billing/subscription",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/billing/subscription",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "billing",
+        "subscription"
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "billing /billing/upgrade-requests/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/billing/upgrade-requests/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "billing",
+        "upgrade-requests",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "branches /branches/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/branches/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "branches",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "brands /brands/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/brands/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "brands",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "categories /categories/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/categories/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "categories",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "coupons /coupons/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/coupons/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "coupons",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "customer-orders /customer-orders/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/customer-orders/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "customer-orders",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "customers /customers/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/customers/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "customers",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "customers /customers/refills/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/customers/refills/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "customers",
+        "refills",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "customers /customers/summary/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/customers/summary/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "customers",
+        "summary",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "dashboard /dashboard/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/dashboard/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "dashboard",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "deliveries /deliveries/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/deliveries/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "deliveries",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "expense-categories /expense-categories/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/expense-categories/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "expense-categories",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "expenses /expenses/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/expenses/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "expenses",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "finance /finance/customer-due/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/finance/customer-due/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "finance",
+        "customer-due",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "finance /finance/expenses/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/finance/expenses/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "finance",
+        "expenses",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "finance /finance/pnl/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/finance/pnl/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "finance",
+        "pnl",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "finance /finance/stock-write-offs/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/finance/stock-write-offs/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "finance",
+        "stock-write-offs",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "finance /finance/supplier-due/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/finance/supplier-due/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "finance",
+        "supplier-due",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "hrm /hrm/attendance/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/hrm/attendance/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "hrm",
+        "attendance",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "hrm /hrm/departments/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/hrm/departments/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "hrm",
+        "departments",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "hrm /hrm/designations/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/hrm/designations/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "hrm",
+        "designations",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "hrm /hrm/employees/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/hrm/employees/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "hrm",
+        "employees",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "hrm /hrm/employees/summary/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/hrm/employees/summary/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "hrm",
+        "employees",
+        "summary",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "hrm /hrm/leaves/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/hrm/leaves/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "hrm",
+        "leaves",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "hrm /hrm/payroll-runs/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/hrm/payroll-runs/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "hrm",
+        "payroll-runs",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "hrm /hrm/payroll-runs/months/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/hrm/payroll-runs/months/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "hrm",
+        "payroll-runs",
+        "months",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "hrm /hrm/payslips/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/hrm/payslips/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "hrm",
+        "payslips",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "income-categories /income-categories/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/income-categories/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "income-categories",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "income-expense /income-expense/summary/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/income-expense/summary/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "income-expense",
+        "summary",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "income-expense /income-expense/transactions/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/income-expense/transactions/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "income-expense",
+        "transactions",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "incomes /incomes/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/incomes/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "incomes",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "instalment-plans /instalment-plans/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/instalment-plans/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "instalment-plans",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "inventory /inventory/adjustments/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/inventory/adjustments/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "inventory",
+        "adjustments",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "inventory /inventory/by-brand/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/inventory/by-brand/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "inventory",
+        "by-brand",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "inventory /inventory/expired/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/inventory/expired/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "inventory",
+        "expired",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "inventory /inventory/expiring/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/inventory/expiring/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "inventory",
+        "expiring",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "inventory /inventory/expiry/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/inventory/expiry/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "inventory",
+        "expiry",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "inventory /inventory/expiry/markdowns/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/inventory/expiry/markdowns/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "inventory",
+        "expiry",
+        "markdowns",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "inventory /inventory/expiry/summary/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/inventory/expiry/summary/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "inventory",
+        "expiry",
+        "summary",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "inventory /inventory/free-issues/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/inventory/free-issues/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "inventory",
+        "free-issues",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "inventory /inventory/free-issues/summary/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/inventory/free-issues/summary/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "inventory",
+        "free-issues",
+        "summary",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "inventory /inventory/low-stock/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/inventory/low-stock/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "inventory",
+        "low-stock",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "inventory /inventory/modal/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/inventory/modal/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "inventory",
+        "modal",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "inventory /inventory/movements/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/inventory/movements/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "inventory",
+        "movements",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "inventory /inventory/movements/summary/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/inventory/movements/summary/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "inventory",
+        "movements",
+        "summary",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "inventory /inventory/production/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/inventory/production/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "inventory",
+        "production",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "inventory /inventory/serials/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/inventory/serials/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "inventory",
+        "serials",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "inventory /inventory/stock/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/inventory/stock/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "inventory",
+        "stock",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "inventory /inventory/stock-report/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/inventory/stock-report/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "inventory",
+        "stock-report",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "inventory /inventory/stock/summary/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/inventory/stock/summary/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "inventory",
+        "stock",
+        "summary",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "inventory /inventory/transfers/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/inventory/transfers/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "inventory",
+        "transfers",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "inventory /inventory/transfers/summary/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/inventory/transfers/summary/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "inventory",
+        "transfers",
+        "summary",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "inventory /inventory/valuation/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/inventory/valuation/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "inventory",
+        "valuation",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "notifications /notifications/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/notifications/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "notifications",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "notifications /notifications/unread-count/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/notifications/unread-count/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "notifications",
+        "unread-count",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "organizations /organizations/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/organizations/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "organizations",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "permissions /permissions/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/permissions/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "permissions",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "platform /platform/auth/me",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/platform/auth/me",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "platform",
+        "auth",
+        "me"
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "platform /platform/blog/posts/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/platform/blog/posts/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "platform",
+        "blog",
+        "posts",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "platform /platform/demo-requests/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/platform/demo-requests/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "platform",
+        "demo-requests",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "platform /platform/invoices/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/platform/invoices/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "platform",
+        "invoices",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "platform /platform/organizations/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/platform/organizations/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "platform",
+        "organizations",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "platform /platform/plans/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/platform/plans/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "platform",
+        "plans",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "platform /platform/roles/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/platform/roles/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "platform",
+        "roles",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "platform /platform/staff/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/platform/staff/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "platform",
+        "staff",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "platform /platform/subscriptions/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/platform/subscriptions/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "platform",
+        "subscriptions",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "platform /platform/upgrade-requests/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/platform/upgrade-requests/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "platform",
+        "upgrade-requests",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "pos /pos/counters/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/pos/counters/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "pos",
+        "counters",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "pos /pos/counters/board/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/pos/counters/board/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "pos",
+        "counters",
+        "board",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "pos /pos/held/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/pos/held/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "pos",
+        "held",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "pos /pos/shifts/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/pos/shifts/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "pos",
+        "shifts",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "pos /pos/shifts/cash-options/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/pos/shifts/cash-options/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "pos",
+        "shifts",
+        "cash-options",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "pos /pos/shifts/current/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/pos/shifts/current/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "pos",
+        "shifts",
+        "current",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "pos /pos/till/stock/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/pos/till/stock/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "pos",
+        "till",
+        "stock",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "products /products/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/products/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "products",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "products /products/discounts/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/products/discounts/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "products",
+        "discounts",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "products /products/discounts/summary/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/products/discounts/summary/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "products",
+        "discounts",
+        "summary",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "products /products/lookup/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/products/lookup/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "products",
+        "lookup",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "products /products/pos-catalog/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/products/pos-catalog/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "products",
+        "pos-catalog",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "products /products/search/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/products/search/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "products",
+        "search",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "products /products/seasons/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/products/seasons/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "products",
+        "seasons",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "products /products/summary/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/products/summary/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "products",
+        "summary",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "public /public/blog/posts/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/public/blog/posts/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "public",
+        "blog",
+        "posts",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "purchase-payments /purchase-payments/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/purchase-payments/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "purchase-payments",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "purchase-payments /purchase-payments/summary/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/purchase-payments/summary/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "purchase-payments",
+        "summary",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "purchase-returns /purchase-returns/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/purchase-returns/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "purchase-returns",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "purchase-returns /purchase-returns/summary/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/purchase-returns/summary/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "purchase-returns",
+        "summary",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "purchases /purchases/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/purchases/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "purchases",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "purchases /purchases/by-supplier/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/purchases/by-supplier/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "purchases",
+        "by-supplier",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "purchases /purchases/import-template/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/purchases/import-template/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "purchases",
+        "import-template",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "purchases /purchases/returns/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/purchases/returns/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "purchases",
+        "returns",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "purchases /purchases/summary/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/purchases/summary/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "purchases",
+        "summary",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "purchases /purchases/totals/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/purchases/totals/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "purchases",
+        "totals",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "quotations /quotations/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/quotations/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "quotations",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "regular-payments /regular-payments/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/regular-payments/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "regular-payments",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "regular-payments /regular-payments/summary/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/regular-payments/summary/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "regular-payments",
+        "summary",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "returns /returns/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/returns/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "returns",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "returns /returns/totals/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/returns/totals/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "returns",
+        "totals",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "roles /roles/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/roles/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "roles",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "sales /sales/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/sales/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "sales",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "sales /sales/by-branch/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/sales/by-branch/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "sales",
+        "by-branch",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "sales /sales/by-brand/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/sales/by-brand/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "sales",
+        "by-brand",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "sales /sales/by-cashier/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/sales/by-cashier/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "sales",
+        "by-cashier",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "sales /sales/by-category/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/sales/by-category/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "sales",
+        "by-category",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "sales /sales/by-customer/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/sales/by-customer/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "sales",
+        "by-customer",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "sales /sales/by-payment-method/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/sales/by-payment-method/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "sales",
+        "by-payment-method",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "sales /sales/by-product/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/sales/by-product/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "sales",
+        "by-product",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "sales /sales/commission/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/sales/commission/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "sales",
+        "commission",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "sales /sales/daily/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/sales/daily/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "sales",
+        "daily",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "sales /sales/day-close/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/sales/day-close/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "sales",
+        "day-close",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "sales /sales/monthly/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/sales/monthly/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "sales",
+        "monthly",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "sales /sales/next-number/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/sales/next-number/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "sales",
+        "next-number",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "sales /sales/salespeople/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/sales/salespeople/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "sales",
+        "salespeople",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "sales /sales/summary/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/sales/summary/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "sales",
+        "summary",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "sales /sales/totals/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/sales/totals/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "sales",
+        "totals",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "settings /settings/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/settings/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "settings",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "settings /settings/resolved/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/settings/resolved/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "settings",
+        "resolved",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "suppliers /suppliers/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/suppliers/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "suppliers",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "suppliers /suppliers/summary/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/suppliers/summary/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "suppliers",
+        "summary",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "sync /sync/catalog/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/sync/catalog/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "sync",
+        "catalog",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "sync /sync/changes/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/sync/changes/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "sync",
+        "changes",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "sync /sync/conflicts/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/sync/conflicts/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "sync",
+        "conflicts",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "sync /sync/customers/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/sync/customers/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "sync",
+        "customers",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "sync /sync/manifest/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/sync/manifest/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "sync",
+        "manifest",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "taxes /taxes/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/taxes/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "taxes",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "trade-ins /trade-ins/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/trade-ins/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "trade-ins",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "units /units/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/units/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "units",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "users /users/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/users/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "users",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "vouchers /vouchers/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/vouchers/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "vouchers",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "vouchers /vouchers/summary/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/vouchers/summary/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "vouchers",
+        "summary",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "warehouses /warehouses/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/warehouses/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "warehouses",
+        ""
+       ]
+      }
+     },
+     "event": []
+    },
+    {
+     "name": "warehouses /warehouses/stock/",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/warehouses/stock/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "warehouses",
+        "stock",
+        ""
+       ]
+      }
+     },
+     "event": []
+    }
+   ]
+  },
+  {
+   "name": "3 Writes (POST PUT PATCH DELETE)",
+   "item": [
+    {
+     "name": "stamp + me",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/auth/me",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "auth",
+        "me"
+       ]
+      }
+     },
+     "event": [
+      {
+       "listen": "prerequest",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.environment.set(\"stamp\", Date.now().toString(36).slice(-5).toUpperCase());"
+        ]
+       }
+      },
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 200\", () => pm.expect([200]).to.include(pm.response.code));",
+         "if (pm.response.code < 300) { try { const j = pm.response.json(); pm.environment.set(\"branchId\", (j.data.active_branch && (j.data.active_branch.id || j.data.active_branch)) || (j.data.branches && (j.data.branches[0].id || j.data.branches[0]))); } catch (e) {} }"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "warehouse",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/warehouses/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "warehouses",
+        ""
+       ]
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 200\", () => pm.expect([200]).to.include(pm.response.code));",
+         "if (pm.response.code < 300) { try { const j = pm.response.json(); pm.environment.set(\"warehouseId\", j.data[0].id); } catch (e) {} }"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "category: create",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/categories/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "categories",
+        ""
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"name\": \"ZZ-API-TEST {{stamp}} cat\"\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 201\", () => pm.expect([201]).to.include(pm.response.code));",
+         "if (pm.response.code < 300) { try { const j = pm.response.json(); pm.environment.set(\"categoryId\", j.data.id); } catch (e) {} }"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "category: read",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/categories/{{categoryId}}/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "categories",
+        "{{categoryId}}",
+        ""
+       ]
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 200\", () => pm.expect([200]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "category: PATCH",
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/categories/{{categoryId}}/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "categories",
+        "{{categoryId}}",
+        ""
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"description\": \"patched\"\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 200\", () => pm.expect([200]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "category: PUT",
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/categories/{{categoryId}}/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "categories",
+        "{{categoryId}}",
+        ""
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"name\": \"ZZ-API-TEST {{stamp}} cat\",\n \"description\": \"put\"\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 200\", () => pm.expect([200]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "brand: create",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/brands/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "brands",
+        ""
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"name\": \"ZZ-API-TEST {{stamp}} brand\"\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 201\", () => pm.expect([201]).to.include(pm.response.code));",
+         "if (pm.response.code < 300) { try { const j = pm.response.json(); pm.environment.set(\"brandId\", j.data.id); } catch (e) {} }"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "brand: PATCH",
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/brands/{{brandId}}/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "brands",
+        "{{brandId}}",
+        ""
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"name\": \"ZZ-API-TEST {{stamp}} brand 2\"\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 200\", () => pm.expect([200]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "brand: PUT",
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/brands/{{brandId}}/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "brands",
+        "{{brandId}}",
+        ""
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"name\": \"ZZ-API-TEST {{stamp}} brand 3\"\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 200\", () => pm.expect([200]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "brand: DELETE",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/brands/{{brandId}}/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "brands",
+        "{{brandId}}",
+        ""
+       ]
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 204/200\", () => pm.expect([204, 200]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "brand: read after delete",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/brands/{{brandId}}/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "brands",
+        "{{brandId}}",
+        ""
+       ]
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 404\", () => pm.expect([404]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "unit: create",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/units/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "units",
+        ""
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"name\": \"ZZ-API-TEST {{stamp}} unit\",\n \"short_name\": \"zzt\"\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 201\", () => pm.expect([201]).to.include(pm.response.code));",
+         "if (pm.response.code < 300) { try { const j = pm.response.json(); pm.environment.set(\"unitId\", j.data.id); } catch (e) {} }"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "unit: PATCH",
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/units/{{unitId}}/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "units",
+        "{{unitId}}",
+        ""
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"name\": \"ZZ-API-TEST {{stamp}} unit 2\"\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 200\", () => pm.expect([200]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "unit: PUT",
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/units/{{unitId}}/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "units",
+        "{{unitId}}",
+        ""
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"name\": \"ZZ-API-TEST {{stamp}} unit 3\",\n \"short_name\": \"zzt\"\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 200\", () => pm.expect([200]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "supplier: create",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/suppliers/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "suppliers",
+        ""
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"code\": \"ZZT-S{{stamp}}\",\n \"name\": \"ZZ-API-TEST {{stamp}} supplier\",\n \"phone\": \"\",\n \"email\": \"\",\n \"is_active\": true\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 201\", () => pm.expect([201]).to.include(pm.response.code));",
+         "if (pm.response.code < 300) { try { const j = pm.response.json(); pm.environment.set(\"supplierId\", j.data.id); } catch (e) {} }"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "supplier: PATCH",
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/suppliers/{{supplierId}}/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "suppliers",
+        "{{supplierId}}",
+        ""
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"contact_person\": \"Test\"\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 200\", () => pm.expect([200]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "supplier: PUT",
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/suppliers/{{supplierId}}/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "suppliers",
+        "{{supplierId}}",
+        ""
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"code\": \"ZZT-S{{stamp}}\",\n \"name\": \"ZZ-API-TEST {{stamp}} supplier\"\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 200\", () => pm.expect([200]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "supplier: ledger",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/suppliers/{{supplierId}}/ledger/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "suppliers",
+        "{{supplierId}}",
+        "ledger",
+        ""
+       ]
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 200\", () => pm.expect([200]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "supplier: DELETE (soft delete: stays listed as inactive)",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/suppliers/{{supplierId}}/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "suppliers",
+        "{{supplierId}}",
+        ""
+       ]
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 204/200\", () => pm.expect([204, 200]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "coupon: create",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/coupons/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "coupons",
+        ""
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"code\": \"ZZT{{stamp}}\",\n \"mode\": \"PERCENT\",\n \"value\": \"1\"\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 201\", () => pm.expect([201]).to.include(pm.response.code));",
+         "if (pm.response.code < 300) { try { const j = pm.response.json(); pm.environment.set(\"couponId\", j.data.id); } catch (e) {} }"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "coupon: check",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/coupons/check/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "coupons",
+        "check",
+        ""
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"code\": \"ZZT{{stamp}}\",\n \"payable\": \"100\"\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 200/400/422\", () => pm.expect([200, 400, 422]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "coupon: PATCH",
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/coupons/{{couponId}}/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "coupons",
+        "{{couponId}}",
+        ""
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"is_active\": false\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 200\", () => pm.expect([200]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "coupon: PUT",
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/coupons/{{couponId}}/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "coupons",
+        "{{couponId}}",
+        ""
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"code\": \"ZZT{{stamp}}\",\n \"mode\": \"PERCENT\",\n \"value\": \"2\"\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 200\", () => pm.expect([200]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "coupon: DELETE",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/coupons/{{couponId}}/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "coupons",
+        "{{couponId}}",
+        ""
+       ]
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 204/200\", () => pm.expect([204, 200]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "customer: create",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/customers/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "customers",
+        ""
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"code\": \"ZZT-C{{stamp}}\",\n \"name\": \"ZZ-API-TEST {{stamp}} customer\",\n \"phone\": \"\",\n \"customer_type\": \"RETAIL\"\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 201\", () => pm.expect([201]).to.include(pm.response.code));",
+         "if (pm.response.code < 300) { try { const j = pm.response.json(); pm.environment.set(\"customerId\", j.data.id); } catch (e) {} }"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "customer: PATCH",
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/customers/{{customerId}}/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "customers",
+        "{{customerId}}",
+        ""
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"city\": \"Test\"\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 200\", () => pm.expect([200]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "customer: PUT",
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/customers/{{customerId}}/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "customers",
+        "{{customerId}}",
+        ""
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"name\": \"ZZ-API-TEST {{stamp}} customer\",\n \"customer_type\": \"RETAIL\"\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 200\", () => pm.expect([200]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "product: create",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/products/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "products",
+        ""
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"name\": \"ZZ-API-TEST {{stamp}} item\",\n \"category\": \"{{categoryId}}\",\n \"unit\": \"{{unitId}}\",\n \"price\": \"1.00\",\n \"reorder_level\": \"0\",\n \"variants\": [\n  {\n   \"name\": \"Default\",\n   \"is_default\": true,\n   \"cost_price\": \"0.50\"\n  }\n ]\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 201\", () => pm.expect([201]).to.include(pm.response.code));",
+         "if (pm.response.code < 300) { try { const j = pm.response.json(); pm.environment.set(\"productId\", j.data.id); } catch (e) {} }",
+         "if (pm.response.code < 300) { try { const j = pm.response.json(); pm.environment.set(\"variantId\", j.data.variants && j.data.variants[0] && j.data.variants[0].id); } catch (e) {} }"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "product: read (variant id)",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/products/{{productId}}/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "products",
+        "{{productId}}",
+        ""
+       ]
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 200\", () => pm.expect([200]).to.include(pm.response.code));",
+         "if (pm.response.code < 300) { try { const j = pm.response.json(); pm.environment.set(\"variantId\", j.data.variants[0].id); } catch (e) {} }"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "product: PATCH",
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/products/{{productId}}/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "products",
+        "{{productId}}",
+        ""
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"description\": \"patched\"\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 200\", () => pm.expect([200]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "product: PUT",
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/products/{{productId}}/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "products",
+        "{{productId}}",
+        ""
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"name\": \"ZZ-API-TEST {{stamp}} item\",\n \"category\": \"{{categoryId}}\",\n \"unit\": \"{{unitId}}\"\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 200\", () => pm.expect([200]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "stock count: 2 units",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Idempotency-Key",
+        "value": "{{$guid}}"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/inventory/adjustments/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "inventory",
+        "adjustments",
+        ""
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"warehouse\": \"{{warehouseId}}\",\n \"reason\": \"COUNT\",\n \"note\": \"ZZ-API-TEST\",\n \"apply\": true,\n \"expect_unchanged\": true,\n \"items\": [\n  {\n   \"variant\": \"{{variantId}}\",\n   \"new_quantity\": \"2\",\n   \"expected_quantity\": \"0\",\n   \"unit_cost\": \"0.50\"\n  }\n ]\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 201\", () => pm.expect([201]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "shift: current",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/pos/shifts/current/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "pos",
+        "shifts",
+        "current",
+        ""
+       ]
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 200\", () => pm.expect([200]).to.include(pm.response.code));",
+         "if (pm.response.code < 300) { try { const j = pm.response.json(); pm.environment.set(\"shiftId\", (j.data && (j.data.id || (j.data.shift && j.data.shift.id))) || \"\"); } catch (e) {} }"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "sale: price preview",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/quotations/preview/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "quotations",
+        "preview",
+        ""
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"branch_id\": \"{{branchId}}\",\n \"customer_id\": \"{{customerId}}\",\n \"price_mode\": \"RETAIL\",\n \"items\": [\n  {\n   \"variant_id\": \"{{variantId}}\",\n   \"quantity\": \"1\"\n  }\n ]\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 200\", () => pm.expect([200]).to.include(pm.response.code));",
+         "if (pm.response.code < 300) { try { const j = pm.response.json(); pm.environment.set(\"saleTotal\", j.data.grand_total); } catch (e) {} }"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "sale: sell (cash)",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Idempotency-Key",
+        "value": "{{sellKey}}"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/sales/sell/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "sales",
+        "sell",
+        ""
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"customer_id\": \"{{customerId}}\",\n \"branch_id\": \"{{branchId}}\",\n \"warehouse_id\": \"{{warehouseId}}\",\n \"shift_id\": \"{{shiftId}}\",\n \"items\": [\n  {\n   \"variant_id\": \"{{variantId}}\",\n   \"quantity\": \"1\"\n  }\n ],\n \"payments\": [\n  {\n   \"payment_method\": \"CASH\",\n   \"amount\": \"{{saleTotal}}\"\n  }\n ]\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "prerequest",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.environment.set(\"sellKey\", pm.variables.replaceIn(\"{{$guid}}\"));"
+        ]
+       }
+      },
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 201\", () => pm.expect([201]).to.include(pm.response.code));",
+         "if (pm.response.code < 300) { try { const j = pm.response.json(); pm.environment.set(\"saleId\", j.data.id); } catch (e) {} }"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "sale: same key again (must replay)",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Idempotency-Key",
+        "value": "{{sellKey}}"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/sales/sell/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "sales",
+        "sell",
+        ""
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"customer_id\": \"{{customerId}}\",\n \"branch_id\": \"{{branchId}}\",\n \"warehouse_id\": \"{{warehouseId}}\",\n \"shift_id\": \"{{shiftId}}\",\n \"items\": [\n  {\n   \"variant_id\": \"{{variantId}}\",\n   \"quantity\": \"1\"\n  }\n ],\n \"payments\": [\n  {\n   \"payment_method\": \"CASH\",\n   \"amount\": \"{{saleTotal}}\"\n  }\n ]\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"replay returns the same sale\", () => pm.expect(pm.response.json().data.id).to.eql(pm.environment.get(\"saleId\")));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "sale: read",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/sales/{{saleId}}/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "sales",
+        "{{saleId}}",
+        ""
+       ]
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 200\", () => pm.expect([200]).to.include(pm.response.code));",
+         "if (pm.response.code < 300) { try { const j = pm.response.json(); pm.environment.set(\"saleItemId\", j.data.items[0].id); } catch (e) {} }"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "return: preview",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/sales/{{saleId}}/returns/preview/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "sales",
+        "{{saleId}}",
+        "returns",
+        "preview",
+        ""
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"refund_method\": \"CASH\",\n \"items\": [\n  {\n   \"sale_item_id\": \"{{saleItemId}}\",\n   \"quantity\": \"1\"\n  }\n ]\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 200\", () => pm.expect([200]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "return: post (cash refund)",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Idempotency-Key",
+        "value": "{{$guid}}"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/sales/{{saleId}}/returns/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "sales",
+        "{{saleId}}",
+        "returns",
+        ""
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"return_date\": \"{{today}}\",\n \"refund_method\": \"CASH\",\n \"items\": [\n  {\n   \"sale_item_id\": \"{{saleItemId}}\",\n   \"quantity\": \"1\"\n  }\n ],\n \"reason\": \"ZZ-API-TEST\"\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "prerequest",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "const d = new Date(); pm.environment.set(\"today\", d.getFullYear() + \"-\" + String(d.getMonth() + 1).padStart(2, \"0\") + \"-\" + String(d.getDate()).padStart(2, \"0\"));"
+        ]
+       }
+      },
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 201\", () => pm.expect([201]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "hold: park a cart",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/pos/hold/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "pos",
+        "hold",
+        ""
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"reference\": \"ZZ-API-TEST {{stamp}}\",\n \"branch\": \"{{branchId}}\",\n \"cart_data\": {\n  \"items\": []\n },\n \"note\": \"ZZ-API-TEST\"\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 201\", () => pm.expect([201]).to.include(pm.response.code));",
+         "if (pm.response.code < 300) { try { const j = pm.response.json(); pm.environment.set(\"heldId\", j.data.id); } catch (e) {} }"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "hold: DELETE",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/pos/held/{{heldId}}/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "pos",
+        "held",
+        "{{heldId}}",
+        ""
+       ]
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 204/200\", () => pm.expect([204, 200]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "clean-up: stock back to 0",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Idempotency-Key",
+        "value": "{{$guid}}"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/inventory/adjustments/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "inventory",
+        "adjustments",
+        ""
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"warehouse\": \"{{warehouseId}}\",\n \"reason\": \"COUNT\",\n \"note\": \"ZZ-API-TEST clean-up\",\n \"apply\": true,\n \"expect_unchanged\": false,\n \"items\": [\n  {\n   \"variant\": \"{{variantId}}\",\n   \"new_quantity\": \"0\",\n   \"expected_quantity\": \"2\"\n  }\n ]\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 201/400/409\", () => pm.expect([201, 400, 409]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "clean-up: product DELETE",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/products/{{productId}}/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "products",
+        "{{productId}}",
+        ""
+       ]
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 204/200/400/409\", () => pm.expect([204, 200, 400, 409]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "clean-up: customer DELETE (soft delete)",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/customers/{{customerId}}/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "customers",
+        "{{customerId}}",
+        ""
+       ]
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 204/200/400/409\", () => pm.expect([204, 200, 400, 409]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "clean-up: unit DELETE",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/units/{{unitId}}/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "units",
+        "{{unitId}}",
+        ""
+       ]
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 204/200/400/409\", () => pm.expect([204, 200, 400, 409]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "clean-up: category DELETE",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/categories/{{categoryId}}/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "categories",
+        "{{categoryId}}",
+        ""
+       ]
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 204/200/400/409\", () => pm.expect([204, 200, 400, 409]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "4 Negative checks",
+   "item": [
+    {
+     "name": "no token -> 401",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/auth/me",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "auth",
+        "me"
+       ]
+      },
+      "auth": {
+       "type": "noauth"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 401\", () => pm.expect([401]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "bad token -> 401",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer garbage"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/auth/me",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "auth",
+        "me"
+       ]
+      },
+      "auth": {
+       "type": "noauth"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 401\", () => pm.expect([401]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "unknown id -> 404",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/customers/00000000-0000-0000-0000-000000000000/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "customers",
+        "00000000-0000-0000-0000-000000000000",
+        ""
+       ]
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 404\", () => pm.expect([404]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "empty customer -> 400",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/customers/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "customers",
+        ""
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 400\", () => pm.expect([400]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "empty category -> 400",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/categories/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "categories",
+        ""
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 400\", () => pm.expect([400]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "sell without Idempotency-Key -> 400",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/sales/sell/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "sales",
+        "sell",
+        ""
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n \"items\": [],\n \"payments\": []\n}"
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 400/422\", () => pm.expect([400, 422]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "HEAD list runs the full query (watch the time)",
+     "request": {
+      "method": "HEAD",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/customers/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "customers",
+        ""
+       ]
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 200/405\", () => pm.expect([200, 405]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "name": "OPTIONS list (403 PERMISSION_DENIED today, 204 expected)",
+     "request": {
+      "method": "OPTIONS",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/customers/",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "customers",
+        ""
+       ]
+      }
+     },
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status is 200/204/403\", () => pm.expect([200, 204, 403]).to.include(pm.response.code));"
+        ]
+       }
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}
