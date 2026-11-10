@@ -28,7 +28,7 @@ const money = (v: string) => formatBDT(v);
 
 /** One quotation: the price promised, who it is for, until when, and the next step (send it to the till, or cancel it). */
 export default function QuotationScreen() {
-  const { contentWidth } = useWideLandscape();
+  const { readingWidth } = useWideLandscape();
   const theme = useTheme();
   const { t, lang } = usePrefs();
   const router = useRouter();
@@ -74,7 +74,7 @@ export default function QuotationScreen() {
   const card = { padding: Spacing.three, gap: Spacing.two, borderRadius: Radius.lg, borderCurve: 'continuous' as const, backgroundColor: theme.card, borderWidth: 1, borderColor: theme.border };
 
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" refreshControl={<RefreshControl refreshing={quote.isRefetching} onRefresh={() => void quote.refetch()} />} style={{ backgroundColor: theme.canvas }} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six, maxWidth: Math.min(contentWidth, 1080), width: '100%', alignSelf: 'center' }}>
+    <ScrollView contentInsetAdjustmentBehavior="automatic" refreshControl={<RefreshControl refreshing={quote.isRefetching} onRefresh={() => void quote.refetch()} />} style={{ backgroundColor: theme.canvas }} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six, maxWidth: Math.min(readingWidth, 1080), width: '100%', alignSelf: 'center' }}>
       <Stack.Screen options={{ title: t('Quotation') }} />
       {quote.isPending ? <SkeletonRows count={3} /> : null}
       {quote.isError ? <ErrorState message={t('Could not load this quotation.')} onRetry={() => void quote.refetch()} /> : null}

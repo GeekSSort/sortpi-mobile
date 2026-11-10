@@ -27,6 +27,7 @@ import { formatBDT } from '@/lib/money';
 import { sameName } from '@/lib/names';
 import { HomeSidebar, MenuButton } from '@/menu/drawer';
 import { stockSummary } from '@/stock/api';
+import { NegativeStockNotice } from '@/stock/negative-notice';
 import { formatQuantity } from '@/stock/status';
 
 /** The shop at a glance, in plain words: today's takings, who owes, what is running out, the week, the latest sales. */
@@ -72,6 +73,7 @@ function CompactHome({ sidebarWidth }: { sidebarWidth: number }) {
   const k = shelf.data;
   const dashboard = (
     <Screen>
+      <NegativeStockNotice />
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         {showSidebar ? null : <MenuButton />}
         <Image source={require('@/assets/images/splash-icon.png')} style={{ width: 40, height: 40, borderRadius: 10 }} />

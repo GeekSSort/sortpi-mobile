@@ -33,7 +33,7 @@ const RUN: Record<Move, (id: string, body?: ReturnType<typeof receiveBody>) => P
 
 /** One transfer: where it goes, what is in it, how much has arrived, and the next step. Each step asks first. */
 export default function TransferScreen() {
-  const { contentWidth } = useWideLandscape();
+  const { readingWidth } = useWideLandscape();
   const theme = useTheme();
   const { t, lang } = usePrefs();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -101,7 +101,7 @@ export default function TransferScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
       <Stack.Screen options={{ title: tr?.reference_no ?? t('Transfer') }} />
-      <ScrollView contentInsetAdjustmentBehavior="automatic" refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} />} contentContainerStyle={{ gap: Spacing.three, padding: Spacing.three, paddingBottom: BottomTabInset + Spacing.four, maxWidth: Math.min(contentWidth, 1080), width: '100%', alignSelf: 'center' }}>
+      <ScrollView contentInsetAdjustmentBehavior="automatic" refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} />} contentContainerStyle={{ gap: Spacing.three, padding: Spacing.three, paddingBottom: BottomTabInset + Spacing.four, maxWidth: Math.min(readingWidth, 1080), width: '100%', alignSelf: 'center' }}>
         {q.isError ? <ErrorState message={t(describeTransferError(q.error))} onRetry={() => void q.refetch()} /> : null}
         {!tr ? (
           q.isPending ? <SkeletonRows /> : null

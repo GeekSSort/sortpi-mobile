@@ -15,11 +15,13 @@ import { SkeletonRows } from '@/components/skeleton';
 import { Tap } from '@/components/tap';
 import { ThemedText } from '@/components/themed-text';
 import { customerSummary } from '@/customers/api';
+import { useDesktopShell, useShellSidebarWidth } from '@/hooks/use-desktop-shell';
 import { useTheme } from '@/hooks/use-theme';
 import { useT } from '@/i18n/prefs';
 import { localDateISO } from '@/lib/dates';
 import { formatBDT } from '@/lib/money';
 import { HomeSidebar } from '@/menu/drawer';
+import { NegativeStockNotice } from '@/stock/negative-notice';
 import { resolvedSettings } from '@/settings/api';
 import { KEYS } from '@/settings/logic';
 
@@ -75,8 +77,10 @@ export function TabletDashboard({ width }: { width: number }) {
   const [custom, setCustom] = useState<DashboardRange>();
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const shell = useDesktopShell(); // then the app already shows the menu beside every screen
+  const shellWidth = useShellSidebarWidth();
   const sidebarWidth = Math.min(264, Math.round(width * 0.28));
-  const fourAcross = width - sidebarWidth >= 760;
+  const fourAcross = width - (shell ? shellWidth : sidebarWidth) >= 760;
   const branch = me?.active_branch?.id;
   const now = new Date();
   const range = custom ?? datesFor(preset, now);
@@ -118,20 +122,21 @@ export function TabletDashboard({ width }: { width: number }) {
 
   return (
     <View style={{ flex: 1, flexDirection: 'row', backgroundColor: theme.canvas }}>
-      <HomeSidebar width={sidebarWidth} branded />
+      {shell ? null : <HomeSidebar width={sidebarWidth} branded />}
       <View style={{ flex: 1, paddingTop: insets.top }}>
         <View style={{ minHeight: 52, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: theme.card, borderBottomWidth: 1, borderColor: theme.border }}>
           <ThemedText type="bodyMedium" style={{ flex: 1 }}>Dashboard</ThemedText>
           <ThemedText type="small" literal numberOfLines={1} style={{ flexShrink: 1 }}>{me?.active_branch?.name ?? me?.organization.name}</ThemedText>
-          {can('notification.view') ? <Tap accessibilityRole="button" accessibilityLabel={t('Notifications')} onPress={() => router.push('/notifications')} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}><Icon name="Bell" size={20} color={theme.textSecondary} /></Tap> : null}
+          {can('notification.view') ? <Tap accessibilityRole="button" accessibilityLabel={t('Notifications')} onPress={() => router.push('/notifications')} style={{ width: 48, height: 48, alignItems: 'center', justifyContent: 'center' }}><Icon name="Bell" size={20} color={theme.textSecondary} /></Tap> : null}
         </View>
         <ScrollView contentContainerStyle={{ padding: 20, gap: 20 }} keyboardShouldPersistTaps="handled">
+          <NegativeStockNotice />
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <View style={{ flex: 1, gap: 4 }}>
               <ThemedText type="heading" literal>{t('Welcome, {name}', { name: me?.full_name?.trim().split(/\s+/)[0] || me?.organization.name || 'SortPi' })} 👋</ThemedText>
               <ThemedText type="small" themeColor="textMuted">Here’s what’s happening with your business today.</ThemedText>
             </View>
-            <Tap accessibilityRole="button" accessibilityLabel={dateLabel} onPress={() => { setFrom(range?.from_date ?? ''); setTo(range?.to_date ?? ''); setFilterOpen(true); }} style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, backgroundColor: theme.card, borderRadius: 8, borderWidth: 1, borderColor: theme.border }}>
+            <Tap accessibilityRole="button" accessibilityLabel={dateLabel} onPress={() => { setFrom(range?.from_date ?? ''); setTo(range?.to_date ?? ''); setFilterOpen(true); }} style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, backgroundColor: theme.card, borderRadius: 8, borderWidth: 1, borderColor: theme.border }}>
               <Icon name="History" size={17} color={theme.textSecondary} />
               <ThemedText type="smallMedium" literal>{dateLabel}</ThemedText>
               <Icon name="ChevronDown" size={16} color={theme.textSecondary} />
@@ -227,7 +232,7 @@ function Panel({ title, action, onPress, children, weight = 1 }: { title: string
     <Card style={{ flex: weight, minWidth: 0, padding: 12, gap: 10 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
         <ThemedText type="bodyMedium" style={{ flex: 1 }}>{title}</ThemedText>
-        {action ? <Tap accessibilityRole="button" onPress={onPress} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 }}><ThemedText type="smallMedium" style={{ color: theme.brandText }}>{action}</ThemedText></Tap> : null}
+        {action ? <Tap accessibilityRole="button" onPress={onPress} style={{ minHeight: 48, justifyContent: 'center', paddingHorizontal: 8 }}><ThemedText type="smallMedium" style={{ color: theme.brandText }}>{action}</ThemedText></Tap> : null}
       </View>
       {children}
     </Card>
@@ -239,7 +244,7 @@ function Rows({ rows, loading }: { rows?: { key: string; label: string; detail?:
   if (loading) return <SkeletonRows count={2} />;
   if (!rows?.length) return <ThemedText type="small" themeColor="textMuted">{rows ? 'No results' : '—'}</ThemedText>;
   return rows.map((row) => (
-    <Tap key={row.key} disabled={!row.onPress} accessibilityRole={row.onPress ? 'button' : undefined} onPress={row.onPress} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44, borderTopWidth: 1, borderColor: theme.border }}>
+    <Tap key={row.key} disabled={!row.onPress} accessibilityRole={row.onPress ? 'button' : undefined} onPress={row.onPress} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 48, borderTopWidth: 1, borderColor: theme.border }}>
       <View style={{ flex: 1 }}>
         <ThemedText type="smallMedium" literal numberOfLines={2}>{row.label}</ThemedText>
         {row.detail ? <ThemedText type="caption" themeColor="textMuted" literal>{row.detail}</ThemedText> : null}
@@ -271,7 +276,7 @@ function ActivityTable({ rows, loading }: { rows?: Awaited<ReturnType<typeof das
           const methods = sale.payments?.map((payment) => t(payment.payment_method.toLowerCase().replace(/^./, (letter) => letter.toUpperCase())));
           const values = [sale.invoice_number, sale.customer_name || t('Walk-in customer'), new Date(sale.sale_date).toLocaleDateString(), sale.items?.length ?? '—', methods?.join(', ') || '—', money(sale.grand_total), t(status)];
           return (
-            <Tap key={sale.id} accessibilityRole="button" accessibilityLabel={sale.invoice_number} onPress={() => router.push({ pathname: '/sale/[id]', params: { id: sale.id } })} style={{ flexDirection: 'row', minHeight: 44, alignItems: 'center', backgroundColor: index % 2 ? theme.canvas : theme.card }}>
+            <Tap key={sale.id} accessibilityRole="button" accessibilityLabel={sale.invoice_number} onPress={() => router.push({ pathname: '/sale/[id]', params: { id: sale.id } })} style={{ flexDirection: 'row', minHeight: 48, alignItems: 'center', backgroundColor: index % 2 ? theme.canvas : theme.card }}>
               {values.map((value, i) => <ThemedText key={ACTIVITY_COLUMNS[i][0]} type="small" literal numberOfLines={1} style={{ width: ACTIVITY_COLUMNS[i][1], paddingHorizontal: 8 }}>{value}</ThemedText>)}
               <View style={{ width: ACTIVITY_COLUMNS[7][1], alignItems: 'center' }}><Icon name="ArrowUpRight" size={17} color={theme.brandText} /></View>
             </Tap>

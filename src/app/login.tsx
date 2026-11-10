@@ -25,7 +25,7 @@ export default function LoginScreen() {
   const { reset } = useLocalSearchParams<{ reset?: string }>();
   const theme = useTheme();
   const { t } = usePrefs();
-  const { signIn, workspaceUrl, biometricAvailable, biometricEnabled, setBiometricEnabled } = useSession();
+  const { signIn, workspaceUrl, interrupted, biometricAvailable, biometricEnabled, setBiometricEnabled } = useSession();
   const passwordRef = useRef<ComponentRef<typeof TextInput>>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -82,6 +82,7 @@ export default function LoginScreen() {
           onSubmitEditing={submit}
         />
         {reset ? <Notice kind="info">Password changed. Sign in with the new one.</Notice> : null}
+        {interrupted ? <Notice kind="info">Your sign-in was cut off by a poor connection, so it had to end. Sign in again to carry on.</Notice> : null}
         {error ? <Notice>{error}</Notice> : null}
         <Button title="Sign in" loading={busy} disabled={!email.trim() || !password} onPress={submit} />
         <Pressable accessibilityRole="link" onPress={() => router.push('/forgot-password')} style={({ pressed }) => ({ alignSelf: 'center', padding: 8, opacity: pressed ? 0.5 : 1 })}>

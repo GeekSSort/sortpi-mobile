@@ -86,4 +86,28 @@ export const PayColors = {
   MOBILE: { fill: '#d6176a', ink: { light: '#d6176a', dark: '#ff7fc1' } },
   CARD: { fill: '#2563eb', ink: { light: '#2563eb', dark: '#79b4fe' } },
   BANK: { fill: '#0f766e', ink: { light: '#0f766e', dark: '#1bccb7' } },
+  GIFT_CARD: { fill: '#7c3aed', ink: { light: '#7c3aed', dark: '#b79cff' } },
+} as const;
+
+/** The web till's own colours, read from its spreadsheet layout, so the wide phone till looks like the till a shop already knows. */
+export const WebPos = {
+  ink: '#1e293b',
+  panel: '#202b3d',
+  blue: '#2563eb',
+  teal: '#0f766e',
+  green: '#10b981',
+  pink: '#db2777',
+  amber: '#d97706',
+  violet: '#8b5cf6',
+  purple: '#7c3aed',
+  cyan: '#0e7490',
+  yellow: '#facc15',
+  red: '#ef4444',
+  orange: '#ea580c',
+  slate: '#334155',
+  rose: '#e11d48',
+  sky: '#0284c7',
+  hotPink: '#ec4899',
+  tableHead: '#f5f5f5',
+  band: '#f1f5f9',
 } as const;

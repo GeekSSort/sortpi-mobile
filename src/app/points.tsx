@@ -33,7 +33,7 @@ const GENEROUS = 10;
 
 /** How customers earn points and what the points are worth at the till. Every rule is the server's; this only sets them. */
 export default function PointsScreen() {
-  const { contentWidth } = useWideLandscape();
+  const { readingWidth } = useWideLandscape();
   const theme = useTheme();
   const { t } = usePrefs();
   const queryClient = useQueryClient();
@@ -99,7 +99,7 @@ export default function PointsScreen() {
       <Stack.Screen options={{ title: t('Customer points') }} />
       <SafeAreaView edges={['bottom']} style={{ flex: 1 }}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
-          <KeyboardAwareScrollView bottomOffset={24} contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} />} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, maxWidth: Math.min(contentWidth, 1080), width: '100%', alignSelf: 'center' }}>
+          <KeyboardAwareScrollView bottomOffset={24} contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} />} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, maxWidth: Math.min(readingWidth, 1080), width: '100%', alignSelf: 'center' }}>
             {q.isError ? <ErrorState message={t('Could not load your settings.')} onRetry={() => void q.refetch()} /> : null}
             {q.isPending ? <SkeletonRows /> : null}
             {now ? (

@@ -57,7 +57,7 @@ test('settings read as the till behaves: server defaults when a row is missing, 
 });
 
 test('the payment list keeps the shop order, maps old spellings, drops repeats and never ends up empty', () => {
-  assert.deepEqual(parseMethods('bkash, Card,  CARD , Visa/Mastercard, Gift voucher'), ['bKash', 'Card', 'Gift voucher']);
+  assert.deepEqual(parseMethods('bkash, Card,  CARD , Visa/Mastercard, Gift voucher'), ['bKash', 'Card', 'Gift card']); // "Gift voucher" is now the usual Gift card method
   assert.deepEqual(parseMethods(''), ['Card', 'bKash', 'Nagad', 'Rocket', 'Bank Transfer', 'Others']);
   assert.deepEqual(parseMethods(undefined).length, 6);
   assert.equal(serializeMethods(['bKash', ' Card ', '']), 'bKash, Card');
@@ -68,7 +68,8 @@ test('each method is booked to a ledger by its name, as the server does', () => 
   assert.equal(tenderOf('bKash Merchant'), 'MOBILE');
   assert.equal(tenderOf('Cheque'), 'BANK');
   assert.equal(tenderOf('Visa'), 'CARD');
-  assert.equal(tenderOf('Gift voucher'), 'OTHER');
+  assert.equal(tenderOf('Gift voucher'), 'GIFT_CARD');
+  assert.equal(tenderOf('Gift card'), 'GIFT_CARD');
   assert.equal(tenderOf('My bkash number'), 'MOBILE');
   assert.equal(tenderOf('Cash'), 'CASH');
 });
@@ -86,7 +87,7 @@ test('a method name is refused when empty, has a comma, is long, is cash, or is 
 
 test('the usual methods still to offer, and moving one up', () => {
   assert.equal(unusedUsual(['bKash', 'Card']).some((m) => m.code === 'bKash'), false);
-  assert.equal(unusedUsual([]).length, 9);
+  assert.equal(unusedUsual([]).length, 10);
   assert.deepEqual(moveUp(['a', 'b', 'c'], 2), ['a', 'c', 'b']);
   assert.deepEqual(moveUp(['a', 'b'], 0), ['a', 'b']);
 });

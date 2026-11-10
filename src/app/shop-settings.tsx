@@ -38,7 +38,7 @@ const paperLabel = (width: string) => width === 'a4' ? 'A4' : width.replace('mm'
 
 /** The settings a shop owner needs most: tax, discount, daily target, how customers pay, and a few rules about selling and stock. Each change is saved as it is made. */
 export default function ShopSettingsScreen() {
-  const { contentWidth, wideLandscape } = useWideLandscape();
+  const { readingWidth, wideLandscape } = useWideLandscape();
   const theme = useTheme();
   const { t, setGuideDone } = usePrefs();
   const router = useRouter();
@@ -108,7 +108,7 @@ export default function ShopSettingsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
       <Stack.Screen options={{ title: t('Settings') }} />
-      <ScrollView contentInsetAdjustmentBehavior="automatic" refreshControl={canSee ? <RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} /> : undefined} contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four, maxWidth: Math.min(contentWidth, 1080), width: '100%', alignSelf: 'center' }}>
+      <ScrollView contentInsetAdjustmentBehavior="automatic" refreshControl={canSee ? <RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} /> : undefined} contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four, maxWidth: Math.min(readingWidth, 1080), width: '100%', alignSelf: 'center' }}>
         <View style={{ flexDirection: wideLandscape ? 'row' : 'column', gap: wideLandscape ? Spacing.three : 0, paddingHorizontal: wideLandscape ? Spacing.three : 0 }}>
           <View style={{ flex: wideLandscape ? 1 : undefined, minWidth: 0 }}>
             <Section title="On this device" />
@@ -175,7 +175,7 @@ export default function ShopSettingsScreen() {
               {toggle(KEYS.refundPaid, 'Undo', 'info', 'Give money back only on paid bills', 'If a bill is not paid yet, collect the money first, then take the goods back.', shop.refundPaid)}
 
               <Section title="Stock" />
-              {toggle(KEYS.negativeStock, 'TriangleAlert', 'warn', 'Allow selling more than is in stock', shop.negativeStock ? 'The till sells anyway and the count goes below zero until the next delivery.' : 'The till will not sell more than the shelf holds.', shop.negativeStock, { title: 'Change this?', body: 'It decides whether the till may sell goods that are not in stock.' })}
+              {toggle(KEYS.negativeStock, 'TriangleAlert', 'warn', 'Allow stock below zero', shop.negativeStock ? 'Goods may be moved or corrected below zero. Sales always go through.' : 'Goods cannot be moved or corrected below zero. Sales still go through, and the Stock tab asks you to count them.', shop.negativeStock, { title: 'Change this?', body: 'It decides whether stock may go below zero when goods are moved or corrected. Sales are never refused for stock.' })}
               {toggle(KEYS.barcodes, 'ScanLine', 'info', 'Use barcodes', 'Turn this off if you do not put barcodes on your items. Nothing is lost.', shop.barcodes)}
               {perms.includes('unit.view') ? <ValueRow icon="Ruler" tone="info" title="Stock types" hint="Piece, kilogram, litre. Decides if you can sell half of something." value={activeUnit ? activeUnit.name : units.data ? t('{n} types', { n: units.data.length }) : ''} onPress={() => router.push('/stock-types')} /> : null}
             </View>

@@ -118,13 +118,13 @@ export const openShift = (branchId: string, openingCash: string, counterId?: str
 export const listCounters = async (branchId: string): Promise<Counter[]> => fromCounterRows(await api.get<Parameters<typeof fromCounterRows>[0]>('/pos/counters/', { query: { branch: branchId, limit: 50 } }));
 
 /** The server's own total for this cart (price, tax, discounts), without saving anything. */
-export async function previewTotal(ctx: Pick<SellContext, 'customerId' | 'branchId' | 'wholesale'>, cart: Cart): Promise<{ subtotal: string; tax_amount: string; grand_total: string }> {
+export async function previewTotal(ctx: Pick<SellContext, 'customerId' | 'branchId' | 'wholesale' | 'orderDiscount'>, cart: Cart): Promise<{ subtotal: string; discount_amount?: string; tax_amount: string; grand_total: string; lines?: { variant_id: string; unit_price?: string; discount_amount?: string; line_total?: string }[] }> {
   return api.post('/quotations/preview/', buildPreviewRequest(ctx, cart));
 }
 
 /** One `idempotencyKey` per sale attempt: a retry after a dropped connection returns the first result. */
-export const sell = (ctx: SellContext, cart: Cart, payments: PaymentInput[], idempotencyKey: string) =>
-  api.post<SaleResult>('/sales/sell/', buildSellRequest(ctx, cart, payments), { idempotencyKey });
+export const sell = (ctx: SellContext, cart: Cart, payments: PaymentInput[], idempotencyKey: string, serials?: Record<string, string[]>) =>
+  api.post<SaleResult>('/sales/sell/', buildSellRequest(ctx, cart, payments, serials), { idempotencyKey });
 
 export type ShiftSummary = { opening_cash: string; cash_sales: string; cash_refunds: string; cash_collected?: string; cash_in?: string; cash_out?: string; expected_cash: string; sale_count: number; total_sales?: string };
 export const shiftSummary = (id: string) => api.get<ShiftSummary>(`/pos/shifts/${id}/summary/`);
@@ -157,3 +157,22 @@ export async function lookupForPriceCheck(by: 'barcode' | 'code', code: string, 
     throw e;
   }
 }
+
+/** The number the branch's next sale will most likely get (`GET /sales/next-number/`). Reserves nothing; the receipt carries the real one. Empty when the server cannot say. */
+export async function nextInvoiceNumber(branchId: string): Promise<string> {
+  try {
+    const r = await api.get<{ invoice_number?: string }>('/sales/next-number/', { query: { branch_id: branchId } });
+    return r.invoice_number ?? '';
+  } catch {
+    return '';
+  }
+}
+
+export type CashOptions = { cash_account: { id: string; name: string }; accounts: { id: string; name: string; code: string }[]; categories: { id: string; name: string }[]; suppliers: { id: string; name: string }[] };
+/** What cash can be paid to or taken from, for the Cash in/out window (`GET /pos/shifts/cash-options/`, needs `finance.manage_accounts`). */
+export const cashOptions = () => api.get<CashOptions>('/pos/shifts/cash-options/');
+
+export type CashMovementBody = { kind: string; amount: string; reason: string; category_id?: string; account_id?: string; supplier_id?: string; party_name?: string };
+/** Writes money in or out of the drawer into the open shift (`POST /pos/shifts/{id}/cash-movements/`). One key per attempt, so a retry is not recorded twice. */
+export const recordCashMovement = (shiftId: string, body: CashMovementBody, idempotencyKey: string) =>
+  api.post<{ id: string }>(`/pos/shifts/${shiftId}/cash-movements/`, body, { idempotencyKey });

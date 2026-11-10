@@ -25,7 +25,7 @@ import { resolvedSettings, saveSetting } from '@/settings/api';
 import { describeSettingsError, KEYS, methodProblem, moveUp, readShop, RECORDED_AS, serializeMethods, tenderOf, tidyName, unusedUsual, type Tender } from '@/settings/logic';
 import { showToast } from '@/ui/toast';
 
-const TENDER_ICON: Record<Tender, IconName> = { CASH: 'Cash', MOBILE: 'Phone', BANK: 'Bank', CARD: 'CreditCard', OTHER: 'Receipt' };
+const TENDER_ICON: Record<Tender, IconName> = { CASH: 'Cash', MOBILE: 'Phone', BANK: 'Bank', CARD: 'CreditCard', OTHER: 'Receipt', GIFT_CARD: 'Gift' };
 
 /** The ways customers can pay besides cash, in the order the till shows them. Add, rename, move up, remove. Each change saves the whole list at once. */
 export default function PaymentMethodsScreen() {

@@ -27,6 +27,7 @@ import { setPendingItem } from '@/sell/pending';
 import { showToast } from '@/ui/toast';
 import { Scanner } from '@/scan/scanner';
 import { useUsesBarcodes } from '@/sell/use-barcodes';
+import { NegativeStockNotice, useNegativeCount } from '@/stock/negative-notice';
 import { listStock, stockSummary, type StockFilter, type StockRow } from '@/stock/api';
 import { formatQuantity, STOCK_LEVEL_LABEL, stockLevel, type StockLevel } from '@/stock/status';
 
@@ -49,7 +50,7 @@ export default function StockScreen() {
   const tile = `${params.filter ?? ''}|${params.n ?? ''}`;
   if (seenTile !== tile) {
     setSeenTile(tile);
-    if (params.filter === 'low' || params.filter === 'out' || params.filter === 'in') setFilter(params.filter);
+    if (params.filter === 'low' || params.filter === 'out' || params.filter === 'in' || params.filter === 'negative') setFilter(params.filter);
   }
   const pick = (f: StockFilter) => setFilter((cur) => (cur === f ? 'all' : f));
   const [scanning, setScanning] = useState(false);
@@ -98,13 +99,16 @@ export default function StockScreen() {
     </>
   );
 
+  const below = useNegativeCount();
   const header = (
     <View style={{ gap: Spacing.three, padding: Spacing.three }}>
+      <NegativeStockNotice onShow={() => setFilter('negative')} />
       {wideLandscape ? searchControls : null}
       <View style={{ flexDirection: wideLandscape ? 'column' : 'row', flexWrap: !wideLandscape && bigText ? 'wrap' : 'nowrap', gap: Spacing.two }}>
         <Tile compact={wideLandscape} label="Items" icon="Package" value={s ? String(s.lines) : '…'} selected={filter === 'all'} onPress={() => setFilter('all')} />
         <Tile compact={wideLandscape} label="Low" value={s ? String(s.low_stock) : '…'} tone={s && s.low_stock > 0 ? 'warn' : undefined} icon="TriangleAlert" selected={filter === 'low'} onPress={() => pick('low')} />
         <Tile compact={wideLandscape} label="Out" value={s ? String(s.out_of_stock) : '…'} tone={s && s.out_of_stock > 0 ? 'bad' : undefined} icon="Cancel" selected={filter === 'out'} onPress={() => pick('out')} />
+        <Tile compact={wideLandscape} label="Below zero" value={below === null ? '0' : String(below)} tone={below !== null ? 'bad' : undefined} icon="Cancel" selected={filter === 'negative'} onPress={() => pick('negative')} />
       </View>
       {s?.stock_value ? (
         <ThemedText type="small" themeColor="textMuted">

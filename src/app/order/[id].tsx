@@ -32,7 +32,7 @@ const money = (v: string) => formatBDT(v);
 
 /** One order: who, what, the day, what has been paid and what is left, and the next step (deposit, ready, hand over, cancel). */
 export default function OrderScreen() {
-  const { contentWidth } = useWideLandscape();
+  const { readingWidth } = useWideLandscape();
   const theme = useTheme();
   const { t, lang } = usePrefs();
   const router = useRouter();
@@ -66,7 +66,7 @@ export default function OrderScreen() {
   const card = { padding: Spacing.three, gap: Spacing.two, borderRadius: Radius.lg, borderCurve: 'continuous' as const, backgroundColor: theme.card, borderWidth: 1, borderColor: theme.border };
 
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={order.isRefetching} onRefresh={() => void order.refetch()} />} style={{ backgroundColor: theme.canvas }} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six, maxWidth: Math.min(contentWidth, 1080), width: '100%', alignSelf: 'center' }}>
+    <ScrollView contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={order.isRefetching} onRefresh={() => void order.refetch()} />} style={{ backgroundColor: theme.canvas }} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six, maxWidth: Math.min(readingWidth, 1080), width: '100%', alignSelf: 'center' }}>
       <Stack.Screen options={{ title: t('Order') }} />
       {order.isPending ? <SkeletonRows count={3} /> : null}
       {order.isError ? <ErrorState message={t('Could not load this order.')} onRetry={() => void order.refetch()} /> : null}

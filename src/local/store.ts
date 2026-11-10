@@ -64,12 +64,12 @@ export async function status(db: Db): Promise<StoreStatus> {
 }
 
 /** One sellable thing: a variant with its item's name, unit and the stock held across the branch's warehouses. */
-export type LocalItem = { variantId: string; productId: string; name: string; productName: string; variantName: string; sku: string; price: string | null; wholesale: string | null; mrp: string | null; unitShort: string | null; allowDecimal: boolean; stock: string; reorderLevel: string | null; categoryName: string | null; brandName: string | null };
+export type LocalItem = { variantId: string; productId: string; name: string; productName: string; variantName: string; sku: string; price: string | null; wholesale: string | null; mrp: string | null; unitShort: string | null; allowDecimal: boolean; stock: string; reorderLevel: string | null; trackSerial: boolean; categoryName: string | null; brandName: string | null };
 
-type ItemRow = { variant_id: string; product_id: string; product_name: string; variant_name: string | null; sku: string | null; price: string | null; wholesale_price: string | null; mrp: string | null; unit_short: string | null; allow_decimal: number; stock: number | null; reorder_level: string | null; category_name: string | null; brand_name: string | null };
+type ItemRow = { variant_id: string; product_id: string; product_name: string; variant_name: string | null; sku: string | null; price: string | null; wholesale_price: string | null; mrp: string | null; unit_short: string | null; allow_decimal: number; stock: number | null; reorder_level: string | null; track_serial: number; category_name: string | null; brand_name: string | null };
 
 const ITEM_SELECT = `SELECT v.id AS variant_id, v.product_id, p.name AS product_name, v.name AS variant_name, v.sku, v.price, v.wholesale_price, v.mrp,
-  p.unit_short, p.allow_decimal, p.reorder_level, p.category_name, p.brand_name,
+  p.unit_short, p.allow_decimal, p.reorder_level, p.track_serial, p.category_name, p.brand_name,
   (SELECT sum(CAST(s.quantity AS REAL)) FROM stock s WHERE s.variant_id = v.id) AS stock
   FROM variants v JOIN products p ON p.id = v.product_id`;
 
@@ -81,7 +81,7 @@ export function itemName(product: string, variant: string | null): string {
 
 const toItem = (r: ItemRow): LocalItem => ({
   variantId: r.variant_id, productId: r.product_id, name: itemName(r.product_name, r.variant_name), productName: r.product_name, variantName: r.variant_name ?? '', sku: r.sku ?? '', price: r.price, wholesale: r.wholesale_price, mrp: r.mrp,
-  unitShort: r.unit_short, allowDecimal: !!r.allow_decimal, stock: String(r.stock ?? 0), reorderLevel: r.reorder_level, categoryName: r.category_name, brandName: r.brand_name,
+  unitShort: r.unit_short, allowDecimal: !!r.allow_decimal, stock: String(r.stock ?? 0), reorderLevel: r.reorder_level, trackSerial: !!r.track_serial, categoryName: r.category_name, brandName: r.brand_name,
 });
 
 /** Items whose name, code or barcode contains what was typed; names that start with it come first. Only active items. */
@@ -145,4 +145,15 @@ export async function shopWords(db: Db, per = 12): Promise<ShopWords> {
     units: (await db.all<{ n: string }>("SELECT coalesce(nullif(short_name, ''), name) AS n FROM units ORDER BY name LIMIT ?", [per])).map((r) => r.n),
     items: (await db.all<{ n: string }>('SELECT name AS n FROM products WHERE is_active = 1 ORDER BY name_key LIMIT ?', [per])).map((r) => r.n),
   };
+}
+
+/** One shop setting from the phone's copy (what `/settings/resolved/` said at the last refresh), or undefined when it has none. Works for every role: it needs no permission. */
+export async function settingValue(db: Db, key: string): Promise<unknown> {
+  const r = (await db.all<{ value: string | null }>('SELECT value FROM settings WHERE key = ?', [key]))[0];
+  if (!r || r.value === null) return undefined;
+  try {
+    return JSON.parse(r.value);
+  } catch {
+    return undefined;
+  }
 }

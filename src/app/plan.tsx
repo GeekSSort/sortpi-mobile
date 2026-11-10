@@ -31,7 +31,7 @@ const REQS = ['billing', 'requests'];
 
 /** Which SortPi plan the shop is on, how much of it is used, and how to move up. Nothing is charged here: the shop pays SortPi first, then tells SortPi. */
 export default function PlanScreen() {
-  const { contentWidth } = useWideLandscape();
+  const { readingWidth } = useWideLandscape();
   const theme = useTheme();
   const { t, lang } = usePrefs();
   const queryClient = useQueryClient();
@@ -84,7 +84,7 @@ export default function PlanScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
       <Stack.Screen options={{ title: t('Plan & billing') }} />
-      <ScrollView contentInsetAdjustmentBehavior="automatic" refreshControl={<RefreshControl refreshing={sub.isRefetching || plans.isRefetching} onRefresh={refresh} />} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six, maxWidth: Math.min(contentWidth, 1080), width: '100%', alignSelf: 'center' }}>
+      <ScrollView contentInsetAdjustmentBehavior="automatic" refreshControl={<RefreshControl refreshing={sub.isRefetching || plans.isRefetching} onRefresh={refresh} />} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six, maxWidth: Math.min(readingWidth, 1080), width: '100%', alignSelf: 'center' }}>
         {failed ? <ErrorState message={t('Could not load your plan.')} onRetry={refresh} /> : null}
         {loading && !failed ? <SkeletonRows /> : null}
 
