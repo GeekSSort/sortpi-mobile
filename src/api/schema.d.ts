@@ -1323,6 +1323,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/deliveries/{id}/installed/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record a delivered piece as installed
+         * @description Who fitted it and when, with any note. Only once the delivery is DELIVERED.
+         */
+        post: operations["deliveries_installed_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/deliveries/{id}/step/": {
         parameters: {
             query?: never;
@@ -1497,6 +1517,84 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/gift-cards/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List gift cards */
+        get: operations["gift_cards_list"];
+        put?: never;
+        /**
+         * Sell a gift card
+         * @description The money is booked to Gift cards outstanding, a liability, until the card is spent; a card sold for cash is in the seller's shift's expected cash.
+         */
+        post: operations["gift_cards_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/gift-cards/{id}/pay-out/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pay out what is left on a gift card
+         * @description Gives the holder the card's remaining balance (or part of it) in cash from the caller's open shift, or by bank or mobile. Gift cards outstanding goes down by the same amount.
+         */
+        post: operations["gift_cards_pay_out_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/gift-cards/{id}/void/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Void a gift card
+         * @description It can no longer be spent. What is left on it stays owed until settled.
+         */
+        post: operations["gift_cards_void_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/gift-cards/lookup/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Find a gift card by its code */
+        get: operations["gift_cards_lookup_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/hrm/attendance/": {
         parameters: {
             query?: never;
@@ -1542,6 +1640,54 @@ export interface paths {
         put?: never;
         /** Check out an employee */
         post: operations["hrm_attendance_check_out_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hrm/awards/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["hrm_awards_list"];
+        put?: never;
+        post: operations["hrm_awards_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hrm/awards/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["hrm_awards_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hrm/awards/{id}/archive/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["hrm_awards_archive_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1944,6 +2090,246 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/hrm/resignations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["hrm_resignations_list"];
+        put?: never;
+        post: operations["hrm_resignations_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hrm/resignations/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["hrm_resignations_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hrm/resignations/{id}/decide/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["hrm_resignations_decide_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hrm/schedules/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["hrm_schedules_list"];
+        put?: never;
+        post: operations["hrm_schedules_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hrm/schedules/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["hrm_schedules_retrieve"];
+        put: operations["hrm_schedules_update"];
+        post?: never;
+        delete: operations["hrm_schedules_destroy"];
+        options?: never;
+        head?: never;
+        patch: operations["hrm_schedules_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/hrm/terminations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["hrm_terminations_list"];
+        put?: never;
+        post: operations["hrm_terminations_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hrm/terminations/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["hrm_terminations_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hrm/transfers/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["hrm_transfers_list"];
+        put?: never;
+        post: operations["hrm_transfers_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hrm/transfers/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["hrm_transfers_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hrm/transfers/{id}/decide/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["hrm_transfers_decide_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hrm/warnings/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["hrm_warnings_list"];
+        put?: never;
+        post: operations["hrm_warnings_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hrm/warnings/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["hrm_warnings_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hrm/warnings/{id}/withdraw/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["hrm_warnings_withdraw_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hrm/work-shifts/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["hrm_work_shifts_list"];
+        put?: never;
+        post: operations["hrm_work_shifts_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hrm/work-shifts/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["hrm_work_shifts_retrieve"];
+        put: operations["hrm_work_shifts_update"];
+        post?: never;
+        delete: operations["hrm_work_shifts_destroy"];
+        options?: never;
+        head?: never;
+        patch: operations["hrm_work_shifts_partial_update"];
+        trace?: never;
+    };
     "/api/v1/income-categories/": {
         parameters: {
             query?: never;
@@ -2272,6 +2658,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/inventory/expiry/hold/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Hold a batch back from sale, or release it
+         * @description A recall, a quarantine, a batch waiting for its quality release: `held` true keeps it off every sale (like an expired batch) until it is released or written off. Send `held` false to release it.
+         */
+        post: operations["inventory_expiry_hold_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/inventory/expiry/markdowns/": {
         parameters: {
             query?: never;
@@ -2465,6 +2871,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/inventory/negative-stock/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Products below zero stock
+         * @description `count` lines (product x warehouse) hold less than nothing; `items` names the five furthest below, for the notice to say which.
+         */
+        get: operations["inventory_negative_stock_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/inventory/production/": {
         parameters: {
             query?: never;
@@ -2506,6 +2932,95 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/inventory/rolls/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List rolls */
+        get: operations["inventory_rolls_list"];
+        put?: never;
+        /** Register a roll that is on the shelf */
+        post: operations["inventory_rolls_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/rolls/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One roll and its cuts */
+        get: operations["inventory_rolls_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/rolls/{id}/cut/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cut a length off a roll
+         * @description SALE names the invoice the length went on (its own movement took the stock); SAMPLE is cloth given away; WASTE and any `waste` are written off the shelf as damage; COUNT is the roll measured short.
+         */
+        post: operations["inventory_rolls_cut_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/rolls/{id}/remnant/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Make what is left a remnant roll */
+        post: operations["inventory_rolls_remnant_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/rolls/reconcile/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Shelf against rolls, per product */
+        get: operations["inventory_rolls_reconcile_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/inventory/serials/": {
         parameters: {
             query?: never;
@@ -2526,6 +3041,26 @@ export interface paths {
          * @description Puts numbered units on the shelf of `warehouse` ahead of their sale. All or none: a number already registered for the product, or listed twice, refuses the lot (`DUPLICATE_SERIAL`). Stock is NOT moved — the purchase or stock entry does that; this says which units it was.
          */
         post: operations["inventory_serials_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/serials/move/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move registered units to another warehouse
+         * @description Says which boxes went when stock is moved: a unit registered at one shelf is sold only from that shelf. Only units in stock move.
+         */
+        post: operations["inventory_serials_move_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2871,6 +3406,26 @@ export interface paths {
          * @description `email` may only repeat the current company email; changing it goes through the verified email-change endpoints.
          */
         patch: operations["organizations_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{id}/category/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move a demo company to another category
+         * @description Only for the companies named in `CATEGORY_SWITCH_SUBDOMAINS` — for every other company this is 404, and the category is changed from the console. Sets `business_category` and nothing else; `/auth/me` then describes the new category.
+         */
+        post: operations["organizations_category_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/organizations/{id}/email-change/": {
@@ -4082,6 +4637,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/price-groups/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List price groups */
+        get: operations["price_groups_list"];
+        put?: never;
+        /** Make a price group */
+        post: operations["price_groups_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/price-groups/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A price group */
+        get: operations["price_groups_retrieve"];
+        /** Change a price group */
+        put: operations["price_groups_update"];
+        post?: never;
+        /** Delete a price group; its customers are left without one */
+        delete: operations["price_groups_destroy"];
+        options?: never;
+        head?: never;
+        /** Change a price group */
+        patch: operations["price_groups_partial_update"];
+        trace?: never;
+    };
     "/api/v1/products/": {
         parameters: {
             query?: never;
@@ -4459,6 +5052,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/products/metal-rates/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Today's metal rates
+         * @description The rate in force for each metal and purity that has one (jewellery).
+         */
+        get: operations["products_metal_rates_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/products/metal-rates/set/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set a metal rate
+         * @description Record the rate per gram for a metal and purity, from now, and reprice every piece of that metal and purity through the price history (jewellery).
+         */
+        post: operations["products_metal_rates_set_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/products/pos-catalog/": {
         parameters: {
             query?: never;
@@ -4555,6 +5188,26 @@ export interface paths {
          *     `stock_value` is at weighted-average cost for a holder of `inventory.view_valuation` and at selling price for everybody else; `stock_value_basis` says which. Cost is the figure that code withholds on the stock ledger, and a total is the same figure added up.
          */
         get: operations["products_summary_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/products/vehicles/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Vehicles the shop's parts fit
+         * @description Every make with its models, from the parts' fitments (auto parts).
+         */
+        get: operations["products_vehicles_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5055,6 +5708,26 @@ export interface paths {
          * @description One row per line, with `supplier`, `invoice_no` and `invoice_date` beside the purchase import's line columns, and optional `add_to_stock` and `paid` (yes/no; default yes and no). Rows sharing a supplier and invoice number are one bill, recorded on its own: a bad bill leaves the rest in, and a bill already entered is skipped. `commit=false` checks the file and records nothing.
          */
         post: operations["purchases_old_invoices_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchases/receive-now/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Receive goods from a supplier now
+         * @description The same body as creating a purchase. The purchase is created, confirmed (the supplier is owed its total) and received (the goods go on the shelf at their cost) in one transaction. Needs `purchase.create`, `purchase.confirm` and `purchase.receive`. An `Idempotency-Key` makes a repeated request answer with the purchase the first one made.
+         */
+        post: operations["purchases_receive_now_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7147,6 +7820,31 @@ export interface components {
             /** Format: date-time */
             readonly created_at: string;
         };
+        Award: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            employee: string;
+            readonly employee_name: string;
+            readonly branch_name: string;
+            award_type: string;
+            /** Format: date */
+            award_date: string;
+            awarded_by?: string;
+            reason?: string;
+            prize?: string;
+            readonly status: string;
+        };
+        AwardRequest: {
+            /** Format: uuid */
+            employee: string;
+            award_type: string;
+            /** Format: date */
+            award_date: string;
+            awarded_by?: string;
+            reason?: string;
+            prize?: string;
+        };
         BarcodeLookup: {
             variant: components["schemas"]["ProductVariant"];
             product: components["schemas"]["Product"];
@@ -7156,6 +7854,18 @@ export interface components {
             unit?: components["schemas"]["SellingUnit"];
             /** Format: decimal */
             unit_price?: string;
+        };
+        BatchHold: {
+            /** Format: uuid */
+            batch_id: string;
+            held: boolean;
+            reason?: string;
+        };
+        BatchHoldRequest: {
+            /** Format: uuid */
+            batch_id: string;
+            held: boolean;
+            reason?: string;
         };
         /**
          * @description * `MONTHLY` - Monthly
@@ -7315,9 +8025,14 @@ export interface components {
          *     * `hardware` - Hardware & paint
          *     * `footwear` - Footwear & bags
          *     * `bakery` - Bakery & sweets
+         *     * `books` - Books & stationery
+         *     * `furniture` - Furniture & homeware
+         *     * `auto_parts` - Auto parts & accessories
+         *     * `jewellery` - Jewellery & watches
+         *     * `toys` - Toys & gifts
          * @enum {string}
          */
-        BusinessCategoryEnum: "fabric" | "grocery" | "pharmacy" | "fashion" | "electronics" | "cosmetics" | "wellness" | "hardware" | "footwear" | "bakery";
+        BusinessCategoryEnum: "fabric" | "grocery" | "pharmacy" | "fashion" | "electronics" | "cosmetics" | "wellness" | "hardware" | "footwear" | "bakery" | "books" | "furniture" | "auto_parts" | "jewellery" | "toys";
         /**
          * @description * `Retail` - Retail
          *     * `Grocery & supermarket` - Grocery & supermarket
@@ -7399,6 +8114,9 @@ export interface components {
             description?: string;
             image_url?: string;
             sort_order?: number;
+        };
+        CategorySwitchRequest: {
+            business_category: string;
         };
         ChangePasswordRequest: {
             current_password: string;
@@ -7667,6 +8385,11 @@ export interface components {
             email?: string;
             customer_type?: components["schemas"]["CustomerTypeEnum"];
             customer_group?: components["schemas"]["CustomerGroupEnum"];
+            /** Format: uuid */
+            price_group?: string | null;
+            readonly price_group_name: string | null;
+            /** Format: decimal */
+            readonly price_group_percent: string | null;
             whatsapp?: string;
             tax_number?: string;
             /** Format: decimal */
@@ -7833,8 +8556,17 @@ export interface components {
         CustomerOrderCancelRequest: {
             reason: string;
         };
+        CustomerOrderCollectLineRequest: {
+            /** Format: uuid */
+            item_id: string;
+            serials?: string[];
+        };
         CustomerOrderCollectRequest: {
             payments?: components["schemas"]["SalePaymentInputRequest"][];
+            items?: components["schemas"]["CustomerOrderCollectLineRequest"][];
+            prescription?: {
+                [key: string]: string;
+            };
         };
         CustomerOrderDepositRequest: {
             /** Format: decimal */
@@ -7896,6 +8628,8 @@ export interface components {
             /** Format: decimal */
             line_total: string;
             note: string;
+            readonly track_serial: boolean;
+            readonly prescription_required: boolean;
         };
         CustomerOrderLineInputRequest: {
             /** Format: uuid */
@@ -7916,6 +8650,8 @@ export interface components {
             email?: string;
             customer_type?: components["schemas"]["CustomerTypeEnum"];
             customer_group?: components["schemas"]["CustomerGroupEnum"];
+            /** Format: uuid */
+            price_group?: string | null;
             whatsapp?: string;
             tax_number?: string;
             address?: string;
@@ -8072,11 +8808,14 @@ export interface components {
             dispatched_at: string | null;
             /** Format: date-time */
             delivered_at: string | null;
+            installation_required: boolean;
+            /** Format: date-time */
+            installed_at: string | null;
+            installed_by: string;
+            installation_note: string;
             /** Format: date-time */
             created_at: string;
-            readonly items: {
-                [key: string]: unknown;
-            }[];
+            readonly items: components["schemas"]["DeliveryItem"][];
         };
         DeliveryInputRequest: {
             /** Format: uuid */
@@ -8086,6 +8825,29 @@ export interface components {
             rider?: string;
             vehicle?: string;
             note?: string;
+            lines?: components["schemas"]["DeliveryLineInputRequest"][];
+            /** Format: decimal */
+            cash_to_collect?: string | null;
+            /** @default false */
+            installation_required: boolean;
+        };
+        DeliveryInstalledRequest: {
+            installed_by: string;
+            note?: string;
+        };
+        DeliveryItem: {
+            /** Format: uuid */
+            id: string;
+            product_name: string;
+            sku: string;
+            /** Format: decimal */
+            quantity: string;
+        };
+        DeliveryLineInputRequest: {
+            /** Format: uuid */
+            sale_item_id: string;
+            /** Format: decimal */
+            quantity: string;
         };
         DeliveryStepRequest: {
             status: components["schemas"]["DeliveryStepStatusEnum"];
@@ -8400,6 +9162,10 @@ export interface components {
             /** Format: uuid */
             warehouse: string;
             warehouse_name: string;
+            /** Format: uuid */
+            batch_id: string | null;
+            held: boolean;
+            hold_reason: string;
             batch_no: string;
             /** Format: date */
             expiry_date: string | null;
@@ -8452,10 +9218,37 @@ export interface components {
             expiring_value?: string;
             undated_lines: number;
         };
+        FabricRoll: {
+            /** Format: uuid */
+            id: string;
+            code: string;
+            /** Format: uuid */
+            variant_id: string;
+            product_name: string;
+            sku: string;
+            /** @default  */
+            unit: string;
+            /** Format: uuid */
+            warehouse_id: string;
+            warehouse_name: string;
+            dye_lot: string;
+            width: string;
+            location: string;
+            /** Format: decimal */
+            original_length: string;
+            /** Format: decimal */
+            remaining_length: string;
+            status: string;
+            parent_code?: string | null;
+            note: string;
+            /** Format: date-time */
+            created_at: string;
+        };
         FeaturesBrief: {
             stock_report: boolean;
             transaction_reset: boolean;
             modal: boolean;
+            category_switch: boolean;
         };
         FreeIssueByCategory: {
             /** Format: decimal */
@@ -8601,6 +9394,58 @@ export interface components {
          * @enum {string}
          */
         FrequencyEnum: "WEEKLY" | "MONTHLY" | "QUARTERLY" | "YEARLY";
+        GiftCard: {
+            /** Format: uuid */
+            id: string;
+            code: string;
+            /** Format: decimal */
+            initial_value: string;
+            /** Format: decimal */
+            balance: string;
+            /** Format: date */
+            expires_on: string | null;
+            is_active: boolean;
+            /** Format: uuid */
+            customer_id: string | null;
+            issue_payment_method: string;
+            note: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        /**
+         * @description * `CASH` - Cash
+         *     * `CARD` - Card
+         *     * `BANK` - Bank transfer
+         *     * `MOBILE` - Mobile banking
+         * @enum {string}
+         */
+        GiftCardIssuePaymentMethodEnum: "CASH" | "CARD" | "BANK" | "MOBILE";
+        GiftCardIssueRequest: {
+            /** Format: decimal */
+            value: string;
+            payment_method: components["schemas"]["GiftCardIssuePaymentMethodEnum"];
+            code?: string;
+            /** Format: date */
+            expires_on?: string | null;
+            /** Format: uuid */
+            customer_id?: string | null;
+            note?: string;
+            /** Format: uuid */
+            branch_id?: string | null;
+        };
+        /**
+         * @description * `CASH` - Cash
+         *     * `BANK` - Bank transfer
+         *     * `MOBILE` - Mobile banking
+         * @enum {string}
+         */
+        GiftCardPayOutPaymentMethodEnum: "CASH" | "BANK" | "MOBILE";
+        GiftCardPayOutRequest: {
+            payment_method: components["schemas"]["GiftCardPayOutPaymentMethodEnum"];
+            /** Format: decimal */
+            amount?: string;
+            note?: string;
+        };
         HeldCart: {
             /** Format: uuid */
             readonly id: string;
@@ -8964,6 +9809,13 @@ export interface components {
             credit: string;
             entries: number;
         };
+        /**
+         * @description * `VERBAL` - VERBAL
+         *     * `WRITTEN` - WRITTEN
+         *     * `FINAL` - FINAL
+         * @enum {string}
+         */
+        LevelEnum: "VERBAL" | "WRITTEN" | "FINAL";
         LoginRequest: {
             /** Format: email */
             email: string;
@@ -9064,6 +9916,21 @@ export interface components {
             readonly subscription: components["schemas"]["SubscriptionBrief"] | null;
             readonly features: components["schemas"]["FeaturesBrief"];
         };
+        /**
+         * @description * `Gold` - Gold
+         *     * `Silver` - Silver
+         *     * `Platinum` - Platinum
+         * @enum {string}
+         */
+        MetalEnum: "Gold" | "Silver" | "Platinum";
+        MetalRate: {
+            metal: string;
+            purity: string;
+            /** Format: decimal */
+            rate_per_gram: string;
+            /** Format: date-time */
+            effective_at: string;
+        };
         ModalDocument: {
             /** Format: uuid */
             id: string;
@@ -9153,6 +10020,11 @@ export interface components {
          * @enum {string}
          */
         MoneyDirectionEnum: "INCOME" | "EXPENSE";
+        MoveSerialsRequest: {
+            /** Format: uuid */
+            warehouse: string;
+            serials: string[];
+        };
         /**
          * @description * `OPENING` - Opening stock
          *     * `PURCHASE` - Purchase receipt
@@ -9171,6 +10043,21 @@ export interface components {
          * @enum {string}
          */
         MovementTypeEnum: "OPENING" | "PURCHASE" | "SALE" | "SALE_RETURN" | "SALE_CANCEL" | "SALE_RETURN_WITHDRAW" | "PURCHASE_RETURN" | "TRANSFER_IN" | "TRANSFER_OUT" | "ADJUSTMENT" | "DAMAGE" | "EXPIRED" | "PRODUCTION" | "PRODUCTION_USE";
+        NegativeLine: {
+            /** Format: uuid */
+            variant_id: string;
+            /** Format: uuid */
+            product_id: string;
+            name: string;
+            sku: string;
+            warehouse: string;
+            /** Format: decimal */
+            quantity: string;
+        };
+        NegativeStock: {
+            count: number;
+            items: components["schemas"]["NegativeLine"][];
+        };
         NewsletterRequest: {
             /** Format: email */
             email: string;
@@ -9391,6 +10278,21 @@ export interface components {
             /** @example true */
             success: boolean;
             data: components["schemas"]["AuditLog"][];
+            meta: {
+                /** @example 1 */
+                page: number;
+                /** @example 20 */
+                limit: number;
+                /** @example 250 */
+                total: number;
+                /** @example 13 */
+                total_pages: number;
+            };
+        };
+        PaginatedAwardList: {
+            /** @example true */
+            success: boolean;
+            data: components["schemas"]["Award"][];
             meta: {
                 /** @example 1 */
                 page: number;
@@ -9657,10 +10559,40 @@ export interface components {
                 total_pages: number;
             };
         };
+        PaginatedFabricRollList: {
+            /** @example true */
+            success: boolean;
+            data: components["schemas"]["FabricRoll"][];
+            meta: {
+                /** @example 1 */
+                page: number;
+                /** @example 20 */
+                limit: number;
+                /** @example 250 */
+                total: number;
+                /** @example 13 */
+                total_pages: number;
+            };
+        };
         PaginatedFreeIssueLineList: {
             /** @example true */
             success: boolean;
             data: components["schemas"]["FreeIssueLine"][];
+            meta: {
+                /** @example 1 */
+                page: number;
+                /** @example 20 */
+                limit: number;
+                /** @example 250 */
+                total: number;
+                /** @example 13 */
+                total_pages: number;
+            };
+        };
+        PaginatedGiftCardList: {
+            /** @example true */
+            success: boolean;
+            data: components["schemas"]["GiftCard"][];
             meta: {
                 /** @example 1 */
                 page: number;
@@ -9792,10 +10724,40 @@ export interface components {
                 total_pages: number;
             };
         };
+        PaginatedMetalRateList: {
+            /** @example true */
+            success: boolean;
+            data: components["schemas"]["MetalRate"][];
+            meta: {
+                /** @example 1 */
+                page: number;
+                /** @example 20 */
+                limit: number;
+                /** @example 250 */
+                total: number;
+                /** @example 13 */
+                total_pages: number;
+            };
+        };
         PaginatedModalReportRowList: {
             /** @example true */
             success: boolean;
             data: components["schemas"]["ModalReportRow"][];
+            meta: {
+                /** @example 1 */
+                page: number;
+                /** @example 20 */
+                limit: number;
+                /** @example 250 */
+                total: number;
+                /** @example 13 */
+                total_pages: number;
+            };
+        };
+        PaginatedNegativeStockList: {
+            /** @example true */
+            success: boolean;
+            data: components["schemas"]["NegativeStock"][];
             meta: {
                 /** @example 1 */
                 page: number;
@@ -9987,6 +10949,21 @@ export interface components {
                 total_pages: number;
             };
         };
+        PaginatedPriceGroupList: {
+            /** @example true */
+            success: boolean;
+            data: components["schemas"]["PriceGroup"][];
+            meta: {
+                /** @example 1 */
+                page: number;
+                /** @example 20 */
+                limit: number;
+                /** @example 250 */
+                total: number;
+                /** @example 13 */
+                total_pages: number;
+            };
+        };
         PaginatedProductDiscountList: {
             /** @example true */
             success: boolean;
@@ -10137,6 +11114,21 @@ export interface components {
                 total_pages: number;
             };
         };
+        PaginatedResignationList: {
+            /** @example true */
+            success: boolean;
+            data: components["schemas"]["Resignation"][];
+            meta: {
+                /** @example 1 */
+                page: number;
+                /** @example 20 */
+                limit: number;
+                /** @example 250 */
+                total: number;
+                /** @example 13 */
+                total_pages: number;
+            };
+        };
         PaginatedRoleList: {
             /** @example true */
             success: boolean;
@@ -10246,6 +11238,21 @@ export interface components {
             /** @example true */
             success: boolean;
             data: components["schemas"]["Shift"][];
+            meta: {
+                /** @example 1 */
+                page: number;
+                /** @example 20 */
+                limit: number;
+                /** @example 250 */
+                total: number;
+                /** @example 13 */
+                total_pages: number;
+            };
+        };
+        PaginatedShiftScheduleList: {
+            /** @example true */
+            success: boolean;
+            data: components["schemas"]["ShiftSchedule"][];
             meta: {
                 /** @example 1 */
                 page: number;
@@ -10407,10 +11414,40 @@ export interface components {
                 total_pages: number;
             };
         };
+        PaginatedTerminationList: {
+            /** @example true */
+            success: boolean;
+            data: components["schemas"]["Termination"][];
+            meta: {
+                /** @example 1 */
+                page: number;
+                /** @example 20 */
+                limit: number;
+                /** @example 250 */
+                total: number;
+                /** @example 13 */
+                total_pages: number;
+            };
+        };
         PaginatedTradeInList: {
             /** @example true */
             success: boolean;
             data: components["schemas"]["TradeIn"][];
+            meta: {
+                /** @example 1 */
+                page: number;
+                /** @example 20 */
+                limit: number;
+                /** @example 250 */
+                total: number;
+                /** @example 13 */
+                total_pages: number;
+            };
+        };
+        PaginatedTransferList: {
+            /** @example true */
+            success: boolean;
+            data: components["schemas"]["Transfer"][];
             meta: {
                 /** @example 1 */
                 page: number;
@@ -10467,6 +11504,21 @@ export interface components {
                 total_pages: number;
             };
         };
+        PaginatedVehicleList: {
+            /** @example true */
+            success: boolean;
+            data: components["schemas"]["Vehicle"][];
+            meta: {
+                /** @example 1 */
+                page: number;
+                /** @example 20 */
+                limit: number;
+                /** @example 250 */
+                total: number;
+                /** @example 13 */
+                total_pages: number;
+            };
+        };
         PaginatedVoucherList: {
             /** @example true */
             success: boolean;
@@ -10486,6 +11538,36 @@ export interface components {
             /** @example true */
             success: boolean;
             data: components["schemas"]["Warehouse"][];
+            meta: {
+                /** @example 1 */
+                page: number;
+                /** @example 20 */
+                limit: number;
+                /** @example 250 */
+                total: number;
+                /** @example 13 */
+                total_pages: number;
+            };
+        };
+        PaginatedWarningList: {
+            /** @example true */
+            success: boolean;
+            data: components["schemas"]["Warning"][];
+            meta: {
+                /** @example 1 */
+                page: number;
+                /** @example 20 */
+                limit: number;
+                /** @example 250 */
+                total: number;
+                /** @example 13 */
+                total_pages: number;
+            };
+        };
+        PaginatedWorkShiftList: {
+            /** @example true */
+            success: boolean;
+            data: components["schemas"]["WorkShift"][];
             meta: {
                 /** @example 1 */
                 page: number;
@@ -10592,6 +11674,8 @@ export interface components {
             email?: string;
             customer_type?: components["schemas"]["CustomerTypeEnum"];
             customer_group?: components["schemas"]["CustomerGroupEnum"];
+            /** Format: uuid */
+            price_group?: string | null;
             whatsapp?: string;
             tax_number?: string;
             address?: string;
@@ -10742,6 +11826,12 @@ export interface components {
             password?: string;
             roles?: string[];
         };
+        PatchedPriceGroupRequest: {
+            name?: string;
+            /** Format: decimal */
+            discount_percent?: string;
+            is_active?: boolean;
+        };
         PatchedProductRequest: {
             name?: string;
             description?: string;
@@ -10768,6 +11858,9 @@ export interface components {
             supply_days?: number | null;
             track_serial?: boolean;
             warranty_months?: number | null;
+            details?: unknown;
+            part_numbers?: components["schemas"]["ProductPartNumberRequest"][];
+            fitments?: components["schemas"]["ProductFitmentRequest"][];
             variants?: components["schemas"]["ProductVariantRequest"][];
             sku?: string;
             barcode?: string;
@@ -10865,6 +11958,22 @@ export interface components {
             value?: string;
             value_type?: components["schemas"]["ValueTypeEnum"];
         };
+        PatchedShiftScheduleRequest: {
+            /** Format: uuid */
+            employee?: string;
+            /** Format: date */
+            work_date?: string;
+            /** Format: uuid */
+            shift?: string | null;
+            /** Format: time */
+            start_time?: string;
+            /** Format: time */
+            end_time?: string;
+            break_minutes?: number;
+            /** @default ON_SITE */
+            work_type: components["schemas"]["WorkTypeEnum"];
+            remarks?: string;
+        };
         PatchedSupplierRequest: {
             code?: string;
             name?: string;
@@ -10924,6 +12033,15 @@ export interface components {
             is_default?: boolean;
             is_active?: boolean;
         };
+        PatchedWorkShiftRequest: {
+            name?: string;
+            /** Format: time */
+            start_time?: string;
+            /** Format: time */
+            end_time?: string;
+            grace_minutes?: number;
+            is_active?: boolean;
+        };
         PayRequest: {
             /** Format: date */
             paid_on?: string;
@@ -10947,9 +12065,10 @@ export interface components {
          *     * `MOBILE` - Mobile banking
          *     * `CREDIT` - On credit
          *     * `OTHER` - Other
+         *     * `GIFT_CARD` - Gift card
          * @enum {string}
          */
-        PaymentMethodEnum: "CASH" | "CARD" | "BANK" | "MOBILE" | "CREDIT" | "OTHER";
+        PaymentMethodEnum: "CASH" | "CARD" | "BANK" | "MOBILE" | "CREDIT" | "OTHER" | "GIFT_CARD";
         PaymentRequest: {
             /** Format: decimal */
             amount: string;
@@ -11269,6 +12388,22 @@ export interface components {
             /** @default CASH */
             refund_method: components["schemas"]["PaymentMethodEnum"];
         };
+        PriceGroup: {
+            /** Format: uuid */
+            readonly id: string;
+            name: string;
+            /** Format: decimal */
+            discount_percent: string;
+            is_active?: boolean;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        PriceGroupRequest: {
+            name: string;
+            /** Format: decimal */
+            discount_percent: string;
+            is_active?: boolean;
+        };
         /**
          * @description * `RETAIL` - Retail price
          *     * `WHOLESALE` - Wholesale price
@@ -11330,6 +12465,9 @@ export interface components {
             supply_days?: number | null;
             track_serial?: boolean;
             warranty_months?: number | null;
+            details?: unknown;
+            part_numbers?: components["schemas"]["ProductPartNumber"][];
+            fitments?: components["schemas"]["ProductFitment"][];
             readonly is_active: boolean;
             /** Format: date-time */
             readonly archived_at: string | null;
@@ -11368,6 +12506,30 @@ export interface components {
             /** Format: date-time */
             readonly updated_at: string;
         };
+        ProductFitment: {
+            make: string;
+            model: string;
+            year_from?: number | null;
+            year_to?: number | null;
+            /** @default  */
+            engine: string;
+            /** @default  */
+            fuel: string;
+            /** @default  */
+            notes: string;
+        };
+        ProductFitmentRequest: {
+            make: string;
+            model: string;
+            year_from?: number | null;
+            year_to?: number | null;
+            /** @default  */
+            engine: string;
+            /** @default  */
+            fuel: string;
+            /** @default  */
+            notes: string;
+        };
         ProductImage: {
             /** Format: uuid */
             readonly id: string;
@@ -11396,6 +12558,28 @@ export interface components {
          * @enum {string}
          */
         ProductImageStatusEnum: "PENDING" | "READY";
+        ProductPartNumber: {
+            number: string;
+            /** @default OEM */
+            kind: components["schemas"]["ProductPartNumberKindEnum"];
+            /** @default  */
+            brand: string;
+        };
+        /**
+         * @description * `OEM` - OEM
+         *     * `AFTERMARKET` - Aftermarket
+         *     * `SUPERSEDED` - Superseded
+         *     * `ALTERNATE` - Alternate
+         * @enum {string}
+         */
+        ProductPartNumberKindEnum: "OEM" | "AFTERMARKET" | "SUPERSEDED" | "ALTERNATE";
+        ProductPartNumberRequest: {
+            number: string;
+            /** @default OEM */
+            kind: components["schemas"]["ProductPartNumberKindEnum"];
+            /** @default  */
+            brand: string;
+        };
         ProductRequest: {
             name: string;
             description?: string;
@@ -11422,6 +12606,9 @@ export interface components {
             supply_days?: number | null;
             track_serial?: boolean;
             warranty_months?: number | null;
+            details?: unknown;
+            part_numbers?: components["schemas"]["ProductPartNumberRequest"][];
+            fitments?: components["schemas"]["ProductFitmentRequest"][];
             variants?: components["schemas"]["ProductVariantRequest"][];
             sku?: string;
             barcode?: string;
@@ -12023,6 +13210,19 @@ export interface components {
             rows_deleted: number;
         };
         /**
+         * @description * `24K` - 24K
+         *     * `22K` - 22K
+         *     * `21K` - 21K
+         *     * `18K` - 18K
+         *     * `14K` - 14K
+         *     * `999` - 999
+         *     * `958` - 958
+         *     * `925` - 925
+         *     * `950` - 950
+         * @enum {string}
+         */
+        PurityEnum: "24K" | "22K" | "21K" | "18K" | "14K" | "999" | "958" | "925" | "950";
+        /**
          * @description * `signup` - signup
          *     * `reset` - reset
          * @enum {string}
@@ -12170,6 +13370,8 @@ export interface components {
             /** Format: date-time */
             paid_at?: string;
             note?: string;
+            /** @default false */
+            allow_duplicate_reference: boolean;
         };
         Recurring: {
             /** Format: uuid */
@@ -12312,6 +13514,31 @@ export interface components {
         ResetPasswordRequest: {
             new_password: string;
         };
+        Resignation: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            employee: string;
+            readonly employee_name: string;
+            readonly branch_name: string;
+            /** Format: date */
+            resignation_date: string;
+            /** Format: date */
+            last_working_day: string;
+            reason?: string;
+            readonly status: string;
+            /** Format: date-time */
+            readonly decided_at: string | null;
+        };
+        ResignationRequest: {
+            /** Format: uuid */
+            employee: string;
+            /** Format: date */
+            resignation_date: string;
+            /** Format: date */
+            last_working_day: string;
+            reason?: string;
+        };
         /**
          * @description * `branch` - branch
          *     * `organization` - organization
@@ -12339,6 +13566,39 @@ export interface components {
             is_system?: boolean;
             permissions: string[];
             branches?: string[];
+        };
+        /**
+         * @description * `SALE` - SALE
+         *     * `SAMPLE` - SAMPLE
+         *     * `WASTE` - WASTE
+         *     * `COUNT` - COUNT
+         * @enum {string}
+         */
+        RollCutInputKindEnum: "SALE" | "SAMPLE" | "WASTE" | "COUNT";
+        RollCutInputRequest: {
+            kind: components["schemas"]["RollCutInputKindEnum"];
+            /** Format: decimal */
+            length: string;
+            /**
+             * Format: decimal
+             * @default 0.000
+             */
+            waste: string;
+            invoice_number?: string;
+            note?: string;
+        };
+        RollInputRequest: {
+            /** Format: uuid */
+            variant_id: string;
+            /** Format: uuid */
+            warehouse_id: string;
+            /** Format: decimal */
+            length: string;
+            code?: string;
+            dye_lot?: string;
+            width?: string;
+            location?: string;
+            note?: string;
         };
         Run: {
             /** Format: uuid */
@@ -12373,6 +13633,8 @@ export interface components {
             readonly customer: string;
             readonly customer_name: string;
             readonly customer_phone: string;
+            /** @default  */
+            readonly customer_tax_number: string;
             /** Format: uuid */
             readonly shift: string;
             /** Format: uuid */
@@ -12489,6 +13751,8 @@ export interface components {
             /** Format: decimal */
             discount_amount?: string | null;
             serials?: string[];
+            /** Format: uuid */
+            roll_id?: string | null;
         };
         SalePayment: {
             /** Format: uuid */
@@ -12730,6 +13994,21 @@ export interface components {
             /** Format: date */
             ends_on?: string | null;
         };
+        SetMetalRateRequest: {
+            metal: components["schemas"]["MetalEnum"];
+            purity: components["schemas"]["PurityEnum"];
+            /** Format: decimal */
+            rate_per_gram: string;
+        };
+        SetMetalRateResult: {
+            metal: string;
+            purity: string;
+            /** Format: decimal */
+            rate_per_gram: string;
+            /** Format: date-time */
+            effective_at: string;
+            repriced: number;
+        };
         SetPasswordRequest: {
             ticket: string;
             password: string;
@@ -12809,6 +14088,48 @@ export interface components {
             readonly status: components["schemas"]["ShiftStatusEnum"];
             readonly note: string;
         };
+        ShiftMethodTotal: {
+            readonly payment_method: string;
+            /** Format: decimal */
+            readonly amount: string;
+        };
+        ShiftSchedule: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            employee: string;
+            readonly employee_name: string;
+            readonly branch_name: string;
+            /** Format: date */
+            work_date: string;
+            /** Format: uuid */
+            shift?: string | null;
+            readonly shift_name: string;
+            /** Format: time */
+            start_time: string;
+            /** Format: time */
+            end_time: string;
+            break_minutes?: number;
+            /** @default ON_SITE */
+            work_type: components["schemas"]["WorkTypeEnum"];
+            remarks?: string;
+        };
+        ShiftScheduleRequest: {
+            /** Format: uuid */
+            employee: string;
+            /** Format: date */
+            work_date: string;
+            /** Format: uuid */
+            shift?: string | null;
+            /** Format: time */
+            start_time: string;
+            /** Format: time */
+            end_time: string;
+            break_minutes?: number;
+            /** @default ON_SITE */
+            work_type: components["schemas"]["WorkTypeEnum"];
+            remarks?: string;
+        };
         /**
          * @description * `OPEN` - Open
          *     * `CLOSED` - Closed
@@ -12834,6 +14155,7 @@ export interface components {
             readonly sale_count: number;
             /** Format: decimal */
             readonly total_sales: string;
+            readonly other_methods: components["schemas"]["ShiftMethodTotal"][];
         };
         SignupRequest: {
             companyName: string;
@@ -13560,6 +14882,44 @@ export interface components {
          * @enum {string}
          */
         TenderEnum: "CASH" | "CARD" | "BANK" | "MOBILE" | "OTHER";
+        Termination: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            employee: string;
+            readonly employee_name: string;
+            readonly branch_name: string;
+            /** Format: date */
+            exit_date: string;
+            termination_type: components["schemas"]["TerminationTypeEnum"];
+            /** Format: date */
+            notice_date?: string | null;
+            reason?: string;
+            /** Format: decimal */
+            final_settlement?: string | null;
+        };
+        TerminationRequest: {
+            /** Format: uuid */
+            employee: string;
+            /** Format: date */
+            exit_date: string;
+            termination_type: components["schemas"]["TerminationTypeEnum"];
+            /** Format: date */
+            notice_date?: string | null;
+            reason?: string;
+            /** Format: decimal */
+            final_settlement?: string | null;
+        };
+        /**
+         * @description * `VOLUNTARY` - VOLUNTARY
+         *     * `INVOLUNTARY` - INVOLUNTARY
+         *     * `LAYOFF` - LAYOFF
+         *     * `DISMISSAL` - DISMISSAL
+         *     * `RETIREMENT` - RETIREMENT
+         *     * `END_OF_CONTRACT` - END_OF_CONTRACT
+         * @enum {string}
+         */
+        TerminationTypeEnum: "VOLUNTARY" | "INVOLUNTARY" | "LAYOFF" | "DISMISSAL" | "RETIREMENT" | "END_OF_CONTRACT";
         Ticket: {
             ticket: string;
         };
@@ -13587,6 +14947,14 @@ export interface components {
             sku: string;
             /** Format: date-time */
             created_at: string;
+            metal: string;
+            purity: string;
+            /** Format: decimal */
+            weight: string | null;
+            /** Format: decimal */
+            rate_per_gram: string | null;
+            /** Format: decimal */
+            deduction_pct: string;
         };
         TradeInInputRequest: {
             /** Format: uuid */
@@ -13597,7 +14965,18 @@ export interface components {
             imei?: string;
             condition?: string;
             /** Format: decimal */
-            value: string;
+            value?: string;
+            metal?: string;
+            purity?: string;
+            /** Format: decimal */
+            weight?: string;
+            /** Format: decimal */
+            rate_per_gram?: string | null;
+            /**
+             * Format: decimal
+             * @default 0.00
+             */
+            deduction_pct: string;
         };
         TransactionResetRequest: {
             confirmation: string;
@@ -13607,11 +14986,40 @@ export interface components {
                 [key: string]: number;
             };
         };
+        Transfer: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            employee: string;
+            readonly employee_name: string;
+            readonly branch_name: string;
+            /** Format: uuid */
+            readonly from_branch: string | null;
+            readonly from_branch_name: string;
+            /** Format: uuid */
+            to_branch: string;
+            readonly to_branch_name: string;
+            /** Format: date */
+            transfer_date: string;
+            description?: string;
+            readonly status: string;
+            /** Format: date-time */
+            readonly decided_at: string | null;
+        };
         TransferOwnershipRequest: {
             /** Format: email */
             email: string;
             /** @default  */
             full_name: string;
+        };
+        TransferRequest: {
+            /** Format: uuid */
+            employee: string;
+            /** Format: uuid */
+            to_branch: string;
+            /** Format: date */
+            transfer_date: string;
+            description?: string;
         };
         TransferTotals: {
             count: number;
@@ -13749,6 +15157,10 @@ export interface components {
          * @enum {string}
          */
         ValueTypeEnum: "STRING" | "INT" | "DECIMAL" | "BOOL" | "JSON";
+        Vehicle: {
+            make: string;
+            models: string[];
+        };
         VerifyCodeRequest: {
             /** Format: email */
             email: string;
@@ -13856,9 +15268,63 @@ export interface components {
          * @enum {string}
          */
         WarehouseTypeEnum: "MAIN" | "TRANSIT" | "DAMAGED" | "RETURN";
+        Warning: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            employee: string;
+            readonly employee_name: string;
+            readonly branch_name: string;
+            subject: string;
+            /** Format: date */
+            warning_date: string;
+            /** @default VERBAL */
+            level: components["schemas"]["LevelEnum"];
+            description?: string;
+            readonly status: string;
+        };
+        WarningRequest: {
+            /** Format: uuid */
+            employee: string;
+            subject: string;
+            /** Format: date */
+            warning_date: string;
+            /** @default VERBAL */
+            level: components["schemas"]["LevelEnum"];
+            description?: string;
+        };
         WebsiteFormConfirmation: {
             message: string;
         };
+        WorkShift: {
+            /** Format: uuid */
+            readonly id: string;
+            name: string;
+            /** Format: time */
+            start_time: string;
+            /** Format: time */
+            end_time: string;
+            grace_minutes?: number;
+            is_active?: boolean;
+        };
+        WorkShiftRequest: {
+            name: string;
+            /** Format: time */
+            start_time: string;
+            /** Format: time */
+            end_time: string;
+            grace_minutes?: number;
+            is_active?: boolean;
+        };
+        /**
+         * @description * `ON_SITE` - ON_SITE
+         *     * `REMOTE` - REMOTE
+         *     * `FIELD` - FIELD
+         *     * `OVERTIME` - OVERTIME
+         *     * `TRAINING` - TRAINING
+         * @enum {string}
+         */
+        WorkTypeEnum: "ON_SITE" | "REMOTE" | "FIELD" | "OVERTIME" | "TRAINING";
         WorkspaceStatus: {
             available: boolean;
         };
@@ -19308,6 +20774,8 @@ export interface operations {
             /**
              * @description - `DELIVERY_NOT_AVAILABLE` — Not part of this shop's trade.
              *     - `ADDRESS_REQUIRED` — No address.
+             *     - `DELIVERY_QTY` — A line not on the sale, or more than is left to deliver.
+             *     - `CASH_EXCEEDS_DUE` — More cash to collect than is owed and not already on a delivery.
              */
             400: {
                 headers: {
@@ -19338,7 +20806,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description - `DELIVERY_EXISTS` — The sale already has a delivery. */
+            /** @description - `DELIVERY_EXISTS` — Everything on the sale is already on a delivery. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -19397,6 +20865,78 @@ export interface operations {
             };
             /** @description - `NOT_FOUND` — No such object **in the caller's organization**. An object belonging to another tenant is 404, never 403 — a 403 would confirm it exists. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    deliveries_installed_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this delivery. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeliveryInstalledRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["DeliveryInstalledRequest"];
+                "multipart/form-data": components["schemas"]["DeliveryInstalledRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["Delivery"];
+                        message?: string;
+                    };
+                };
+            };
+            /** @description - `INSTALLER_REQUIRED` — Nobody named. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `NOT_DELIVERED` — Not delivered yet. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -20451,6 +21991,307 @@ export interface operations {
             };
         };
     };
+    gift_cards_list: {
+        parameters: {
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description A page number within the paginated result set. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedGiftCardList"];
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    gift_cards_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GiftCardIssueRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["GiftCardIssueRequest"];
+                "multipart/form-data": components["schemas"]["GiftCardIssueRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["GiftCard"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `INVALID_AMOUNT` — Nothing on the card.
+             *     - `INVALID_PAYMENT_METHOD` — Not cash, card, bank or mobile.
+             *     - `INVALID_EXPIRY` — The expiry date has passed.
+             *     - `GIFT_CARD_EXISTS` — That code is already a card.
+             *     - `SHIFT_REQUIRED` — Cash for a card needs an open shift.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    gift_cards_pay_out_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this gift card. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GiftCardPayOutRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["GiftCardPayOutRequest"];
+                "multipart/form-data": components["schemas"]["GiftCardPayOutRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["GiftCard"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `INVALID_AMOUNT` — Nothing left on the card.
+             *     - `GIFT_CARD_BALANCE` — More than the card holds.
+             *     - `INVALID_PAYMENT_METHOD` — Not cash, bank or mobile.
+             *     - `SHIFT_REQUIRED` — Cash needs an open shift.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `NOT_FOUND` — No such object **in the caller's organization**. An object belonging to another tenant is 404, never 403 — a 403 would confirm it exists. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    gift_cards_void_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this gift card. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["GiftCard"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `NOT_FOUND` — No such object **in the caller's organization**. An object belonging to another tenant is 404, never 403 — a 403 would confirm it exists. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    gift_cards_lookup_retrieve: {
+        parameters: {
+            query: {
+                code: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["GiftCard"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `NOT_FOUND` — No such object **in the caller's organization**. An object belonging to another tenant is 404, never 403 — a 403 would confirm it exists. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     hrm_attendance_list: {
         parameters: {
             query?: {
@@ -20571,6 +22412,204 @@ export interface operations {
                         /** @enum {boolean} */
                         success: true;
                         data: components["schemas"]["Attendance"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hrm_awards_list: {
+        parameters: {
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description A page number within the paginated result set. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedAwardList"];
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hrm_awards_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AwardRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["AwardRequest"];
+                "multipart/form-data": components["schemas"]["AwardRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["Award"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hrm_awards_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this employee award. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["Award"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hrm_awards_archive_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this employee award. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AwardRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["AwardRequest"];
+                "multipart/form-data": components["schemas"]["AwardRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["Award"];
                         message?: string;
                     };
                 };
@@ -22343,6 +24382,1332 @@ export interface operations {
             };
         };
     };
+    hrm_resignations_list: {
+        parameters: {
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description A page number within the paginated result set. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedResignationList"];
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hrm_resignations_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResignationRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ResignationRequest"];
+                "multipart/form-data": components["schemas"]["ResignationRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["Resignation"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hrm_resignations_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this resignation. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["Resignation"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hrm_resignations_decide_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this resignation. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResignationRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ResignationRequest"];
+                "multipart/form-data": components["schemas"]["ResignationRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["Resignation"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hrm_schedules_list: {
+        parameters: {
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description A page number within the paginated result set. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedShiftScheduleList"];
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hrm_schedules_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShiftScheduleRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ShiftScheduleRequest"];
+                "multipart/form-data": components["schemas"]["ShiftScheduleRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["ShiftSchedule"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hrm_schedules_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this shift schedule. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["ShiftSchedule"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hrm_schedules_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this shift schedule. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShiftScheduleRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ShiftScheduleRequest"];
+                "multipart/form-data": components["schemas"]["ShiftScheduleRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["ShiftSchedule"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hrm_schedules_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this shift schedule. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hrm_schedules_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this shift schedule. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedShiftScheduleRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedShiftScheduleRequest"];
+                "multipart/form-data": components["schemas"]["PatchedShiftScheduleRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["ShiftSchedule"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hrm_terminations_list: {
+        parameters: {
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description A page number within the paginated result set. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedTerminationList"];
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hrm_terminations_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TerminationRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["TerminationRequest"];
+                "multipart/form-data": components["schemas"]["TerminationRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["Termination"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hrm_terminations_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this termination. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["Termination"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hrm_transfers_list: {
+        parameters: {
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description A page number within the paginated result set. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedTransferList"];
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hrm_transfers_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransferRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["TransferRequest"];
+                "multipart/form-data": components["schemas"]["TransferRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["Transfer"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hrm_transfers_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this employee transfer. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["Transfer"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hrm_transfers_decide_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this employee transfer. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransferRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["TransferRequest"];
+                "multipart/form-data": components["schemas"]["TransferRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["Transfer"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hrm_warnings_list: {
+        parameters: {
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description A page number within the paginated result set. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedWarningList"];
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hrm_warnings_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WarningRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["WarningRequest"];
+                "multipart/form-data": components["schemas"]["WarningRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["Warning"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hrm_warnings_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this employee warning. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["Warning"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hrm_warnings_withdraw_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this employee warning. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WarningRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["WarningRequest"];
+                "multipart/form-data": components["schemas"]["WarningRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["Warning"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hrm_work_shifts_list: {
+        parameters: {
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description A page number within the paginated result set. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedWorkShiftList"];
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hrm_work_shifts_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkShiftRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["WorkShiftRequest"];
+                "multipart/form-data": components["schemas"]["WorkShiftRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["WorkShift"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hrm_work_shifts_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this work shift. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["WorkShift"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hrm_work_shifts_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this work shift. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkShiftRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["WorkShiftRequest"];
+                "multipart/form-data": components["schemas"]["WorkShiftRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["WorkShift"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hrm_work_shifts_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this work shift. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    hrm_work_shifts_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this work shift. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedWorkShiftRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedWorkShiftRequest"];
+                "multipart/form-data": components["schemas"]["PatchedWorkShiftRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["WorkShift"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     income_categories_list: {
         parameters: {
             query?: {
@@ -23160,7 +26525,12 @@ export interface operations {
                 };
             };
             /**
-             * @description - `INSTALMENT_NOT_AVAILABLE` — Not part of this shop's trade.
+             * @description - `INVALID_METAL` — Gold, silver or platinum, for old metal.
+             *     - `INVALID_PURITY` — Not a purity priced here.
+             *     - `INVALID_WEIGHT` — No weight, or zero.
+             *     - `INVALID_DEDUCTION` — Not a percent from 0 to under 100.
+             *     - `NO_METAL_RATE` — No rate typed and none set for that metal and purity.
+             *     - `INSTALMENT_NOT_AVAILABLE` — Not part of this shop's trade.
              *     - `INVALID_MONTHS` — Outside 2 to 36 months.
              *     - `CUSTOMER_REQUIRED` — A walk-in sale.
              *     - `NOTHING_OWED` — The sale is fully paid.
@@ -23287,7 +26657,12 @@ export interface operations {
                 };
             };
             /**
-             * @description - `INSTALMENT_NOT_AVAILABLE` — Not part of this shop's trade.
+             * @description - `INVALID_METAL` — Gold, silver or platinum, for old metal.
+             *     - `INVALID_PURITY` — Not a purity priced here.
+             *     - `INVALID_WEIGHT` — No weight, or zero.
+             *     - `INVALID_DEDUCTION` — Not a percent from 0 to under 100.
+             *     - `NO_METAL_RATE` — No rate typed and none set for that metal and purity.
+             *     - `INSTALMENT_NOT_AVAILABLE` — Not part of this shop's trade.
              *     - `INVALID_MONTHS` — Outside 2 to 36 months.
              *     - `CUSTOMER_REQUIRED` — A walk-in sale.
              *     - `NOTHING_OWED` — The sale is fully paid.
@@ -23803,6 +27178,66 @@ export interface operations {
                 };
             };
             /** @description - `NOT_FOUND` — Expiry tracking is not part of this shop's trade. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    inventory_expiry_hold_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BatchHoldRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["BatchHoldRequest"];
+                "multipart/form-data": components["schemas"]["BatchHoldRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["BatchHold"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `NOT_FOUND` — No such batch. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -24452,6 +27887,51 @@ export interface operations {
             };
         };
     };
+    inventory_negative_stock_list: {
+        parameters: {
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description A page number within the paginated result set. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedNegativeStockList"];
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     inventory_production_list: {
         parameters: {
             query?: {
@@ -24618,6 +28098,385 @@ export interface operations {
             };
         };
     };
+    inventory_rolls_list: {
+        parameters: {
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Roll code, dye lot or product */
+                search?: string;
+                /** @description OPEN or FINISHED */
+                status?: string;
+                variant?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedFabricRollList"];
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    inventory_rolls_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RollInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["RollInputRequest"];
+                "multipart/form-data": components["schemas"]["RollInputRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["FabricRoll"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `ROLLS_NOT_AVAILABLE` — Not part of this shop's trade.
+             *     - `ROLL_EXCEEDS_STOCK` — More than the shelf holds.
+             *     - `ROLL_TOO_SHORT` — The roll has less left than the cut.
+             *     - `INVALID_LENGTH` — No length, or a negative one.
+             *     - `DUPLICATE_ROLL` — That roll code is taken.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `NOT_FOUND` — No such object **in the caller's organization**. An object belonging to another tenant is 404, never 403 — a 403 would confirm it exists. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    inventory_rolls_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this fabric roll. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["FabricRoll"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `NOT_FOUND` — No such object **in the caller's organization**. An object belonging to another tenant is 404, never 403 — a 403 would confirm it exists. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    inventory_rolls_cut_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this fabric roll. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RollCutInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["RollCutInputRequest"];
+                "multipart/form-data": components["schemas"]["RollCutInputRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["FabricRoll"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `ROLLS_NOT_AVAILABLE` — Not part of this shop's trade.
+             *     - `ROLL_EXCEEDS_STOCK` — More than the shelf holds.
+             *     - `ROLL_TOO_SHORT` — The roll has less left than the cut.
+             *     - `INVALID_LENGTH` — No length, or a negative one.
+             *     - `DUPLICATE_ROLL` — That roll code is taken.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `NOT_FOUND` — No such object **in the caller's organization**. An object belonging to another tenant is 404, never 403 — a 403 would confirm it exists. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    inventory_rolls_remnant_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this fabric roll. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["FabricRoll"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `NOT_FOUND` — No such object **in the caller's organization**. An object belonging to another tenant is 404, never 403 — a 403 would confirm it exists. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    inventory_rolls_reconcile_list: {
+        parameters: {
+            query: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                warehouse: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example true */
+                        success: boolean;
+                        data: {
+                            [key: string]: unknown;
+                        }[];
+                        meta: {
+                            /** @example 1 */
+                            page: number;
+                            /** @example 20 */
+                            limit: number;
+                            /** @example 250 */
+                            total: number;
+                            /** @example 13 */
+                            total_pages: number;
+                        };
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     inventory_serials_list: {
         parameters: {
             query?: {
@@ -24710,6 +28569,78 @@ export interface operations {
              *     - `NOT_SERIAL_TRACKED` — The product is not sold by serial number.
              *     - `INVALID_SERIAL` — A number is too long or holds control characters.
              *     - `TOO_MANY_SERIALS` — More than 1000 at a time.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `NOT_FOUND` — Serial numbers are not part of this shop's trade. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    inventory_serials_move_create: {
+        parameters: {
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description A page number within the paginated result set. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MoveSerialsRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MoveSerialsRequest"];
+                "multipart/form-data": components["schemas"]["MoveSerialsRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedSerialNumberList"];
+                };
+            };
+            /**
+             * @description - `SERIAL_NOT_FOUND` — A number is not registered.
+             *     - `SERIAL_ALREADY_SOLD` — A unit is not on a shelf.
              */
             400: {
                 headers: {
@@ -24921,8 +28852,8 @@ export interface operations {
                 include_unstocked?: boolean;
                 /** @description Product name (contains), SKU or warehouse code (prefix) */
                 search?: string;
-                /** @description One stock level. */
-                stock_status?: "in" | "low" | "out";
+                /** @description One stock level; `negative` is below zero. */
+                stock_status?: "in" | "low" | "negative" | "out";
                 /** @description Filter by warehouse id */
                 warehouse?: string;
             };
@@ -25907,6 +29838,81 @@ export interface operations {
              * @description - `VALIDATION_ERROR` — A field is missing or malformed; `errors` names the fields.
              *     - `FIELD_NOT_WRITABLE` — `is_active` is set by the platform, not by the tenant.
              *     - `EMAIL_CHANGE_NEEDS_VERIFICATION` — `email` differs from the current company email. The address moves only through POST /organizations/{id}/email-change/ and .../email-change/verify/. Sending the current address is accepted.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `NOT_FOUND` — No such object **in the caller's organization**. An object belonging to another tenant is 404, never 403 — a 403 would confirm it exists. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    organizations_category_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this organization. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CategorySwitchRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CategorySwitchRequest"];
+                "multipart/form-data": components["schemas"]["CategorySwitchRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["Organization"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `VALIDATION_ERROR` — `business_category` is missing.
+             *     - `CATEGORY_UNKNOWN` — `business_category` is not one of the categories.
              */
             400: {
                 headers: {
@@ -31068,6 +35074,300 @@ export interface operations {
             };
         };
     };
+    price_groups_list: {
+        parameters: {
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description A page number within the paginated result set. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedPriceGroupList"];
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    price_groups_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PriceGroupRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PriceGroupRequest"];
+                "multipart/form-data": components["schemas"]["PriceGroupRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["PriceGroup"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    price_groups_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this price group. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["PriceGroup"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    price_groups_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this price group. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PriceGroupRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PriceGroupRequest"];
+                "multipart/form-data": components["schemas"]["PriceGroupRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["PriceGroup"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    price_groups_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this price group. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    price_groups_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this price group. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedPriceGroupRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedPriceGroupRequest"];
+                "multipart/form-data": components["schemas"]["PatchedPriceGroupRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["PriceGroup"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     products_list: {
         parameters: {
             query?: {
@@ -32679,6 +36979,102 @@ export interface operations {
             };
         };
     };
+    products_metal_rates_list: {
+        parameters: {
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description A page number within the paginated result set. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedMetalRateList"];
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    products_metal_rates_set_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetMetalRateRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SetMetalRateRequest"];
+                "multipart/form-data": components["schemas"]["SetMetalRateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["SetMetalRateResult"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     products_pos_catalog_list: {
         parameters: {
             query?: {
@@ -32929,6 +37325,51 @@ export interface operations {
                         data: components["schemas"]["ProductSummary"];
                         message?: string;
                     };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Authenticated, but the caller's roles do not carry the permission code this endpoint requires. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    products_vehicles_list: {
+        parameters: {
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description A page number within the paginated result set. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedVehicleList"];
                 };
             };
             /**
@@ -34649,6 +39090,57 @@ export interface operations {
             };
         };
     };
+    purchases_receive_now_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PurchaseRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PurchaseRequest"];
+                "multipart/form-data": components["schemas"]["PurchaseRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        success: true;
+                        data: components["schemas"]["Purchase"];
+                        message?: string;
+                    };
+                };
+            };
+            /**
+             * @description - `TOKEN_EXPIRED` — The access token has expired. Refresh it and retry.
+             *     - `TOKEN_INVALID` — Missing, malformed or tampered token. Authenticate again.
+             */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description - `PERMISSION_DENIED` — Missing purchase.create or purchase.confirm. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     purchases_returns_retrieve: {
         parameters: {
             query?: {
@@ -35956,7 +40448,7 @@ export interface operations {
                 /** @description A page number within the paginated result set. */
                 page?: number;
                 /** @description Filter by how the money went back */
-                refund_method?: "BANK" | "CARD" | "CASH" | "CREDIT" | "MOBILE" | "OTHER";
+                refund_method?: "BANK" | "CARD" | "CASH" | "CREDIT" | "GIFT_CARD" | "MOBILE" | "OTHER";
                 /** @description Filter by the row's refund_type. Under sales.refund_requires_paid only FULL and PARTIAL exist. */
                 refund_type?: "FULL" | "PARTIAL" | "RETURNED";
                 /** @description Reference, invoice number or customer */
@@ -40759,7 +45251,12 @@ export interface operations {
                 };
             };
             /**
-             * @description - `INSTALMENT_NOT_AVAILABLE` — Not part of this shop's trade.
+             * @description - `INVALID_METAL` — Gold, silver or platinum, for old metal.
+             *     - `INVALID_PURITY` — Not a purity priced here.
+             *     - `INVALID_WEIGHT` — No weight, or zero.
+             *     - `INVALID_DEDUCTION` — Not a percent from 0 to under 100.
+             *     - `NO_METAL_RATE` — No rate typed and none set for that metal and purity.
+             *     - `INSTALMENT_NOT_AVAILABLE` — Not part of this shop's trade.
              *     - `INVALID_MONTHS` — Outside 2 to 36 months.
              *     - `CUSTOMER_REQUIRED` — A walk-in sale.
              *     - `NOTHING_OWED` — The sale is fully paid.
