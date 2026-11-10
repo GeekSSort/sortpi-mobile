@@ -5,7 +5,7 @@ import { ApiError } from '../api/client.ts';
 import { describeSellError } from './messages.ts';
 
 test('known sale errors read as instructions', () => {
-  assert.match(describeSellError(new ApiError(400, 'INSUFFICIENT_STOCK', 'x')), /Not enough stock/);
+  assert.match(describeSellError(new ApiError(400, 'INSUFFICIENT_STOCK', 'x')), /expired or held back/);
   assert.match(describeSellError(new ApiError(404, 'NO_OPEN_SHIFT', 'x')), /Open your shift/);
 });
 

@@ -23,7 +23,7 @@ export type StockRow = {
 };
 
 export type StockSummary = { lines: number; units: string; stock_value?: string; low_stock: number; out_of_stock: number };
-export type StockFilter = 'all' | 'in' | 'low' | 'out';
+export type StockFilter = 'all' | 'in' | 'low' | 'out' | 'negative';
 
 const PAGE = 25;
 
@@ -53,3 +53,7 @@ export const stockOfVariant = (warehouse: string, variant: string) => api.get<St
  * Checked live: the same Idempotency-Key returns the same adjustment, so a retry after a lost connection is safe.
  */
 export const postCount = (body: ReturnType<typeof countBody>, idempotencyKey: string) => api.post<{ id: string; reference_no: string }>('/inventory/adjustments/', body, { idempotencyKey });
+
+export type NegativeStock = { count: number; items: { variant_id: string; product_id: string; name: string; sku: string; warehouse: string; quantity: string }[] };
+/** The lines sold below zero, for the shop-wide "count these" notice (`GET /inventory/negative-stock/`). Checked live: `{ count, items }`. */
+export const negativeStock = (limit = 1) => api.get<NegativeStock>('/inventory/negative-stock/', { query: { limit } });

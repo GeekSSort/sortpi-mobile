@@ -28,9 +28,9 @@ export async function searchCatalog(o: { q: string; page: number; wholesale: boo
   }
 }
 
-/** What can be sold now, A to Z, for one category or all: the stock list narrowed to items on the shelf (it carries the branch price). */
+/** Everything that can be sold, A to Z, for one category or all (it carries the branch price). A sale is never refused for stock, so finished items are listed too. */
 export async function browseCatalog(o: { category: string | null; page: number }): Promise<CatalogPage> {
-  const r = await listStock({ search: '', filter: 'in', page: o.page, withUnstocked: false, category: o.category });
+  const r = await listStock({ search: '', filter: 'all', page: o.page, withUnstocked: true, category: o.category });
   return { items: r.rows.map(stockLineToItem), nextPage: r.nextPage };
 }
 
