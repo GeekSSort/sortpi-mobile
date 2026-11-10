@@ -183,12 +183,12 @@ export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId
                     <ThemedText type="caption" themeColor="textSecondary">
                       {formatBDT(it.price, { dp: 0 })}
                       {it.allowDecimal && it.unitShort ? ` / ${it.unitShort}` : ''}
-                      {out ? ` · ${t('Finished')}` : ''}
                     </ThemedText>
+                    {out ? <ThemedText type="caption" style={{ color: theme.danger }}>{t(Number(it.stock) < 0 ? 'Below zero' : 'Finished')} · {t('still sells')}</ThemedText> : null}
                   </Tap>
                 );
                 return (
-                  <View key={it.variantId} style={{ flexBasis: tileWidth ?? '48%', flexGrow: tileWidth === undefined ? 1 : 0, borderRadius: Radius.lg, borderCurve: 'continuous', opacity: out ? 0.55 : 1, backgroundColor: n > 0 ? theme.successSoft : theme.card, borderWidth: n > 0 ? 2 : 1, borderColor: n > 0 ? theme.positive : theme.border }}>
+                  <View key={it.variantId} style={{ flexBasis: tileWidth ?? '48%', flexGrow: tileWidth === undefined ? 1 : 0, borderRadius: Radius.lg, borderCurve: 'continuous', opacity: 1, backgroundColor: n > 0 ? theme.successSoft : theme.card, borderWidth: n > 0 ? 2 : 1, borderColor: n > 0 ? theme.positive : theme.border }}>
                     {product}
                     <Tap accessibilityRole="button" accessibilityLabel={t(starred ? 'Remove {name} from favorites' : 'Add {name} to favorites', { name: it.name })} accessibilityState={{ selected: starred }} disabled={favoritesBusy} onPress={() => onFavorite(it)} style={{ position: 'absolute', top: 1, end: 1, width: 40, height: 44, borderRadius: Radius.md, backgroundColor: n > 0 ? theme.successSoft : theme.card, alignItems: 'center', justifyContent: 'center' }}>
                       <Icon name={starred ? 'StarFilled' : 'Star'} size={20} color={starred ? theme.brandText : theme.textMuted} />

@@ -21,6 +21,7 @@ import { useT } from '@/i18n/prefs';
 import { localDateISO } from '@/lib/dates';
 import { formatBDT } from '@/lib/money';
 import { HomeSidebar } from '@/menu/drawer';
+import { NegativeStockNotice } from '@/stock/negative-notice';
 import { resolvedSettings } from '@/settings/api';
 import { KEYS } from '@/settings/logic';
 
@@ -129,6 +130,7 @@ export function TabletDashboard({ width }: { width: number }) {
           {can('notification.view') ? <Tap accessibilityRole="button" accessibilityLabel={t('Notifications')} onPress={() => router.push('/notifications')} style={{ width: 48, height: 48, alignItems: 'center', justifyContent: 'center' }}><Icon name="Bell" size={20} color={theme.textSecondary} /></Tap> : null}
         </View>
         <ScrollView contentContainerStyle={{ padding: 20, gap: 20 }} keyboardShouldPersistTaps="handled">
+          <NegativeStockNotice />
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <View style={{ flex: 1, gap: 4 }}>
               <ThemedText type="heading" literal>{t('Welcome, {name}', { name: me?.full_name?.trim().split(/\s+/)[0] || me?.organization.name || 'SortPi' })} 👋</ThemedText>

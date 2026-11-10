@@ -175,7 +175,7 @@ export default function ShopSettingsScreen() {
               {toggle(KEYS.refundPaid, 'Undo', 'info', 'Give money back only on paid bills', 'If a bill is not paid yet, collect the money first, then take the goods back.', shop.refundPaid)}
 
               <Section title="Stock" />
-              {toggle(KEYS.negativeStock, 'TriangleAlert', 'warn', 'Allow selling more than is in stock', shop.negativeStock ? 'The till sells anyway and the count goes below zero until the next delivery.' : 'The till will not sell more than the shelf holds.', shop.negativeStock, { title: 'Change this?', body: 'It decides whether the till may sell goods that are not in stock.' })}
+              {toggle(KEYS.negativeStock, 'TriangleAlert', 'warn', 'Allow stock below zero', shop.negativeStock ? 'Goods may be moved or corrected below zero. Sales always go through.' : 'Goods cannot be moved or corrected below zero. Sales still go through, and the Stock tab asks you to count them.', shop.negativeStock, { title: 'Change this?', body: 'It decides whether stock may go below zero when goods are moved or corrected. Sales are never refused for stock.' })}
               {toggle(KEYS.barcodes, 'ScanLine', 'info', 'Use barcodes', 'Turn this off if you do not put barcodes on your items. Nothing is lost.', shop.barcodes)}
               {perms.includes('unit.view') ? <ValueRow icon="Ruler" tone="info" title="Stock types" hint="Piece, kilogram, litre. Decides if you can sell half of something." value={activeUnit ? activeUnit.name : units.data ? t('{n} types', { n: units.data.length }) : ''} onPress={() => router.push('/stock-types')} /> : null}
             </View>
