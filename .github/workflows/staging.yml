@@ -62,14 +62,26 @@ jobs:
           done
           exit 1
 
+      # What testers read in Firebase: the features and fixes in this build, not "Merge pull request" lines.
+      # Merges are skipped; only feat/fix/perf commits are listed, with the type turned into a word.
       - name: Release notes
         id: notes
+        env:
+          BEFORE: ${{ github.event.before }}
         run: |
+          # a push covers everything since the previous staging tip; a manual run has no such tip, so take the latest commits
+          range="-n 15"
+          if [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ] && git cat-file -e "$BEFORE" 2>/dev/null; then range="$BEFORE..HEAD"; fi
+          list=$(git log $range --no-merges --pretty='%s' \
+            | grep -E '^(feat|fix|perf)(\(|:)' \
+            | sed -E 's/ \(#[0-9]+\)$//; s/^feat(\([^)]*\))?: /New: /; s/^fix(\([^)]*\))?: /Fixed: /; s/^perf(\([^)]*\))?: /Faster: /' \
+            | awk '!seen[$0]++' | head -12 | sed 's/^/- /')
+          if [ -z "$list" ]; then list='- Small improvements'; fi
           {
             echo 'text<<EOF'
             # must not start with '-': the action passes the notes on a command line and would read it as an option
-            echo 'Changes in this build:'
-            git log -n 8 --pretty='- %s'
+            echo 'What is new in this build:'
+            echo "$list"
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
 
