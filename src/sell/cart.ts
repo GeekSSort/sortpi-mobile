@@ -23,6 +23,8 @@ export type CartLine = {
   allowDecimal?: boolean;
   /** "kg", "pcs": printed after the number so 1.5 reads as 1.5 kg. */
   unitShort?: string;
+  /** Sold by serial number (a phone's IMEI): one number per unit goes with the sale. */
+  trackSerial?: boolean;
 };
 
 export type Cart = CartLine[];
@@ -72,11 +74,11 @@ export const isEmpty = (cart: Cart) => cart.length === 0 || cart.every((l) => is
 export const qtyText = (q: string): string => parseMoney(q).toFixed(3);
 
 export type SellContext = { customerId: string; warehouseId: string; branchId: string; shiftId?: string; wholesale?: boolean; couponCode?: string; redeemPoints?: number };
-export type PaymentMethod = 'CASH' | 'CARD' | 'BANK' | 'MOBILE';
+export type PaymentMethod = 'CASH' | 'CARD' | 'BANK' | 'MOBILE' | 'GIFT_CARD';
 export type PaymentInput = { payment_method: PaymentMethod; amount: Money; reference_no?: string };
 
 /** Body for POST /sales/sell/. No price, total, tax or discount: the server computes those. */
-export function buildSellRequest(ctx: SellContext, cart: Cart, payments: PaymentInput[]) {
+export function buildSellRequest(ctx: SellContext, cart: Cart, payments: PaymentInput[], serials?: Record<string, string[]>) {
   return {
     customer_id: ctx.customerId,
     warehouse_id: ctx.warehouseId,
@@ -85,7 +87,7 @@ export function buildSellRequest(ctx: SellContext, cart: Cart, payments: Payment
     ...(ctx.wholesale ? { price_mode: 'WHOLESALE' as const } : {}),
     ...(ctx.couponCode ? { coupon_code: ctx.couponCode } : {}),
     ...(ctx.redeemPoints ? { redeem_points: ctx.redeemPoints } : {}),
-    items: cart.map((l) => ({ variant_id: l.variantId, quantity: qtyText(l.quantity), ...(l.unitId ? { unit_id: l.unitId } : {}) })),
+    items: cart.map((l) => ({ variant_id: l.variantId, quantity: qtyText(l.quantity), ...(l.unitId ? { unit_id: l.unitId } : {}), ...(serials?.[l.key]?.length ? { serials: serials[l.key] } : {}) })),
     payments,
   };
 }

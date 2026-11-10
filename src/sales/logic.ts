@@ -23,4 +23,4 @@ export function saleState(s: { status: string; due_amount: string; refund_state:
 export const isWalkIn = (name: string): boolean => /^walk-?in/i.test(name.trim());
 
 /** Payment methods as the till names them. CREDIT is money left on the customer's account. */
-export const METHOD_LABEL: Record<string, string> = { CASH: 'Cash', MOBILE: 'Mobile', CARD: 'Card', BANK: 'Bank', CREDIT: 'On account', OTHER: 'Other' };
+export const METHOD_LABEL: Record<string, string> = { CASH: 'Cash', MOBILE: 'Mobile', CARD: 'Card', BANK: 'Bank', CREDIT: 'On account', OTHER: 'Other', GIFT_CARD: 'Gift card' };

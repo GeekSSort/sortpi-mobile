@@ -52,3 +52,13 @@ test('a stock line becomes an item with the branch price and what is on the shel
   const it = stockLineToItem({ variant: 'v1', sku: 'S-1', product_name: 'Rice', variant_name: 'Default', price: '70.0000', available: '12.500', unit_short_name: 'kg', unit_allow_decimal: true });
   assert.deepEqual(it, { variantId: 'v1', sku: 'S-1', name: 'Rice', price: '70.0000', unitShort: 'kg', allowDecimal: true, stock: '12.500' });
 });
+
+import { toCartItem as cartItem, toCatalogItems as catalogItems } from './catalog-map.ts';
+
+test('a catalogue item sold by serial number carries that into the cart line', () => {
+  const items = catalogItems([{ id: 'p', name: 'Phone', track_serial: true, variants: [{ id: 'v', sku: 'PH1', name: 'Default', price: '9000', wholesale_price: null }] }, { id: 'q', name: 'Case', variants: [{ id: 'w', sku: 'CS1', name: 'Default', price: '200', wholesale_price: null }] }]);
+  assert.equal(items[0].trackSerial, true);
+  assert.equal(cartItem(items[0]).trackSerial, true);
+  assert.equal('trackSerial' in items[1], false);
+  assert.equal('trackSerial' in cartItem(items[1]), false);
+});

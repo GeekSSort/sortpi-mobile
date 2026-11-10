@@ -28,3 +28,14 @@ test('an unknown barcode reads like the web till', () => {
 test('a typed code that is not found does not claim the scanner read it', () => {
   assert.deepEqual(notInCatalogueText(false, '8900'), { text: 'No product with the code “{code}”.', vars: { code: '8900' } });
 });
+
+import { ApiError as GiftApiError } from '../api/client.ts';
+import { describeSellError as describeGift } from './messages.ts';
+
+test('every gift card refusal has words a cashier can act on', () => {
+  for (const code of ['GIFT_CARD_NOT_FOUND', 'GIFT_CARD_INACTIVE', 'GIFT_CARD_EXPIRED', 'GIFT_CARD_BALANCE', 'GIFT_CARD_SALE_CANCEL']) {
+    const text = describeGift(new GiftApiError(400, code, 'raw server text'));
+    assert.notEqual(text, 'Something went wrong. Try again.', code);
+    assert.ok(!text.includes('raw server text'), code);
+  }
+});

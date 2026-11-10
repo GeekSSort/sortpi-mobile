@@ -64,3 +64,39 @@ test('a reference never goes past what the shop keeps (50 characters), wallet na
   const plan = buildPayments({ choice: 'CARD', total: '100', payNow: '', reference: long, hasCustomer: false });
   assert.equal(plan.payments[0].reference_no?.length, 50);
 });
+
+import { buildPayments as pay } from './payment.ts';
+import { giftCardOffered } from './gift-offer.ts';
+
+test('a gift card payment carries the card code as its reference, and needs one', () => {
+  const ok = pay({ choice: 'GIFT_CARD', total: '500.00', payNow: '', reference: ' GC-1234 ', hasCustomer: false });
+  assert.equal(ok.problem, null);
+  assert.deepEqual(ok.payments, [{ payment_method: 'GIFT_CARD', amount: '500.00', reference_no: 'GC-1234' }]);
+  assert.match(pay({ choice: 'GIFT_CARD', total: '500.00', payNow: '', reference: '  ', hasCustomer: false }).problem ?? '', /code/);
+});
+
+test('a gift card with less left than the payment is refused here, with the way out', () => {
+  const short = pay({ choice: 'GIFT_CARD', total: '500.00', payNow: '', reference: 'GC-1', hasCustomer: false, giftBalance: '200.00' });
+  assert.match(short.problem ?? '', /less left/);
+  assert.deepEqual(short.payments, []);
+  // taking only what the card has, with a customer, leaves the rest on their account
+  const part = pay({ choice: 'GIFT_CARD', total: '500.00', payNow: '200', reference: 'GC-1', hasCustomer: true, giftBalance: '200.00' });
+  assert.equal(part.problem, null);
+  assert.equal(part.due, '300');
+  // enough on the card, or the balance not known: the server decides
+  assert.equal(pay({ choice: 'GIFT_CARD', total: '500.00', payNow: '', reference: 'GC-1', hasCustomer: false, giftBalance: '500.00' }).problem, null);
+  assert.equal(pay({ choice: 'GIFT_CARD', total: '500.00', payNow: '', reference: 'GC-1', hasCustomer: false, giftBalance: null }).problem, null);
+});
+
+test('the other methods are unchanged by the gift card rules', () => {
+  assert.deepEqual(pay({ choice: 'CARD', total: '100.00', payNow: '', reference: 'TRX1', hasCustomer: false }).payments, [{ payment_method: 'CARD', amount: '100.00', reference_no: 'TRX1' }]);
+});
+
+test('a shop is offered gift cards by its trade or by its payment list', () => {
+  assert.equal(giftCardOffered(['gift', 'season'], null), true);
+  assert.equal(giftCardOffered(['expiry'], 'Card, bKash, Gift card'), true);
+  assert.equal(giftCardOffered(['expiry'], 'Card, Gift voucher'), true);
+  assert.equal(giftCardOffered(['expiry'], 'Card, bKash, Nagad'), false);
+  assert.equal(giftCardOffered(undefined, undefined), false);
+  assert.equal(giftCardOffered([], 42), false);
+});
