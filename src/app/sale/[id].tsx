@@ -25,7 +25,7 @@ import { canReturn } from '@/sales/returns';
 
 /** One sale as the customer would read it: what was bought, what it came to, how it was paid, and a receipt to send. */
 export default function SaleScreen() {
-  const { contentWidth } = useWideLandscape();
+  const { readingWidth } = useWideLandscape();
   const theme = useTheme();
   const { t, lang } = usePrefs();
   const { me } = useSession();
@@ -34,7 +34,7 @@ export default function SaleScreen() {
   const s = sale.data;
 
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: theme.canvas }} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six, maxWidth: Math.min(contentWidth, 1080), width: '100%', alignSelf: 'center' }}>
+    <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: theme.canvas }} contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six, maxWidth: Math.min(readingWidth, 1080), width: '100%', alignSelf: 'center' }}>
       {sale.isPending ? <SkeletonRows count={4} /> : null}
       {sale.isError ? <ErrorState message={t('Could not load this sale.')} onRetry={() => void sale.refetch()} /> : null}
       {s ? <Body sale={s} lang={lang} shop={me?.organization?.name ?? 'SortPi'} branchName={me?.active_branch?.name} canRefund={(me?.permissions?.includes('sale.refund') ?? false) && canReturn(s)} canCancel={(me?.permissions?.includes('sale.cancel') ?? false) && s.status === 'COMPLETED'} /> : null}

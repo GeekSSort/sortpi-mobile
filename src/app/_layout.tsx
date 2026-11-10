@@ -14,7 +14,8 @@ import { PrefsProvider, usePrefs } from '@/i18n/prefs';
 import { AskFab } from '@/ask/ask-fab';
 import { ConnectionBanner } from '@/components/connection-banner';
 import { useHeaderOptions } from '@/components/header-options';
-import { BackWithMenu, DrawerProvider } from '@/menu/drawer';
+import { useShellSidebarWidth } from '@/hooks/use-desktop-shell';
+import { BackWithMenu, DrawerProvider, HomeSidebar } from '@/menu/drawer';
 import { ToastHost } from '@/components/toast-host';
 import { Colors } from '@/constants/theme';
 import { initAnalytics, useScreenTracking } from '@/lib/analytics';
@@ -67,6 +68,7 @@ function Gate() {
   const { status } = useSession();
   const { ready, langChosen, t } = usePrefs();
   const header = useHeaderOptions();
+  const shellWidth = useShellSidebarWidth();
   // Pages carry the back arrow and the menu button together at the top left, where the drawer comes from; the pop-up forms do not.
   const page = { ...header, headerLeft: () => <BackWithMenu /> };
 
@@ -76,6 +78,8 @@ function Gate() {
   if (status === 'booting' || !ready) return null;
 
   return (
+    <View style={{ flex: 1, flexDirection: 'row' }}>
+    {shellWidth > 0 && status === 'signedIn' ? <HomeSidebar width={shellWidth} branded /> : null}
     <View style={{ flex: 1 }}>
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={status === 'signedIn'}>
@@ -188,6 +192,7 @@ function Gate() {
     {status === 'signedIn' ? <AskFab /> : null}
     <ConnectionBanner />
     <ToastHost />
+    </View>
     </View>
   );
 }

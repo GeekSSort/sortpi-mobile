@@ -38,7 +38,7 @@ const paperLabel = (width: string) => width === 'a4' ? 'A4' : width.replace('mm'
 
 /** The settings a shop owner needs most: tax, discount, daily target, how customers pay, and a few rules about selling and stock. Each change is saved as it is made. */
 export default function ShopSettingsScreen() {
-  const { contentWidth, wideLandscape } = useWideLandscape();
+  const { readingWidth, wideLandscape } = useWideLandscape();
   const theme = useTheme();
   const { t, setGuideDone } = usePrefs();
   const router = useRouter();
@@ -108,7 +108,7 @@ export default function ShopSettingsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
       <Stack.Screen options={{ title: t('Settings') }} />
-      <ScrollView contentInsetAdjustmentBehavior="automatic" refreshControl={canSee ? <RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} /> : undefined} contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four, maxWidth: Math.min(contentWidth, 1080), width: '100%', alignSelf: 'center' }}>
+      <ScrollView contentInsetAdjustmentBehavior="automatic" refreshControl={canSee ? <RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} /> : undefined} contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.four, maxWidth: Math.min(readingWidth, 1080), width: '100%', alignSelf: 'center' }}>
         <View style={{ flexDirection: wideLandscape ? 'row' : 'column', gap: wideLandscape ? Spacing.three : 0, paddingHorizontal: wideLandscape ? Spacing.three : 0 }}>
           <View style={{ flex: wideLandscape ? 1 : undefined, minWidth: 0 }}>
             <Section title="On this device" />

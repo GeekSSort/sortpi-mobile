@@ -19,6 +19,7 @@ import { usePrefs } from '@/i18n/prefs';
 import { Tap } from '@/components/tap';
 import { EmptyState } from '@/components/empty-state';
 import { Field } from '@/components/field';
+import { bumpUsage } from '@/menu/usage';
 import { GROUP_ICON, GROUP_TITLE, groupMenu, MENU, visibleMenu, type MenuGroup, type MenuItem } from '@/menu/items';
 
 /** Every task the person may do, with a search box: the body of the side drawer. `onNavigate` lets the drawer close itself. */
@@ -44,6 +45,7 @@ export function TaskList({ onNavigate, compact = false }: { onNavigate?: () => v
       {searching && found.length === 0 ? <EmptyState icon="Search" title={t('Nothing found')} hint={t('Try another word, like “sales” or “customer”.')} /> : null}
       {groupMenu(found).map((g) => {
         const go = (i: MenuItem) => () => {
+          bumpUsage(me?.id, i.id);
           onNavigate?.();
           router.push(i.route);
         };
@@ -214,7 +216,7 @@ function Row({ icon, title, sub, trailing, danger, compact, indent, expanded, on
   const theme = useTheme();
   const { t, lang, setLang, size, setSize, setGuideDone } = usePrefs();
   const body = (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingLeft: indent ? Spacing.three + 34 : Spacing.three, paddingRight: Spacing.three, paddingVertical: compact ? 11 : 14 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingLeft: indent ? Spacing.three + 34 : Spacing.three, paddingRight: Spacing.three, paddingVertical: compact ? 11 : 14, minHeight: compact ? 52 : undefined }}>
       <Icon name={icon} size={22} color={danger ? theme.danger : theme.brand} />
       <View style={{ flex: 1 }}>
         <ThemedText type="body" style={danger ? { color: theme.danger } : undefined}>
