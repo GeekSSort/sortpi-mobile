@@ -37,6 +37,10 @@ import { useDiscounts } from '@/sell/use-discounts';
 import { SaleGuide } from '@/sell/sale-guide';
 import type { PickedCustomer } from '@/sell/customers';
 import { amountDueNow, buildPayments, walletReference, WALLETS, type PayChoice } from '@/sell/payment';
+import { GiftCardPay } from '@/sell/gift-card-pay';
+import { SerialEntry } from '@/sell/serial-entry';
+import { checkSerials, dealSerials, serialsNeeded } from '@/sell/serials';
+import { useGiftCardOffered } from '@/sell/use-gift-offer';
 import { clearDraft, clearPending, loadDraft, loadPending, saveDraft, savePending } from '@/sell/journal-store';
 import { mayHaveCommitted, type PendingSale } from '@/sell/journal';
 import { printReceipt } from '@/sell/print';
@@ -135,6 +139,10 @@ export default function SellScreen() {
   const [pickedCounter, setPickedCounter] = useState<string | null>(null);
   const [heldBusy, setHeldBusy] = useState<string | null>(null);
   const [reference, setReference] = useState('');
+  const giftOffered = useGiftCardOffered();
+  const [serialText, setSerialText] = useState<Record<string, string>>({}); // what was typed for each serial-numbered item
+  const needSerials = serialsNeeded(cart);
+  const [giftBalance, setGiftBalance] = useState<string | null>(null); // what the server said is left on the typed card
   const [payNow, setPayNow] = useState('');
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<SaleResult | null>(null);
@@ -351,6 +359,7 @@ export default function SellScreen() {
 
   /** The sale went through, or its record was replayed: show it and forget the unfinished-sale record. */
   function sold(sale: SaleResult, lines: Cart, how: string, expectedDue: string) {
+    setSerialText({});
     setResult(sale);
     track('sale_completed', { items: itemCount(lines), method: how });
     setMode('done');
@@ -372,21 +381,28 @@ export default function SellScreen() {
     // A request that got no answer is sent again exactly as it was, whatever the screen says now: the server answers with the original sale.
     if (pending) return void finishPending(pending);
     if (!ctx || !shift || !payTotal) return;
-    const plan = buildPayments({ choice: method, total: payTotal, payNow, reference: method === 'MOBILE' ? walletReference(wallet, reference) : reference, hasCustomer: !!customer });
+    // A phone's IMEI, a device's serial: one per unit, before anything is sent. The server refuses a sale that lacks them.
+    const sc = checkSerials(needSerials, serialText);
+    if (sc.problem) {
+      setNotice(t(sc.problem.text, sc.problem.params));
+      return;
+    }
+    const dealt = dealSerials(cart, sc.serials);
+    const plan = buildPayments({ choice: method, total: payTotal, payNow, reference: method === 'MOBILE' ? walletReference(wallet, reference) : reference, hasCustomer: !!customer, giftBalance: method === 'GIFT_CARD' ? giftBalance : null });
     if (plan.problem) {
       setNotice(plan.problem);
       return;
     }
     const args = { ...ctx, shiftId: shift.id, couponCode: d.couponCode, redeemPoints: d.points || undefined };
     const how = plan.payments.length > 1 ? 'SPLIT' : (plan.payments[0]?.payment_method ?? 'NONE');
-    const record: PendingSale = { v: 1, key: newIdempotencyKey(), at: Date.now(), userId, ctx: args, cart, payments: plan.payments, total: payTotal, customerName: customer?.name ?? null };
+    const record: PendingSale = { v: 1, key: newIdempotencyKey(), at: Date.now(), userId, ctx: args, cart, payments: plan.payments, ...(needSerials.length ? { serials: dealt } : {}), total: payTotal, customerName: customer?.name ?? null };
     setBusy(true);
     setNotice(null);
     try {
       await savePending(record).catch(() => undefined); // on the phone BEFORE it is sent
       setPending(record);
       // The payment is at most what the server says the sale is worth: it refuses an overpayment, and change is not part of the sale.
-      const sale = await timed('confirm_sale', () => sell(args, cart, plan.payments, record.key));
+      const sale = await timed('confirm_sale', () => sell(args, cart, plan.payments, record.key, needSerials.length ? dealt : undefined));
       if (method !== 'CREDIT') void SecureStore.setItemAsync('sortpi.lastpay', method);
       if (method === 'MOBILE' && wallet) void SecureStore.setItemAsync('sortpi.wallet', wallet);
       sold(sale, cart, how, plan.due);
@@ -417,7 +433,7 @@ export default function SellScreen() {
     setBusy(true);
     setNotice(null);
     try {
-      const sale = await timed('confirm_sale', () => sell(p.ctx, p.cart, p.payments, p.key));
+      const sale = await timed('confirm_sale', () => sell(p.ctx, p.cart, p.payments, p.key, p.serials));
       setCart(p.cart);
       sold(sale, p.cart, p.payments.length > 1 ? 'SPLIT' : (p.payments[0]?.payment_method ?? 'NONE'), subMoney(p.total, p.payments.reduce((sum, x) => addMoney(sum, x.amount), '0')));
     } catch (e) {
@@ -736,6 +752,16 @@ export default function SellScreen() {
             );
           })}
         </View>
+        <SerialEntry needed={needSerials} typed={serialText} onChange={(id, text) => setSerialText((all) => ({ ...all, [id]: text }))} />
+        {giftOffered ? (
+          <Tap accessibilityRole="button" accessibilityState={{ selected: method === 'GIFT_CARD' }} onPress={() => { setMethod(method === 'GIFT_CARD' ? 'CASH' : 'GIFT_CARD'); setReference(''); setGiftBalance(null); }} style={{ overflow: 'hidden', minHeight: 52, flexDirection: 'row', gap: 8, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: method === 'GIFT_CARD' ? PayColors.GIFT_CARD.fill : theme.inputBorder, backgroundColor: method === 'GIFT_CARD' ? PayColors.GIFT_CARD.fill : theme.card }}>
+            <Icon name="Gift" size={22} color={method === 'GIFT_CARD' ? theme.onBrand : dark ? PayColors.GIFT_CARD.ink.dark : PayColors.GIFT_CARD.ink.light} />
+            <ThemedText type="smallMedium" style={{ color: method === 'GIFT_CARD' ? theme.onBrand : dark ? PayColors.GIFT_CARD.ink.dark : PayColors.GIFT_CARD.ink.light }}>
+              Pay with a gift card
+            </ThemedText>
+          </Tap>
+        ) : null}
+        {method === 'GIFT_CARD' ? <GiftCardPay code={reference} onCode={setReference} onBalance={setGiftBalance} /> : null}
         {customer ? (
           <Tap accessibilityRole="button" accessibilityState={{ selected: method === 'CREDIT' }} onPress={() => setMethod(method === 'CREDIT' ? 'CASH' : 'CREDIT')} style={{ overflow: 'hidden', minHeight: 44, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: method === 'CREDIT' ? theme.brand : theme.inputBorder, backgroundColor: method === 'CREDIT' ? theme.brandSoft : theme.card }}>
             <ThemedText type="smallMedium" style={{ color: method === 'CREDIT' ? theme.brandText : theme.textSecondary }}>

@@ -1,5 +1,5 @@
 /** Bump when a table changes. A database made by an older version is thrown away and downloaded again (it is only a copy of the server). */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2; // 2: products know whether they are sold by serial number
 
 /**
  * The phone's copy of the shop. Money is TEXT, exactly as the server sends it (never a float). `*_key` columns hold the lower-cased text
@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS meta (key TEXT NOT NULL PRIMARY KEY, value TEXT NOT N
 CREATE TABLE IF NOT EXISTS products (
   id TEXT NOT NULL PRIMARY KEY, name TEXT NOT NULL, name_key TEXT NOT NULL, category_id TEXT, category_name TEXT, brand_id TEXT, brand_name TEXT,
   unit_short TEXT, allow_decimal INTEGER NOT NULL DEFAULT 0, tax_rate TEXT, type TEXT, is_active INTEGER NOT NULL DEFAULT 1,
-  reorder_level TEXT, generic_name TEXT
+  reorder_level TEXT, generic_name TEXT, track_serial INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS variants (
   id TEXT NOT NULL PRIMARY KEY, product_id TEXT NOT NULL, name TEXT, sku TEXT, sku_key TEXT, price TEXT, wholesale_price TEXT, mrp TEXT,

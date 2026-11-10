@@ -22,6 +22,8 @@ export type PendingSale = {
   ctx: SellContext;
   cart: Cart;
   payments: PaymentInput[];
+  /** Serial numbers dealt to the cart lines (by line key), for items sold by serial. Sent again exactly as they were. */
+  serials?: Record<string, string[]>;
   /** What the sale was expected to come to, for the screen that asks the person to finish it. */
   total: string;
   customerName: string | null;

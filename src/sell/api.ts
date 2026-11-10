@@ -123,8 +123,8 @@ export async function previewTotal(ctx: Pick<SellContext, 'customerId' | 'branch
 }
 
 /** One `idempotencyKey` per sale attempt: a retry after a dropped connection returns the first result. */
-export const sell = (ctx: SellContext, cart: Cart, payments: PaymentInput[], idempotencyKey: string) =>
-  api.post<SaleResult>('/sales/sell/', buildSellRequest(ctx, cart, payments), { idempotencyKey });
+export const sell = (ctx: SellContext, cart: Cart, payments: PaymentInput[], idempotencyKey: string, serials?: Record<string, string[]>) =>
+  api.post<SaleResult>('/sales/sell/', buildSellRequest(ctx, cart, payments, serials), { idempotencyKey });
 
 export type ShiftSummary = { opening_cash: string; cash_sales: string; cash_refunds: string; cash_collected?: string; cash_in?: string; cash_out?: string; expected_cash: string; sale_count: number; total_sales?: string };
 export const shiftSummary = (id: string) => api.get<ShiftSummary>(`/pos/shifts/${id}/summary/`);

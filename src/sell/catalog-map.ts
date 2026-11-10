@@ -8,12 +8,14 @@ export type CatalogProduct = {
   unit_short_name?: string;
   unit_allow_decimal?: boolean;
   track_inventory?: boolean;
+  /** Sold by serial number: one number per unit goes with the sale. */
+  track_serial?: boolean;
   variants: CatalogVariant[];
   images?: { url: string; thumbnail_url?: string; variant?: string | null; is_primary?: boolean; status?: string }[];
 };
 
 /** One thing a cashier can tap: a variant of a product, named the way the till names it. */
-export type CatalogItem = { variantId: string; sku: string; name: string; price: string; unitShort: string | null; allowDecimal: boolean; stock: string | null; image?: string };
+export type CatalogItem = { variantId: string; sku: string; name: string; price: string; unitShort: string | null; allowDecimal: boolean; stock: string | null; image?: string; trackSerial?: boolean };
 
 /** "Rice" with a variant "Default" is just "Rice"; "Cheese" with "500g" is "Cheese 500g". */
 export function itemName(product: string, variant: string): string {
@@ -41,6 +43,7 @@ export function toCatalogItems(products: CatalogProduct[], wholesale = false): C
           allowDecimal: p.unit_allow_decimal === true,
           stock: p.track_inventory === false ? null : (v.stock_on_hand ?? null),
           ...(image ? { image: image.thumbnail_url || image.url } : {}),
+          ...(p.track_serial ? { trackSerial: true } : {}),
         };
       }),
   );
@@ -57,6 +60,7 @@ export function toCartItem(item: CatalogItem): ScannedItem {
     unitPrice: item.price,
     ...(item.allowDecimal ? { allowDecimal: true } : {}),
     ...(item.allowDecimal && item.unitShort ? { unitShort: item.unitShort } : {}),
+    ...(item.trackSerial ? { trackSerial: true } : {}),
   };
 }
 

@@ -86,4 +86,5 @@ export const PayColors = {
   MOBILE: { fill: '#d6176a', ink: { light: '#d6176a', dark: '#ff7fc1' } },
   CARD: { fill: '#2563eb', ink: { light: '#2563eb', dark: '#79b4fe' } },
   BANK: { fill: '#0f766e', ink: { light: '#0f766e', dark: '#1bccb7' } },
+  GIFT_CARD: { fill: '#7c3aed', ink: { light: '#7c3aed', dark: '#b79cff' } },
 } as const;

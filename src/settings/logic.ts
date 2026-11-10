@@ -131,7 +131,7 @@ export function describeSettingsError(e: unknown): string {
 
 // ---- Payment methods -----------------------------------------------------------------------------------------------------------
 
-export type Tender = 'CASH' | 'MOBILE' | 'BANK' | 'CARD' | 'OTHER';
+export type Tender = 'CASH' | 'MOBILE' | 'BANK' | 'CARD' | 'OTHER' | 'GIFT_CARD';
 /** The usual ways of being paid. The server books each payment by the method's name, so these also say which ledger a name goes to. */
 export const USUAL_METHODS: { code: string; hint: string; tender: Tender; aliases: string[] }[] = [
   { code: 'bKash', hint: 'Mobile banking', tender: 'MOBILE', aliases: ['bkash', 'b-kash', 'bkash merchant', 'bkash personal'] },
@@ -143,6 +143,8 @@ export const USUAL_METHODS: { code: string; hint: string; tender: Tender; aliase
   { code: 'Cheque', hint: 'Bank cheque', tender: 'BANK', aliases: ['cheque', 'check', 'bank cheque'] },
   { code: 'Others', hint: 'Anything else', tender: 'OTHER', aliases: ['others', 'other', 'misc', 'miscellaneous'] },
   { code: 'Card EMI', hint: 'Card paid in instalments', tender: 'CARD', aliases: ['emi', 'card emi', 'bank emi', 'credit card emi'] },
+  // A gift card or voucher sold earlier. Its code goes in the payment's reference; the server spends it from the card's balance (same as the web till).
+  { code: 'Gift card', hint: 'A gift card or voucher sold earlier', tender: 'GIFT_CARD', aliases: ['gift card', 'giftcard', 'gift voucher', 'voucher'] },
 ];
 export const DEFAULT_METHODS = ['Card', 'bKash', 'Nagad', 'Rocket', 'Bank Transfer', 'Others'];
 export const MAX_METHOD_NAME = 30;
@@ -175,7 +177,7 @@ export function tenderOf(name: string): Tender {
   for (const m of USUAL_METHODS) for (const s of [m.code.toLowerCase(), ...m.aliases]) if (s.length >= 4 && n.includes(s)) return m.tender;
   return 'OTHER';
 }
-export const RECORDED_AS: Record<Tender, string> = { CASH: 'Cash', MOBILE: 'Mobile banking', BANK: 'Bank', CARD: 'Card', OTHER: 'Other' };
+export const RECORDED_AS: Record<Tender, string> = { CASH: 'Cash', MOBILE: 'Mobile banking', BANK: 'Bank', CARD: 'Card', OTHER: 'Other', GIFT_CARD: 'Gift card' };
 
 /** Why a name cannot go on the list, as an English key, or null when it can. `except` is the name being replaced. */
 export function methodProblem(name: string, list: string[], except?: string): string | null {

@@ -29,3 +29,12 @@ test('an item sold by weight can be rung in parts, a carton of it cannot', () =>
   const carton = toScannedItem({ ...kg, unit: { id: 'u9', name: 'Sack' }, unit_price: '1800.0000' });
   assert.equal(carton.allowDecimal, undefined);
 });
+
+import { toScannedItem as scanned } from './lookup-map.ts';
+
+test('an item sold by serial number says so in the cart', () => {
+  const base = { variant: { id: 'v', name: 'Default' }, price: '100' };
+  assert.equal(scanned({ ...base, product: { name: 'Phone', track_serial: true } }).trackSerial, true);
+  assert.equal('trackSerial' in scanned({ ...base, product: { name: 'Rice', track_serial: false } }), false);
+  assert.equal('trackSerial' in scanned({ ...base, product: { name: 'Rice' } }), false);
+});
