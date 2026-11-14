@@ -1,0 +1,9 @@
+# type(scope): summary          (aim for 50 characters, never above 72)
+#
+# Why this change? What problem does it solve? Wrap at 72 characters.
+#
+# Closes #
+# Refs
+#
+# Types: feat fix perf refactor docs test build ci chore style revert
+# Breaking change: add ! after the scope and a BREAKING CHANGE: footer
