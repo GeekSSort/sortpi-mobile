@@ -70,7 +70,8 @@
       "@react-native-firebase/perf",
       "@react-native-firebase/analytics",
       "expo-sqlite",
-      "llama.rn"
+      "llama.rn",
+      ["expo-build-properties", { "ios": { "useFrameworks": "dynamic" } }]
     ],
     "experiments": {
       "typedRoutes": true,
@@ -79,7 +80,11 @@
     "ios": {
       "bundleIdentifier": "com.geekssort.sortpi.mobile",
       "appleTeamId": "622QE445GT",
-      "supportsTablet": false
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSBluetoothAlwaysUsageDescription": "SortPi uses Bluetooth to print receipts on your Bluetooth receipt printer."
+      }
     }
   }
 }

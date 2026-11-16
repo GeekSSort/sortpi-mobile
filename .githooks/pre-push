@@ -1,0 +1,11 @@
+#!/bin/sh
+# Stops a direct push to dev, staging or main. Use a pull request.
+# Bypass only in a real emergency:  git push --no-verify
+while read local_ref local_sha remote_ref remote_sha; do
+  case "$remote_ref" in
+    refs/heads/main|refs/heads/staging|refs/heads/dev)
+      echo "Direct push to ${remote_ref#refs/heads/} is not allowed. Open a pull request."
+      exit 1 ;;
+  esac
+done
+exit 0

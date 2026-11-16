@@ -1,14 +1,21 @@
 {
   "platforms": [
-    "android"
+    "android",
+    "apple"
   ],
+  "apple": {
+    "modules": [
+      "BluetoothPrinterModule"
+    ]
+  },
   "android": {
     "modules": [
       "com.sortpi.sunmi.SunmiPrinterModule",
       "com.sortpi.sunmi.IminPrinterModule",
       "com.sortpi.sunmi.UrovoPrinterModule",
       "com.sortpi.sunmi.SunmiScannerModule",
-      "com.sortpi.sunmi.SunmiCustomerDisplayModule"
+      "com.sortpi.sunmi.SunmiCustomerDisplayModule",
+      "com.sortpi.sunmi.BluetoothPrinterModule"
     ]
   }
 }

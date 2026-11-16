@@ -1,0 +1,20 @@
+#!/bin/sh
+# Rejects commit messages that are not Conventional Commits.
+first_line=$(head -n1 "$1")
+
+# let Git's own merge, revert and fixup lines through
+case "$first_line" in
+  Merge\ *|Revert\ *|fixup!\ *|squash!\ *) exit 0 ;;
+esac
+
+pattern='^(feat|fix|perf|refactor|docs|test|build|ci|chore|style|revert)(\([a-z0-9._/-]+\))?!?: .+$'
+if ! printf '%s' "$first_line" | grep -Eq "$pattern"; then
+  echo "Commit message must look like:  type(scope): summary"
+  echo "Types: feat fix perf refactor docs test build ci chore style revert"
+  echo "Got:   $first_line"
+  exit 1
+fi
+if [ "${#first_line}" -gt 72 ]; then
+  echo "First line is ${#first_line} characters. Keep it to 72 or fewer (aim for 50)."
+  exit 1
+fi
