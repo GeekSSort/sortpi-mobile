@@ -44,6 +44,8 @@ example
 
 # Firebase client config: CI writes it from the GOOGLE_SERVICES_JSON secret; locally get it with
 #   firebase apps:sdkconfig ANDROID <app id> --project sortpi-mobile > google-services.json
+# iOS counterpart: firebase apps:sdkconfig IOS <app id> --project sortpi-mobile > GoogleService-Info.plist
+GoogleService-Info.plist
 google-services.json
 
 # generated training data for the Ask model (tools/ask/gen.ts)

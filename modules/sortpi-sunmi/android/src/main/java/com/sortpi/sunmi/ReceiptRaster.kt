@@ -9,9 +9,9 @@ import android.os.ParcelFileDescriptor
 import java.io.File
 import kotlin.math.ceil
 
-internal fun renderReceipt(uri: String, width: String, emit: (Bitmap) -> Unit) {
+internal fun renderReceipt(uri: String, width: String, sideMargin: Int = 0, emit: (Bitmap) -> Unit) {
   val path = requireNotNull(Uri.parse(uri).path)
-  val dots = if (width == "58mm") 384 else 576
+  val dots = (if (width == "58mm") 384 else 576) - 2 * sideMargin
   val descriptor = ParcelFileDescriptor.open(File(path), ParcelFileDescriptor.MODE_READ_ONLY)
   descriptor.use {
     PdfRenderer(descriptor).use { pdf ->

@@ -25,8 +25,9 @@ import { readPoints } from '@/settings/points';
 import { Pill } from '@/products/variant-card';
 import { PAPERS } from '@/sell/paper';
 import { usePaperPref } from '@/sell/paper-pref';
-import { printTestReceipt } from '@/sell/print';
-import { androidPosDevice, hasBuiltInPrinterSupport, hasSunmiDiagnostics, loadSunmiPrinterInfo, loadSystemPrinting, setSystemPrinting } from '@/sell/device-printer';
+import { printErrorText, printTestReceipt } from '@/sell/print';
+import { androidPosDevice, hasBluetoothPrinting, hasBuiltInPrinterSupport, hasSunmiDiagnostics, listPairedPrinters, loadBluetoothPrinter, loadSunmiPrinterInfo, loadSystemPrinting, setBluetoothPrinter, setSystemPrinting } from '@/sell/device-printer';
+import type { PairedDevice } from '@/sell/bluetooth-printer';
 import { sunmiPrinterStatus } from '@/sell/printer-status';
 import { showToast } from '@/ui/toast';
 
@@ -34,6 +35,8 @@ type Tone = 'good' | 'warn' | 'info';
 type NumberKey = 'vat' | 'maxDiscount' | 'target';
 const RESOLVED = ['settings', 'resolved'];
 const SYSTEM_PRINTING = ['settings', 'system-printing'];
+const BLUETOOTH_PRINTER = ['settings', 'bluetooth-printer'];
+const IOS = process.env.EXPO_OS === 'ios';
 const paperLabel = (width: string) => width === 'a4' ? 'A4' : width.replace('mm', ' mm');
 
 /** The settings a shop owner needs most: tax, discount, daily target, how customers pay, and a few rules about selling and stock. Each change is saved as it is made. */
@@ -62,6 +65,26 @@ export default function ShopSettingsScreen() {
     enabled: canSetPaper && hasSunmiDiagnostics,
     refetchInterval: 5_000,
   });
+  const [btOpen, setBtOpen] = useState(false);
+  const [btDevices, setBtDevices] = useState<PairedDevice[] | null>(null);
+  const [btError, setBtError] = useState<string | null>(null);
+  const bluetoothPrinter = useQuery({
+    queryKey: BLUETOOTH_PRINTER,
+    queryFn: loadBluetoothPrinter,
+    enabled: canSetPaper && hasBluetoothPrinting,
+  });
+  const openBluetooth = () => {
+    setBtOpen(true);
+    setBtDevices(null);
+    setBtError(null);
+    listPairedPrinters().then(setBtDevices).catch((e) => setBtError(printErrorText(e)));
+  };
+  const chooseBluetooth = (device: PairedDevice | null) => {
+    setBtOpen(false);
+    setBluetoothPrinter(device ? { name: device.name, address: device.address } : null)
+      .then(() => queryClient.setQueryData(BLUETOOTH_PRINTER, device ? { name: device.name, address: device.address } : null))
+      .catch(() => showToast({ text: t('Could not save this setting.') }));
+  };
   const chooseSystemPrinting = useMutation({
     mutationFn: setSystemPrinting,
     onSuccess: (_, enabled) => queryClient.setQueryData(SYSTEM_PRINTING, enabled),
@@ -118,6 +141,9 @@ export default function ShopSettingsScreen() {
             {canSetPaper ? (
               <>
                 <ValueRow icon="Receipt" tone="info" title="Receipt paper" hint={hasBuiltInPrinterSupport ? "Matches the built-in roll until you choose a size." : "Paper size used when printing receipts from this device."} value={paperLabel(paper)} onPress={() => setPaperOpen(true)} />
+                {hasBluetoothPrinting ? (
+                  <ValueRow icon="Receipt" tone="info" title="Bluetooth printer" hint={IOS ? 'Print receipts straight to a Bluetooth printer that is switched on near you.' : 'Print receipts straight to a printer you paired in Android Bluetooth settings.'} value={bluetoothPrinter.data?.name ?? t('Not set')} onPress={openBluetooth} />
+                ) : null}
                 {hasSunmiDiagnostics ? (
                   <ValueRow icon="Receipt" tone="info" title="Built-in printer" hint={[sunmiPrinter.data?.model || 'SUNMI', sunmiPrinter.data?.width && paperLabel(sunmiPrinter.data.width)].filter(Boolean).join(' · ')} value={sunmiPrinter.isPending ? t('Checking…') : t(sunmiPrinterStatus(sunmiPrinter.data?.status))} onPress={() => void sunmiPrinter.refetch()} />
                 ) : null}
@@ -192,6 +218,23 @@ export default function ShopSettingsScreen() {
           ))}
         </View>
         {androidPosDevice ? <Button title="Use device default" variant="secondary" onPress={() => { void setPaper(null); setPaperOpen(false); }} /> : null}
+      </BottomSheet>
+      <BottomSheet visible={btOpen} onClose={() => setBtOpen(false)} title="Bluetooth printer">
+        <View style={{ paddingHorizontal: Spacing.three, gap: Spacing.two }}>
+          {btError ? <Notice kind="info">{btError}</Notice> : null}
+          {!btError && btDevices === null ? <ThemedText type="small" themeColor="textSecondary">{IOS ? 'Looking for printers…' : 'Looking for paired printers…'}</ThemedText> : null}
+          {!btError && btDevices?.length === 0 ? <Notice kind="info">{IOS ? 'No printers found. Switch the printer on, keep it close to the phone, then open this again.' : 'No paired devices found. Switch the printer on and pair it in Android Bluetooth settings, then open this again.'}</Notice> : null}
+          {btDevices?.map((device) => {
+            const chosen = device.address === bluetoothPrinter.data?.address;
+            return (
+              <Tap key={device.address} accessibilityRole="radio" accessibilityState={{ checked: chosen }} onPress={() => chooseBluetooth(device)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.three, minHeight: 48, backgroundColor: chosen ? theme.brandSoft : theme.card }}>
+                <ThemedText type="bodyMedium" literal>{device.name}</ThemedText>
+                {chosen ? <Icon name="Check" size={20} color={theme.brandText} /> : null}
+              </Tap>
+            );
+          })}
+        </View>
+        {bluetoothPrinter.data ? <Button title="Stop using a Bluetooth printer" variant="secondary" onPress={() => chooseBluetooth(null)} /> : null}
       </BottomSheet>
       {editing && shop ? <NumberSheet key={editing} what={editing} shop={shop} onClose={() => setEditing(null)} /> : null}
     </View>
