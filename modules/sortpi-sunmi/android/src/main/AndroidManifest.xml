@@ -1,5 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
   <uses-permission android:name="smartpos.deviceservice.permission.Printer" />
+  <!-- Bluetooth receipt printers: the old permission up to Android 11, the "nearby devices" one from Android 12. -->
+  <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+  <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
   <queries>
     <package android:name="com.imin.printerservice" />
     <package android:name="woyou.aidlservice.jiuiv5" />
