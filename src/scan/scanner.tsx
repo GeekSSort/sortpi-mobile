@@ -2,12 +2,13 @@ import { CameraView, useCameraPermissions, type BarcodeType } from 'expo-camera'
 import { useFocusEffect } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, Linking, Pressable, Vibration, View } from 'react-native';
+import { AppState, Linking, Pressable, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { Icon } from '@/components/icons/icon';
 import { ThemedText } from '@/components/themed-text';
 import { Radius } from '@/constants/theme';
+import { cue } from '@/lib/cues';
 import { nextRead } from './debounce';
 import { useTheme } from '@/hooks/use-theme';
 import { useT } from '@/i18n/prefs';
@@ -74,7 +75,7 @@ export function Scanner({ onCode, paused = false, height = 220, feedbackHandled 
     const { accept, last: next } = nextRead(last.current, data, Date.now());
     last.current = next; // updated on every read, so a code held in view stays "seen" and does not repeat
     if (!accept) return;
-    if (!feedbackHandled) Vibration.vibrate(40);
+    if (!feedbackHandled) cue('found');
     onCode(data);
   }
 

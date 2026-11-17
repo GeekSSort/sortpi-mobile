@@ -52,6 +52,7 @@ import { listSales } from '@/sales/api';
 import { androidPosDevice } from '@/sell/device-printer';
 import { sunmiHandheldScanHint, useSunmiCustomerDisplay, useSunmiScanner } from '@/sell/use-sunmi-peripherals';
 import { receiptText } from '@/sell/receipt';
+import { cue } from '@/lib/cues';
 import { haptics } from '@/lib/haptics';
 import { showToast } from '@/ui/toast';
 import { amountDue } from '@/customers/logic';
@@ -303,7 +304,7 @@ export default function SellScreen() {
     setLastItemKey(key);
     // "3*milk" rings up three: one is added as usual, then the rest.
     setCart((c) => { const added = addItem(c, item); return quantity > 1 ? changeQuantity(added, key, quantity - 1) : added; });
-    if (tap) haptics.tap();
+    if (tap) cue('added');
   }
 
   async function selectTabletLayout(value: TabletLayout | null) {
