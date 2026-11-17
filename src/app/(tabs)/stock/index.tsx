@@ -19,7 +19,6 @@ import { ThemedText } from '@/components/themed-text';
 import { BottomTabInset, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useT } from '@/i18n/prefs';
-import { BIG_TEXT, useTextFactor } from '@/i18n/text-factor';
 import { haptics } from '@/lib/haptics';
 import { formatBDT } from '@/lib/money';
 import { lookupCode } from '@/sell/api';
@@ -37,7 +36,6 @@ export default function StockScreen() {
   const { wideLandscape } = useWideLandscape();
   const theme = useTheme();
   const t = useT();
-  const bigText = useTextFactor() > BIG_TEXT;
   const router = useRouter();
   const { me } = useSession();
   const [search, setSearch] = useState('');
@@ -104,11 +102,11 @@ export default function StockScreen() {
     <View style={{ gap: Spacing.three, padding: Spacing.three }}>
       <NegativeStockNotice onShow={() => setFilter('negative')} />
       {wideLandscape ? searchControls : null}
-      <View style={{ flexDirection: wideLandscape ? 'column' : 'row', flexWrap: !wideLandscape && bigText ? 'wrap' : 'nowrap', gap: Spacing.two }}>
-        <Tile compact={wideLandscape} label="Items" icon="Package" value={s ? String(s.lines) : '…'} selected={filter === 'all'} onPress={() => setFilter('all')} />
-        <Tile compact={wideLandscape} label="Low" value={s ? String(s.low_stock) : '…'} tone={s && s.low_stock > 0 ? 'warn' : undefined} icon="TriangleAlert" selected={filter === 'low'} onPress={() => pick('low')} />
-        <Tile compact={wideLandscape} label="Out" value={s ? String(s.out_of_stock) : '…'} tone={s && s.out_of_stock > 0 ? 'bad' : undefined} icon="Cancel" selected={filter === 'out'} onPress={() => pick('out')} />
-        <Tile compact={wideLandscape} label="Below zero" value={below === null ? '0' : String(below)} tone={below !== null ? 'bad' : undefined} icon="Cancel" selected={filter === 'negative'} onPress={() => pick('negative')} />
+      <View style={{ flexDirection: wideLandscape ? 'column' : 'row', flexWrap: wideLandscape ? 'nowrap' : 'wrap', gap: Spacing.two }}>
+        <Tile compact={wideLandscape} half={!wideLandscape} label="Items" icon="Package" value={s ? String(s.lines) : '…'} selected={filter === 'all'} onPress={() => setFilter('all')} />
+        <Tile compact={wideLandscape} half={!wideLandscape} label="Low" value={s ? String(s.low_stock) : '…'} tone={s && s.low_stock > 0 ? 'warn' : undefined} icon="TriangleAlert" selected={filter === 'low'} onPress={() => pick('low')} />
+        <Tile compact={wideLandscape} half={!wideLandscape} label="Out" value={s ? String(s.out_of_stock) : '…'} tone={s && s.out_of_stock > 0 ? 'bad' : undefined} icon="Cancel" selected={filter === 'out'} onPress={() => pick('out')} />
+        <Tile compact={wideLandscape} half={!wideLandscape} label="Below zero" value={below === null ? '0' : String(below)} tone={below !== null ? 'bad' : undefined} icon="Cancel" selected={filter === 'negative'} onPress={() => pick('negative')} />
       </View>
       {s?.stock_value ? (
         <ThemedText type="small" themeColor="textMuted">
