@@ -1429,7 +1429,7 @@ export const bn: Record<string, string> = {
   'Device default': 'ডিভাইসের ডিফল্ট',
   'Automatic': 'স্বয়ংক্রিয়',
   'Manual': 'নিজে চালু করুন',
-  'Scan feedback': 'স্ক্যানের সংকেত',
+  'Sound and vibration': 'শব্দ ও ভাইব্রেশন',
   'Sound': 'শব্দ',
   'Vibration': 'ভাইব্রেশন',
   'Silent': 'নীরব',
