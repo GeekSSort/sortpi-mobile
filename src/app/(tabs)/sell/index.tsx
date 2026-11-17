@@ -211,7 +211,8 @@ export default function SellScreen() {
   }, [showBar]);
   const seeSales = ['sale.view', 'sale.view_own'].some((p) => me?.permissions?.includes(p));
   const today = useQuery({ queryKey: ['home', 'today'], queryFn: salesToday, enabled: seeSales && mode === 'done', staleTime: 0, retry: false });
-  const ctxQuery = useQuery({ queryKey: ['sell-context', userId, me?.active_branch?.id], queryFn: () => loadSellContext(me!), enabled: !!me });
+  // Where this till sells from (the branch's warehouse and the walk-in customer) takes two to five calls and does not change while the app is open: keep it half an hour.
+  const ctxQuery = useQuery({ queryKey: ['sell-context', userId, me?.active_branch?.id], queryFn: () => loadSellContext(me!), enabled: !!me, staleTime: 30 * 60_000 });
   const shiftQuery = useQuery({ queryKey: ['shift', userId], queryFn: currentShift, enabled: !!me });
   const baseCtx = ctxQuery.data;
   // On opening the till: an unfinished sale comes first, else the cart that was on screen before a lock, a call or a kill.
