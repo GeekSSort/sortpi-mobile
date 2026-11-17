@@ -10,6 +10,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 import { SessionProvider, useSession } from '@/auth/session-provider';
 import { LocalProvider } from '@/local/provider';
+import { OutboxRunner } from '@/outbox/runner';
 import { PrefsProvider, usePrefs } from '@/i18n/prefs';
 import { AskFab } from '@/ask/ask-fab';
 import { ConnectionBanner } from '@/components/connection-banner';
@@ -49,6 +50,7 @@ export default function RootLayout() {
         <PrefsProvider>
           <SessionProvider>
             <LocalProvider>
+              <OutboxRunner />
               <DrawerProvider>
                 <Gate />
               </DrawerProvider>
