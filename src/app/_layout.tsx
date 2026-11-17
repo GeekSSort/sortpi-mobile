@@ -188,6 +188,12 @@ function Gate() {
       <Stack.Protected guard={status === 'unreachable'}>
         <Stack.Screen name="unreachable" />
       </Stack.Protected>
+      {/* A developer check, not a screen anyone lands on. Left outside every guard it is always "available", so with no signed-in screen to fall back to
+          (the server did not answer at start) the router chose it, and in a real build it sends you to "/", which is hidden: the two bounced for ever and
+          the "No connection" screen never showed. Behind this guard it exists only in a debug build, signed in. */}
+      <Stack.Protected guard={__DEV__ && status === 'signedIn'}>
+        <Stack.Screen name="crash-test" />
+      </Stack.Protected>
     </Stack>
     {status === 'signedIn' ? <AskFab /> : null}
     <ConnectionBanner />
