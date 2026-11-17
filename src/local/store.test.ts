@@ -4,7 +4,8 @@ import { test } from 'node:test';
 
 import { memoryDb } from './node-db.ts';
 import { checkStock, rowsByFamily, toRows, type SnapshotItem } from './snapshot.ts';
-import { findByCode, itemName, lowStock, openStore, publish, searchCustomers, searchItems, status, wipe } from './store.ts';
+import { findByCode, insertAll, itemName, lowStock, MAX_PARAMS, MAX_ROWS, openStore, publish, searchCustomers, searchItems, status, wipe } from './store.ts';
+import type { Db } from './db.ts';
 
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/snapshot.json', import.meta.url), 'utf8')) as { items: SnapshotItem[]; stock: { variant_id: string; warehouse_id: string; quantity: string }[]; server_time: string };
 const META = { owner: 'shop|u1|b1', serverTime: fixture.server_time, syncedAt: '2026-11-08T12:00:00Z' };
@@ -131,4 +132,57 @@ test('a local item turns into the shapes the screens already use', async () => {
   assert.equal(cat.price, '80.0000');
   assert.equal(toCatalogItem({ ...first, price: '100.0000', wholesale: null }, true).price, '100.0000');
   assert.equal(toCatalogItem({ ...first, price: '100.0000', wholesale: '80.0000' }, false).price, '100.0000');
+});
+
+/** A database that remembers every statement it was given, so a test can count them. */
+function counting(db: Db) {
+  const runs: { sql: string; params: number }[] = [];
+  const wrap = (d: Db): Db => ({
+    exec: (sql) => d.exec(sql),
+    all: (sql, params) => d.all(sql, params),
+    run: async (sql, params = []) => { runs.push({ sql, params: params.length }); await d.run(sql, params); },
+    transaction: (work) => d.transaction((tx) => work(wrap(tx))),
+  });
+  return { db: wrap(db), runs };
+}
+
+test('a big shop goes in with a few statements per table, and nothing is lost or changed', async () => {
+  const rows = toRows(fixture.items);
+  const many = Array.from({ length: 2503 }, (_, i) => ({ ...rows.customers[0], id: `c-${i}`, name: `Customer ${i}`, name_key: `customer ${i}`, phone: i % 7 === 0 ? null : `01${String(i).padStart(9, '0')}` }));
+  const { db: spy, runs } = counting(memoryDb());
+  await openStore(spy);
+  runs.length = 0;
+  await publish(spy, { ...rows, customers: many }, checkStock(fixture.stock), META);
+  const inserts = runs.filter((r) => r.sql.startsWith('INSERT OR REPLACE INTO customers'));
+  const perStatement = Math.min(MAX_ROWS, Math.floor(MAX_PARAMS / Object.keys(many[0]).length));
+  assert.equal(inserts.length, Math.ceil(2503 / perStatement)); // not 2503
+  assert.ok(inserts.length < 30);
+  assert.ok(runs.every((r) => r.params <= MAX_PARAMS), 'no statement has more variables than old SQLite allows');
+  assert.equal((await status(spy)).customers, 2503);
+  // the last row, which is in a short final statement, and a null phone, come back exactly as they went in
+  const last = (await spy.all<{ name: string; phone: string | null }>("SELECT name, phone FROM customers WHERE id = 'c-2502'"))[0];
+  assert.deepEqual({ ...last }, { name: 'Customer 2502', phone: many[2502].phone });
+  const nul = (await spy.all<{ phone: string | null }>("SELECT phone FROM customers WHERE id = 'c-7'"))[0];
+  assert.equal(nul.phone, null);
+});
+
+test('a few rows, one row and no rows all work, and a repeated key keeps the later row', async () => {
+  const db = memoryDb();
+  await db.exec('CREATE TABLE t (id TEXT PRIMARY KEY, v TEXT)');
+  await insertAll(db, 't', []);
+  await insertAll(db, 't', [{ id: 'a', v: 'one' }]);
+  await insertAll(db, 't', [{ id: 'b', v: 'two' }, { id: 'b', v: 'three' }, { id: 'c', v: null }]);
+  assert.deepEqual((await db.all('SELECT id, v FROM t ORDER BY id')).map((r) => ({ ...(r as object) })), [{ id: 'a', v: 'one' }, { id: 'b', v: 'three' }, { id: 'c', v: null }]);
+});
+
+test('a table with many columns is split by variables, not by the row limit', async () => {
+  const db = memoryDb();
+  const cols = Array.from({ length: 40 }, (_, i) => `c${i}`);
+  await db.exec(`CREATE TABLE wide (${cols.map((c, i) => (i === 0 ? `${c} INTEGER PRIMARY KEY` : `${c} TEXT`)).join(', ')})`);
+  const { db: spy, runs } = counting(db);
+  const rows = Array.from({ length: 120 }, (_, n) => Object.fromEntries(cols.map((c, i) => [c, i === 0 ? n : `v${n}-${i}`])));
+  await insertAll(spy, 'wide', rows);
+  assert.ok(runs.every((r) => r.params <= MAX_PARAMS && r.params % 40 === 0));
+  assert.equal(runs.length, Math.ceil(120 / Math.floor(MAX_PARAMS / 40)));
+  assert.equal((await db.all<{ n: number }>('SELECT count(*) AS n FROM wide'))[0].n, 120);
 });
