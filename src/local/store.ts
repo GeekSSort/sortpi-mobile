@@ -15,11 +15,29 @@ export async function openStore(db: Db): Promise<void> {
   await db.run("INSERT OR REPLACE INTO meta (key, value) VALUES ('schema', ?)", [String(SCHEMA_VERSION)]);
 }
 
-async function insertAll(db: Db, table: string, rows: Record<string, Cell>[]): Promise<void> {
+/** SQLite before 3.32 (Android 7 to 10) takes at most 999 `?` in one statement, and old ones at most 500 rows in a VALUES list: stay under both. */
+export const MAX_PARAMS = 900;
+export const MAX_ROWS = 500;
+
+/**
+ * Puts the rows in several to a statement. One statement per row costs a round trip to the database for each row, which is what made a
+ * download of a big shop slow on a weak phone; a few hundred rows per statement cut that to a few calls per table. Rows with the same key
+ * still replace each other in order, as they did one by one.
+ */
+export async function insertAll(db: Db, table: string, rows: Record<string, Cell>[]): Promise<void> {
   if (rows.length === 0) return;
   const cols = Object.keys(rows[0]);
-  const sql = `INSERT OR REPLACE INTO ${table} (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`;
-  for (const r of rows) await db.run(sql, cols.map((c) => r[c] ?? null));
+  const perStatement = Math.max(1, Math.min(MAX_ROWS, Math.floor(MAX_PARAMS / cols.length)));
+  const head = `INSERT OR REPLACE INTO ${table} (${cols.join(', ')}) VALUES `;
+  const slots = `(${cols.map(() => '?').join(', ')})`;
+  const fullSql = head + new Array(perStatement).fill(slots).join(', ');
+  for (let from = 0; from < rows.length; from += perStatement) {
+    const chunk = rows.slice(from, from + perStatement);
+    const sql = chunk.length === perStatement ? fullSql : head + new Array(chunk.length).fill(slots).join(', ');
+    const params: Cell[] = [];
+    for (const r of chunk) for (const c of cols) params.push(r[c] ?? null);
+    await db.run(sql, params);
+  }
 }
 
 export type Published = { owner: string; serverTime: string; syncedAt: string };
