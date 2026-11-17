@@ -1,8 +1,8 @@
-import { Vibration } from 'react-native';
+import { cue } from './cues';
 
-/** Small physical feedback for the moments that matter. Plain vibration works everywhere the app runs, with no native rebuild. */
+/** Small feedback for the moments that matter. It follows the menu's Sound / Vibration / Silent choice (see cues.ts). */
 export const haptics = {
-  tap: () => Vibration.vibrate(8),
-  success: () => Vibration.vibrate([0, 30, 60, 30]),
-  warning: () => Vibration.vibrate([0, 80, 60, 80]),
+  tap: () => cue('tap'),
+  success: () => cue('success'),
+  warning: () => cue('warning'),
 };

@@ -18,9 +18,12 @@ import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { createProduct, listCategories, listUnits, postOpeningStock, uploadProductImage, type Photo } from '@/catalog/api';
 import { newIdempotencyKey } from '@/api/idempotency';
+import { outboxAccount } from '@/outbox/outbox';
+import { queueProduct } from '@/outbox/runner';
 import { listBrands } from '@/products/api';
 import { findWarehouseId } from '@/sell/api';
 import { getLastChoice, setLastChoice } from '@/catalog/last-choice';
+import { shrinkPhoto } from '@/catalog/shrink-photo';
 import { buildProductRequest, describeProductError, openingStockBody, profitNote, validateNewProduct, type FormErrors, type VariantRow } from '@/catalog/new-product';
 import { lookupBarcode } from '@/sell/api';
 import { setPendingItem } from '@/sell/pending';
@@ -43,7 +46,7 @@ export default function AddProductScreen() {
   const router = useRouter();
   const theme = useTheme();
   const t = useT();
-  const { me } = useSession();
+  const { me, workspaceUrl } = useSession();
   const qc = useQueryClient();
   const { code, from } = useLocalSearchParams<{ code?: string; from?: string }>();
   const [barcode, setBarcode] = useState(code ?? '');
@@ -84,9 +87,12 @@ export default function AddProductScreen() {
   async function pick(camera: boolean) {
     const ask = camera ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!ask.granted) return;
-    const r = camera ? await ImagePicker.launchCameraAsync({ quality: 0.7, mediaTypes: ['images'] }) : await ImagePicker.launchImageLibraryAsync({ quality: 0.7, mediaTypes: ['images'] });
+    // Full quality here: the one lossy step is the shrink below, so the photo is not compressed twice.
+    const r = camera ? await ImagePicker.launchCameraAsync({ quality: 1, mediaTypes: ['images'] }) : await ImagePicker.launchImageLibraryAsync({ quality: 1, mediaTypes: ['images'] });
     const a = r.canceled ? null : r.assets[0];
-    if (a) setPhoto({ uri: a.uri, name: a.fileName || `item-${Date.now()}.jpg`, type: a.mimeType || 'image/jpeg' });
+    if (!a) return;
+    const small = await shrinkPhoto({ uri: a.uri, width: a.width, height: a.height });
+    setPhoto(small ? { uri: small.uri, name: `item-${Date.now()}.jpg`, type: small.type } : { uri: a.uri, name: a.fileName || `item-${Date.now()}.jpg`, type: a.mimeType || 'image/jpeg' });
   }
 
   // Most shelves sell by the piece, so start there. A unit carried over from the last product wins.
@@ -123,6 +129,21 @@ export default function AddProductScreen() {
     if (Object.keys(found).length) return;
     if (await refusedAsInvoice(barcode)) return;
     setBusy(true);
+    // The usual way: write it down on this phone and go back at once; the sender tells the shop in the background (see src/outbox).
+    // The one exception is an item added from Sell for a scanned code: it goes straight into the cart, which needs the shop's own record now.
+    if (!(from === 'sell' && barcode.trim()) && me && workspaceUrl) {
+      try {
+        await queueProduct(outboxAccount(workspaceUrl, me.id), { form, branchId: me.active_branch?.id ?? '', photo, name: name.trim() });
+        setLastChoice({ category, unit });
+        track('item_added', { source: from === 'sell' ? 'sell' : 'stock' });
+        showToast({ text: t('Saved on this phone: {name}. Sending it to the shop.', { name: name.trim() }) });
+        router.back();
+      } catch {
+        setFailure(t('Could not save on this phone. Try again.'));
+        setBusy(false);
+      }
+      return;
+    }
     try {
       const made = await createProduct(buildProductRequest(form));
       // The item is saved. Stock and the photo are extras: if one fails the item stays and the person is told what to do.
