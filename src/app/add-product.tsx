@@ -23,6 +23,7 @@ import { queueProduct } from '@/outbox/runner';
 import { listBrands } from '@/products/api';
 import { findWarehouseId } from '@/sell/api';
 import { getLastChoice, setLastChoice } from '@/catalog/last-choice';
+import { shrinkPhoto } from '@/catalog/shrink-photo';
 import { buildProductRequest, describeProductError, openingStockBody, profitNote, validateNewProduct, type FormErrors, type VariantRow } from '@/catalog/new-product';
 import { lookupBarcode } from '@/sell/api';
 import { setPendingItem } from '@/sell/pending';
@@ -85,9 +86,12 @@ export default function AddProductScreen() {
   async function pick(camera: boolean) {
     const ask = camera ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!ask.granted) return;
-    const r = camera ? await ImagePicker.launchCameraAsync({ quality: 0.7, mediaTypes: ['images'] }) : await ImagePicker.launchImageLibraryAsync({ quality: 0.7, mediaTypes: ['images'] });
+    // Full quality here: the one lossy step is the shrink below, so the photo is not compressed twice.
+    const r = camera ? await ImagePicker.launchCameraAsync({ quality: 1, mediaTypes: ['images'] }) : await ImagePicker.launchImageLibraryAsync({ quality: 1, mediaTypes: ['images'] });
     const a = r.canceled ? null : r.assets[0];
-    if (a) setPhoto({ uri: a.uri, name: a.fileName || `item-${Date.now()}.jpg`, type: a.mimeType || 'image/jpeg' });
+    if (!a) return;
+    const small = await shrinkPhoto({ uri: a.uri, width: a.width, height: a.height });
+    setPhoto(small ? { uri: small.uri, name: `item-${Date.now()}.jpg`, type: small.type } : { uri: a.uri, name: a.fileName || `item-${Date.now()}.jpg`, type: a.mimeType || 'image/jpeg' });
   }
 
   // Most shelves sell by the piece, so start there. A unit carried over from the last product wins.
