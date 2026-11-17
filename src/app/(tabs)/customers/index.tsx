@@ -11,6 +11,7 @@ import { useDebounced } from '@/lib/use-debounced';
 import { ActionSheet } from '@/components/action-sheet';
 import { EmptyState } from '@/components/empty-state';
 import { HeaderAction } from '@/components/header-action';
+import { withSyncStatus } from '@/components/sync-status';
 import { Field } from '@/components/field';
 import { Icon } from '@/components/icons/icon';
 import { ErrorState } from '@/components/error-state';
@@ -80,7 +81,7 @@ export default function CustomersScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
-      <Stack.Screen options={{ headerRight: canAdd ? () => <HeaderAction title="Add" icon="Plus" onPress={() => router.push('/add-customer')} /> : undefined }} />
+      <Stack.Screen options={{ headerRight: withSyncStatus(canAdd ? () => <HeaderAction title="Add" icon="Plus" onPress={() => router.push('/add-customer')} /> : undefined) }} />
       <View style={{ flex: 1 }}>
         <AdaptiveList landscapeSidebar
           contentInsetAdjustmentBehavior="automatic"

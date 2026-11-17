@@ -4,6 +4,7 @@ import { useT } from '@/i18n/prefs';
 import { MenuButton } from '@/menu/drawer';
 
 import { useHeaderOptions } from './header-options';
+import { withSyncStatus } from './sync-status';
 
 /** One native stack per tab, so every tab page gets a real header with a title and room for an action. */
 export function TabStack({ title }: { title: string }) {
@@ -11,7 +12,7 @@ export function TabStack({ title }: { title: string }) {
   const t = useT();
   return (
     <Stack screenOptions={header}>
-      <Stack.Screen name="index" options={{ title: t(title), headerLeft: () => <MenuButton /> }} />
+      <Stack.Screen name="index" options={{ title: t(title), headerLeft: () => <MenuButton />, headerRight: withSyncStatus() }} />
     </Stack>
   );
 }

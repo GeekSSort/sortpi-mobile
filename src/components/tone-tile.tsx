@@ -15,7 +15,7 @@ export type Tone = 'good' | 'bad' | 'warn' | 'danger' | 'warning' | undefined;
  * A figure with a colour that says what it means before it is read: green is fine or money in, red is owed or finished,
  * orange is running low, plain is just a count. A picture sits beside the label, so colour is never the only clue.
  */
-export function ToneTile({ label, value, note, tone, icon, delay = 0, onPress, selected, compact = false }: { label: string; value: string; note?: string; tone?: Tone; icon?: IconName; delay?: number; onPress?: () => void; selected?: boolean; compact?: boolean }) {
+export function ToneTile({ label, value, note, tone, icon, delay = 0, onPress, selected, compact = false, half = false }: { label: string; value: string; note?: string; tone?: Tone; icon?: IconName; delay?: number; onPress?: () => void; selected?: boolean; compact?: boolean; /** Two to a row (a wrapping row of tiles): for four tiles that would each be too narrow for their label on a phone. */ half?: boolean }) {
   const theme = useTheme();
   const t = useT();
   const big = useTextFactor() > BIG_TEXT;
@@ -28,7 +28,7 @@ export function ToneTile({ label, value, note, tone, icon, delay = 0, onPress, s
     </ThemedText>
   );
   return (
-    <Animated.View entering={FadeInDown.delay(delay).duration(320)} style={big ? { flexGrow: 1, flexBasis: '47%' } : { flex: 1 }}>
+    <Animated.View entering={FadeInDown.delay(delay).duration(320)} style={big || half ? { flexGrow: 1, flexBasis: '47%' } : { flex: 1 }}>
     <Pressable
       disabled={!onPress}
       accessibilityRole={onPress ? 'button' : undefined}

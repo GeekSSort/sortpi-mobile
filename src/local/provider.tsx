@@ -7,9 +7,10 @@ import { appDb, setCurrentOwner } from './instance';
 import { status, wipe } from './store.ts';
 import { syncShop, SyncNotAllowed } from './sync';
 import { ownerKey, shouldSync } from './sync-core.ts';
+import { SYNC_MAX_AGE_MS } from './sync-status.ts';
 
 /** How old the copy may get before the app quietly downloads the shop again (while it is open and online). */
-const MAX_AGE_MS = 10 * 60_000;
+const MAX_AGE_MS = SYNC_MAX_AGE_MS;
 
 type Shop = {
   /** A download is running now. */

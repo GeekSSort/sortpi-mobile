@@ -6,15 +6,15 @@ import type { IconName } from '../components/icons/icon.tsx';
  * Everything the phone can do beyond the five tabs, in the groups a shopkeeper thinks in. A row is listed only when its screen
  * exists, so nothing here is a dead end: each new feature adds one line. `needs` is "any of these permissions".
  */
-export type MenuGroup = 'dashboard' | 'inventory' | 'stocks' | 'sales' | 'crm' | 'purchases' | 'warehouse' | 'finance' | 'reports' | 'hrm' | 'roles' | 'branches' | 'settings';
+export type MenuGroup = 'dashboard' | 'inventory' | 'stocks' | 'sales' | 'crm' | 'purchases' | 'warehouse' | 'finance' | 'reports' | 'hrm' | 'roles' | 'branches' | 'settings' | 'billing';
 /** `needs` is any of these permissions, or every one of them when `all` is set (the money list needs both sides of the books). */
 /** `trade` is a feature of the shop's trade (`me.organization.category.features`, like the web's `tradeFeature`): the row is hidden in shops whose trade lacks it. */
 export type MenuItem = { id: string; group: MenuGroup; title: string; hint: string; icon: IconName; route: Href; needs: string[]; all?: boolean; trade?: string; tradeTitle?: Record<string, string> };
 
-export const GROUP_TITLE: Record<MenuGroup, string> = { dashboard: 'Dashboard', inventory: 'Inventory', stocks: 'Stocks', sales: 'Sales & POS', crm: 'CRM', purchases: 'Purchases', warehouse: 'Warehouse', finance: 'Finance', reports: 'Reports', hrm: 'HRM', roles: 'Roles & Permissions', branches: 'Branches', settings: 'Settings' };
+export const GROUP_TITLE: Record<MenuGroup, string> = { dashboard: 'Dashboard', inventory: 'Inventory', stocks: 'Stocks', sales: 'Sales & POS', crm: 'CRM', purchases: 'Purchases', warehouse: 'Warehouse', finance: 'Finance', reports: 'Reports', hrm: 'HRM', roles: 'Roles & Permissions', branches: 'Branches', settings: 'Settings', billing: 'Plan & billing' };
 /** The icon at the head of each group, as the web sidebar gives each section its own. */
-export const GROUP_ICON: Record<MenuGroup, IconName> = { dashboard: 'Dashboard', inventory: 'Package', stocks: 'Layers', sales: 'Receipt', crm: 'Users', purchases: 'Truck', warehouse: 'Warehouse', finance: 'Cash', reports: 'BarChart', hrm: 'Briefcase', roles: 'ShieldCheck', branches: 'Store', settings: 'Sliders' };
-const ORDER: MenuGroup[] = ['dashboard', 'inventory', 'stocks', 'sales', 'crm', 'purchases', 'warehouse', 'finance', 'reports', 'hrm', 'roles', 'branches', 'settings'];
+export const GROUP_ICON: Record<MenuGroup, IconName> = { dashboard: 'Dashboard', inventory: 'Package', stocks: 'Layers', sales: 'Receipt', crm: 'Users', purchases: 'Truck', warehouse: 'Warehouse', finance: 'Cash', reports: 'BarChart', hrm: 'Briefcase', roles: 'ShieldCheck', branches: 'Store', settings: 'Sliders', billing: 'CreditCard' };
+const ORDER: MenuGroup[] = ['dashboard', 'inventory', 'stocks', 'sales', 'crm', 'purchases', 'warehouse', 'finance', 'reports', 'hrm', 'roles', 'branches', 'settings', 'billing'];
 
 export const MENU: MenuItem[] = [
   { id: 'dashboard', group: 'dashboard', title: 'Dashboard', hint: 'Today at a glance', icon: 'Dashboard', route: '/', needs: ['dashboard.view', 'report.sales', 'sale.view'] },
@@ -72,9 +72,8 @@ export const MENU: MenuItem[] = [
   { id: 'access', group: 'roles', title: 'Users & Roles', hint: 'Who can use the app, and what they may do', icon: 'ShieldCheck', route: '/access', needs: ['user.view', 'role.view', 'branch.view'] },
   { id: 'activity', group: 'roles', title: 'Activity Log', hint: 'What happened in your shop, and who did it', icon: 'Activity', route: '/activity', needs: ['audit.view'] },
   { id: 'branches', group: 'branches', title: 'Branches', hint: 'Your shops and their details', icon: 'Store', route: { pathname: '/access', params: { tab: 'branches' } }, needs: ['branch.view'] },
-  { id: 'notifications', group: 'settings', title: 'Notifications', hint: 'Messages from your shop', icon: 'Bell', route: '/notifications', needs: ['notification.view'] },
   { id: 'shop-settings', group: 'settings', title: 'Settings', hint: 'Receipt paper, VAT, discount, daily target, ways to pay', icon: 'Sliders', route: '/shop-settings', needs: [] },
-  { id: 'plan', group: 'settings', title: 'Plan & billing', hint: 'Your SortPi plan, what you use, and how to move up', icon: 'CreditCard', route: '/plan', needs: ['billing.view'] },
+  { id: 'plan', group: 'billing', title: 'Plan & billing', hint: 'Your SortPi plan, what you use, and how to move up', icon: 'CreditCard', route: '/plan', needs: ['billing.view'] },
 ];
 
 /** What this person may open, matched against what they typed in the words they see (`tr` translates a title or hint). */

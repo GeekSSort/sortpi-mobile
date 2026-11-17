@@ -10,6 +10,7 @@ import { useDebounced } from '@/lib/use-debounced';
 import { ActionSheet } from '@/components/action-sheet';
 import { EmptyState } from '@/components/empty-state';
 import { HeaderAction } from '@/components/header-action';
+import { withSyncStatus } from '@/components/sync-status';
 import { Field } from '@/components/field';
 import { Icon } from '@/components/icons/icon';
 import { ErrorState } from '@/components/error-state';
@@ -19,7 +20,6 @@ import { ThemedText } from '@/components/themed-text';
 import { BottomTabInset, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useT } from '@/i18n/prefs';
-import { BIG_TEXT, useTextFactor } from '@/i18n/text-factor';
 import { haptics } from '@/lib/haptics';
 import { formatBDT } from '@/lib/money';
 import { lookupCode } from '@/sell/api';
@@ -37,7 +37,6 @@ export default function StockScreen() {
   const { wideLandscape } = useWideLandscape();
   const theme = useTheme();
   const t = useT();
-  const bigText = useTextFactor() > BIG_TEXT;
   const router = useRouter();
   const { me } = useSession();
   const [search, setSearch] = useState('');
@@ -104,11 +103,11 @@ export default function StockScreen() {
     <View style={{ gap: Spacing.three, padding: Spacing.three }}>
       <NegativeStockNotice onShow={() => setFilter('negative')} />
       {wideLandscape ? searchControls : null}
-      <View style={{ flexDirection: wideLandscape ? 'column' : 'row', flexWrap: !wideLandscape && bigText ? 'wrap' : 'nowrap', gap: Spacing.two }}>
-        <Tile compact={wideLandscape} label="Items" icon="Package" value={s ? String(s.lines) : '…'} selected={filter === 'all'} onPress={() => setFilter('all')} />
-        <Tile compact={wideLandscape} label="Low" value={s ? String(s.low_stock) : '…'} tone={s && s.low_stock > 0 ? 'warn' : undefined} icon="TriangleAlert" selected={filter === 'low'} onPress={() => pick('low')} />
-        <Tile compact={wideLandscape} label="Out" value={s ? String(s.out_of_stock) : '…'} tone={s && s.out_of_stock > 0 ? 'bad' : undefined} icon="Cancel" selected={filter === 'out'} onPress={() => pick('out')} />
-        <Tile compact={wideLandscape} label="Below zero" value={below === null ? '0' : String(below)} tone={below !== null ? 'bad' : undefined} icon="Cancel" selected={filter === 'negative'} onPress={() => pick('negative')} />
+      <View style={{ flexDirection: wideLandscape ? 'column' : 'row', flexWrap: wideLandscape ? 'nowrap' : 'wrap', gap: Spacing.two }}>
+        <Tile compact={wideLandscape} half={!wideLandscape} label="Items" icon="Package" value={s ? String(s.lines) : '…'} selected={filter === 'all'} onPress={() => setFilter('all')} />
+        <Tile compact={wideLandscape} half={!wideLandscape} label="Low" value={s ? String(s.low_stock) : '…'} tone={s && s.low_stock > 0 ? 'warn' : undefined} icon="TriangleAlert" selected={filter === 'low'} onPress={() => pick('low')} />
+        <Tile compact={wideLandscape} half={!wideLandscape} label="Out" value={s ? String(s.out_of_stock) : '…'} tone={s && s.out_of_stock > 0 ? 'bad' : undefined} icon="Cancel" selected={filter === 'out'} onPress={() => pick('out')} />
+        <Tile compact={wideLandscape} half={!wideLandscape} label="Below zero" value={below === null ? '0' : String(below)} tone={below !== null ? 'bad' : undefined} icon="Cancel" selected={filter === 'negative'} onPress={() => pick('negative')} />
       </View>
       {s?.stock_value ? (
         <ThemedText type="small" themeColor="textMuted">
@@ -124,7 +123,7 @@ export default function StockScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.canvas }}>
-      <Stack.Screen options={{ headerRight: canAdd ? () => <HeaderAction title="Add" icon="Plus" onPress={() => router.push('/add-product')} /> : undefined }} />
+      <Stack.Screen options={{ headerRight: withSyncStatus(canAdd ? () => <HeaderAction title="Add" icon="Plus" onPress={() => router.push('/add-product')} /> : undefined) }} />
       <View style={{ flex: 1 }}>
         <AdaptiveList landscapeSidebar
           contentInsetAdjustmentBehavior="automatic"
