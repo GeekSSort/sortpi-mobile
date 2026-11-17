@@ -57,8 +57,10 @@ export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId
   const touch = layout === 'touch';
   const express = layout === 'express';
   const sheet = layout === 'sheet';
+  // Photos on the tablet tile layouts and on the phone (no layout); the compact express and sheet rows have no room for one.
+  const showPhotos = !express && !sheet;
+  const [brokenPhotos, setBrokenPhotos] = useState<ReadonlySet<string>>(new Set());
   const columns = gridWidth >= 660 && !touch ? 4 : gridWidth >= 500 ? 3 : 2;
-  const tileWidth = layout && gridWidth > 0 ? Math.floor((gridWidth - Spacing.two * (columns - 1)) / columns) : undefined;
   const [text, setText] = useState('');
   const inputRef = useRef<ComponentRef<typeof TextInput>>(null);
   useEffect(() => {
@@ -89,6 +91,9 @@ export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId
     placeholderData: (prev) => prev,
   });
   const items = list.data?.pages.flatMap((p) => p.items) ?? [];
+  // On the phone, a shop with photos gets a grid of photo tiles, two to a row; one with none keeps the compact cards. The tablet layouts size their own tiles.
+  const photoGrid = !layout && showPhotos && items.some((it) => it.image && !brokenPhotos.has(it.variantId));
+  const tileWidth = (layout || photoGrid) && gridWidth > 0 ? Math.floor((gridWidth - Spacing.two * (columns - 1)) / columns) : undefined;
   // The browse list holds only what is on the shelf; a search also finds finished items (marked), so "do we have it?" gets an answer.
   const isOut = (it: CatalogItem) => it.stock !== null && Number(it.stock) <= 0;
 
@@ -167,24 +172,46 @@ export function ItemPicker({ onPick, onFewer, qtyOf, onCode, wholesale, branchId
               )
             ) : null}
 
-            <View onLayout={layout ? (event) => setGridWidth(event.nativeEvent.layout.width) : undefined} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two }}>
+            <View onLayout={layout || photoGrid ? (event) => setGridWidth(event.nativeEvent.layout.width) : undefined} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two }}>
               {(express && !typed ? items.slice(0, 8) : items).map((it) => {
                 const n = qtyOf(it.variantId);
                 const out = isOut(it);
                 const starred = favorites.some((entry) => entry.variantId === it.variantId);
+                // The photo, when the layout has room for one and it has not failed to load: a card then looks as it always did.
+                const photo = showPhotos && it.image && !brokenPhotos.has(it.variantId) ? it.image : null;
+                // In the phone grid an item without a photo gets a plain tile of the same size, so the rows stay level.
+                const noPhotoTile = photoGrid && !photo;
                 const product = (
                   <Tap
                     accessibilityRole="button"
                     accessibilityLabel={`${it.name}, ${formatBDT(it.price)}${n > 0 ? `, ${t('{n} in the cart', { n })}` : ''}`}
                     onPress={() => onPick(it)}
-                    style={{ minHeight: touch ? 84 : express || sheet ? 56 : 76, padding: Spacing.three, gap: 4, justifyContent: 'center' }}>
-                    {(touch || layout === 'wall') && it.image ? <Image source={it.image} contentFit="cover" cachePolicy="memory" style={{ height: 76, borderRadius: Radius.md, backgroundColor: theme.canvas }} /> : null}
-                    <ThemedText type="smallMedium" numberOfLines={2} literal style={!it.image || express || sheet ? { paddingEnd: 28 } : undefined}>{it.name}</ThemedText>
-                    <ThemedText type="caption" themeColor="textSecondary">
-                      {formatBDT(it.price, { dp: 0 })}
-                      {it.allowDecimal && it.unitShort ? ` / ${it.unitShort}` : ''}
-                    </ThemedText>
-                    {out ? <ThemedText type="caption" style={{ color: theme.danger }}>{t(Number(it.stock) < 0 ? 'Below zero' : 'Finished')} · {t('still sells')}</ThemedText> : null}
+                    style={{ minHeight: touch ? 84 : express || sheet ? 56 : 76, padding: photoGrid ? Spacing.two : Spacing.three, gap: 4, justifyContent: 'center' }}>
+                    {photo ? (
+                      <Image
+                        source={photo}
+                        recyclingKey={it.variantId}
+                        contentFit="cover"
+                        cachePolicy="memory-disk"
+                        transition={150}
+                        accessible={false}
+                        onError={() => setBrokenPhotos((seen) => new Set(seen).add(it.variantId))}
+                        style={photoGrid ? { width: '100%', aspectRatio: 1.25, borderRadius: Radius.md, backgroundColor: theme.canvas } : { height: 76, borderRadius: Radius.md, backgroundColor: theme.canvas }}
+                      />
+                    ) : null}
+                    {noPhotoTile ? (
+                      <View style={{ width: '100%', aspectRatio: 1.25, borderRadius: Radius.md, backgroundColor: theme.canvas, alignItems: 'center', justifyContent: 'center' }}>
+                        <Icon name="Package" size={28} color={theme.textMuted} />
+                      </View>
+                    ) : null}
+                    <View style={{ gap: 4 }}>
+                      <ThemedText type="smallMedium" numberOfLines={2} literal style={!photo && !noPhotoTile ? { paddingEnd: 28 } : undefined}>{it.name}</ThemedText>
+                      <ThemedText type="caption" themeColor="textSecondary">
+                        {formatBDT(it.price, { dp: 0 })}
+                        {it.allowDecimal && it.unitShort ? ` / ${it.unitShort}` : ''}
+                      </ThemedText>
+                      {out ? <ThemedText type="caption" style={{ color: theme.danger }}>{t(Number(it.stock) < 0 ? 'Below zero' : 'Finished')} · {t('still sells')}</ThemedText> : null}
+                    </View>
                   </Tap>
                 );
                 return (
