@@ -368,8 +368,9 @@ export default function SellScreen() {
           else seen.fresh = fresh;
         })
         : lookupCode(code, ctx.branchId)));
-      scanFeedback(!!item);
-      if (item && scanned && lastQuantity(cartRef.current, item) !== null) {
+      const alreadyInCart = !!item && scanned && lastQuantity(cartRef.current, item) !== null;
+      scanFeedback(alreadyInCart ? 'again' : !!item); // a product that is already in the cart sounds different from a new one
+      if (item && alreadyInCart) {
         setAgain(item);
       } else if (item) {
         addToOrder(item, false, quantity);
