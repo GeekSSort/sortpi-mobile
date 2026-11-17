@@ -62,3 +62,31 @@ test('a catalogue item sold by serial number carries that into the cart line', (
   assert.equal('trackSerial' in items[1], false);
   assert.equal('trackSerial' in cartItem(items[1]), false);
 });
+
+const shot = (url: string, extra: Partial<NonNullable<CatalogProduct['images']>[number]> = {}) => ({ url, ...extra });
+const withImages = (images: NonNullable<CatalogProduct['images']>): CatalogProduct => ({ ...cheese, images });
+const photoOf = (p: CatalogProduct, sku: string) => toCatalogItems([p]).find((i) => i.sku === sku)?.image;
+
+test('an item has no photo when the product has none, or none that is ready', () => {
+  assert.equal(photoOf(cheese, 'S-1'), undefined);
+  assert.equal(photoOf(withImages([shot('a.jpg', { status: 'PENDING' }), shot('b.jpg', { status: 'FAILED' })]), 'S-1'), undefined);
+  assert.equal(photoOf(withImages([{ url: '', thumbnail_url: '' }]), 'S-1'), undefined);
+});
+
+test('the small thumbnail is used when the server gives one', () => {
+  assert.equal(photoOf(withImages([shot('full.jpg', { thumbnail_url: 'thumb.jpg', is_primary: true })]), 'S-1'), 'thumb.jpg');
+  assert.equal(photoOf(withImages([shot('full.jpg', { is_primary: true })]), 'S-1'), 'full.jpg');
+});
+
+test("a variant's own photo wins over the product's, and the primary one wins among them", () => {
+  const images = [shot('any.jpg'), shot('product-primary.jpg', { is_primary: true }), shot('v1-other.jpg', { variant: 'v1' }), shot('v1-primary.jpg', { variant: 'v1', is_primary: true })];
+  assert.equal(photoOf(withImages(images), 'S-1'), 'v1-primary.jpg');
+  assert.equal(photoOf(withImages(images.slice(0, 3)), 'S-1'), 'v1-other.jpg');
+  // another variant has no photo of its own: it takes the product's primary, then any product photo
+  assert.equal(photoOf(withImages(images), 'S-2'), 'product-primary.jpg');
+  assert.equal(photoOf(withImages([shot('any.jpg'), shot('v1.jpg', { variant: 'v1' })]), 'S-2'), 'any.jpg');
+});
+
+test('a photo that belongs to another variant is not borrowed when the product has none of its own', () => {
+  assert.equal(photoOf(withImages([shot('v1.jpg', { variant: 'v1', is_primary: true })]), 'S-2'), undefined);
+});

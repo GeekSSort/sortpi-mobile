@@ -14,6 +14,8 @@ import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { Field } from '@/components/field';
 import { HeaderAction } from '@/components/header-action';
+import { NotificationBell } from '@/components/notification-bell';
+import { SyncStatus, withSyncStatus } from '@/components/sync-status';
 import { Icon } from '@/components/icons/icon';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
@@ -54,11 +56,11 @@ import { haptics } from '@/lib/haptics';
 import { showToast } from '@/ui/toast';
 import { amountDue } from '@/customers/logic';
 import { salesToday } from '@/home/api';
-import { currentShift, dropHeld, listCounters, heldCarts, holdCart, loadSellContext, lookupBarcode, lookupCode, nextInvoiceNumber, openShift, previewTotal, resumeHeld, sell, type SaleResult } from '@/sell/api';
+import { currentShift, dropHeld, listCounters, heldCarts, holdCart, loadSellContext, lookupBarcodeFast, lookupCode, nextInvoiceNumber, openShift, previewTotal, resumeHeld, sell, type SaleResult } from '@/sell/api';
 import { defaultCounter } from '@/sell/counters';
 import { holdBody, holdReference, mergeHeld, type HeldCart } from '@/sell/held';
 import { HeldSheet } from '@/sell/held-sheet';
-import { addItem, linePriceProblem, lineDiscountProblem, setLineDiscount, setLinePrice, shippingProblem, changeDue, discountProblem, changeQuantity, setQuantity, estimateSubtotal, isEmpty, itemCount, lastQuantity, lineEstimate, lineKey, removeLine, type Cart, type OrderDiscount, type CartLine, type PaymentInput, type ScannedItem } from '@/sell/cart';
+import { addItem, linePriceProblem, lineDiscountProblem, setLineDiscount, setLinePrice, shippingProblem, changeDue, discountProblem, changeQuantity, setQuantity, estimateSubtotal, isEmpty, itemCount, lastQuantity, lineEstimate, lineKey, refreshUnitPrice, removeLine, sameItem, swapScanned, type Cart, type OrderDiscount, type CartLine, type PaymentInput, type ScannedItem } from '@/sell/cart';
 import { SwipeToRemove } from '@/components/swipe-to-remove';
 import { useCameraPermissions } from 'expo-camera';
 import { useUsesBarcodes } from '@/sell/use-barcodes';
@@ -211,7 +213,8 @@ export default function SellScreen() {
   }, [showBar]);
   const seeSales = ['sale.view', 'sale.view_own'].some((p) => me?.permissions?.includes(p));
   const today = useQuery({ queryKey: ['home', 'today'], queryFn: salesToday, enabled: seeSales && mode === 'done', staleTime: 0, retry: false });
-  const ctxQuery = useQuery({ queryKey: ['sell-context', userId, me?.active_branch?.id], queryFn: () => loadSellContext(me!), enabled: !!me });
+  // Where this till sells from (the branch's warehouse and the walk-in customer) takes two to five calls and does not change while the app is open: keep it half an hour.
+  const ctxQuery = useQuery({ queryKey: ['sell-context', userId, me?.active_branch?.id], queryFn: () => loadSellContext(me!), enabled: !!me, staleTime: 30 * 60_000 });
   const shiftQuery = useQuery({ queryKey: ['shift', userId], queryFn: currentShift, enabled: !!me });
   const baseCtx = ctxQuery.data;
   // On opening the till: an unfinished sale comes first, else the cart that was on screen before a lock, a call or a kill.
@@ -347,12 +350,31 @@ export default function SellScreen() {
     looking.current = true;
     setScanNote(null);
     try {
-      const item = await timed('scan_lookup', () => (scanned ? lookupBarcode : lookupCode)(code, ctx.branchId));
+      // A scan is answered from the phone's own copy at once; the server's answer follows. It corrects the price estimate on the cart line, or,
+      // when the barcode now belongs to another item, swaps the line. `seen` holds whichever of the two (item added, server answer) comes first.
+      const seen: { added: ScannedItem | null; fresh: ScannedItem | null } = { added: null, fresh: null };
+      const reconcile = (local: ScannedItem, fresh: ScannedItem) => {
+        if (sameItem(local, fresh)) {
+          setCart((c) => refreshUnitPrice(c, fresh));
+          return;
+        }
+        setCart((c) => swapScanned(c, local, fresh, quantity));
+        showToast({ text: t('That barcode now belongs to {name}. The cart was updated.', { name: fresh.name }) });
+      };
+      const item = await timed('scan_lookup', () => (scanned
+        ? lookupBarcodeFast(code, ctx.branchId, (fresh) => {
+          if (!fresh) return;
+          if (seen.added) reconcile(seen.added, fresh);
+          else seen.fresh = fresh;
+        })
+        : lookupCode(code, ctx.branchId)));
       scanFeedback(!!item);
       if (item && scanned && lastQuantity(cartRef.current, item) !== null) {
         setAgain(item);
       } else if (item) {
         addToOrder(item, false, quantity);
+        seen.added = item;
+        if (seen.fresh) reconcile(item, seen.fresh);
       } else {
         setScanNote({ kind: 'missing', code: code.trim(), scanned });
       }
@@ -911,8 +933,10 @@ export default function SellScreen() {
         {focusExit?.()}
         {splitTill ? <HeaderAction title="POS layout" icon="Sliders" onPress={() => { Keyboard.dismiss(); setLayoutOpen(true); }} /> : null}
         <HeaderAction title="Till tools" onPress={() => { Keyboard.dismiss(); setToolsOpen(true); }} />
+        <NotificationBell />
+        <SyncStatus />
       </View>
-    ) : focusExit }} />
+    ) : withSyncStatus(focusExit) }} />
   );
   const itemPicker = (webBar: boolean) => (
     <ItemPicker

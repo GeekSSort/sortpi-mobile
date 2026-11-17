@@ -46,6 +46,29 @@ export function addItem(cart: Cart, item: ScannedItem): Cart {
   return [...cart, { ...item, key, quantity: '1' }];
 }
 
+/**
+ * The server's price for an item that was first shown from the phone's own copy. Only the shelf-price estimate moves: a price agreed for the line
+ * (`priceSet`) and the quantity stay. The same cart comes back when nothing differs, so nothing re-renders.
+ */
+export function refreshUnitPrice(cart: Cart, item: Pick<ScannedItem, 'variantId' | 'unitId' | 'unitPrice'>): Cart {
+  const key = lineKey(item.variantId, item.unitId);
+  if (!cart.some((l) => l.key === key && l.unitPrice !== item.unitPrice)) return cart;
+  return cart.map((l) => (l.key === key ? { ...l, unitPrice: item.unitPrice } : l));
+}
+
+/** The same thing to sell: the same variant, in the same selling unit. */
+export const sameItem = (a: Pick<ScannedItem, 'variantId' | 'unitId'>, b: Pick<ScannedItem, 'variantId' | 'unitId'>): boolean => lineKey(a.variantId, a.unitId) === lineKey(b.variantId, b.unitId);
+
+/**
+ * The phone's copy said a barcode was `wrong`, the server says it is `right` (the code was given to another item since the last download).
+ * The scan's `quantity` moves from the one to the other; a line left at zero goes away, and what else the cashier already rang up stays.
+ */
+export function swapScanned(cart: Cart, wrong: Pick<ScannedItem, 'variantId' | 'unitId'>, right: ScannedItem, quantity = 1): Cart {
+  const without = changeQuantity(cart, lineKey(wrong.variantId, wrong.unitId), -quantity);
+  const added = addItem(without, right);
+  return quantity > 1 ? changeQuantity(added, lineKey(right.variantId, right.unitId), quantity - 1) : added;
+}
+
 /** How many of this item are already in the cart (a decimal string), or null when it is not there yet. */
 export function lastQuantity(cart: Cart, item: Pick<ScannedItem, 'variantId' | 'unitId'>): string | null {
   const key = lineKey(item.variantId, item.unitId);
