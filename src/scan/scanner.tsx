@@ -27,14 +27,24 @@ export function Scanner({ onCode, paused = false, height = 220, feedbackHandled 
   const [permission, requestPermission] = useCameraPermissions();
   const [torch, setTorch] = useState(false);
   const [facing, setFacing] = useState<'back' | 'front'>('back');
+  const [switching, setSwitching] = useState(false);
+  const switchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (switchTimer.current) clearTimeout(switchTimer.current); }, []);
   useEffect(() => {
     void SecureStore.getItemAsync(FACING_KEY).then((v) => v === 'front' && setFacing('front')).catch(() => undefined);
   }, []);
   function flip() {
     const next = facing === 'back' ? 'front' : 'back';
-    setFacing(next);
     setTorch(false); // the front camera has no torch
-    setMountKey((k) => k + 1);
+    // Let go of the camera first and start the other one a moment later: changing the side and restarting in the same
+    // instant makes the new camera start while the old one is still closing, and the preview stays black.
+    setSwitching(true);
+    setFacing(next);
+    if (switchTimer.current) clearTimeout(switchTimer.current);
+    switchTimer.current = setTimeout(() => {
+      setMountKey((k) => k + 1);
+      setSwitching(false);
+    }, 350);
     void SecureStore.setItemAsync(FACING_KEY, next).catch(() => undefined);
   }
   const last = useRef<{ code: string; at: number }>({ code: '', at: 0 });
@@ -81,7 +91,7 @@ export function Scanner({ onCode, paused = false, height = 220, feedbackHandled 
 
   return (
     <View style={{ height, borderRadius: Radius.lg, overflow: 'hidden', backgroundColor: '#000' }}>
-      {focused ? <CameraView key={mountKey} style={{ flex: 1 }} facing={facing} enableTorch={torch && facing === 'back'} barcodeScannerSettings={{ barcodeTypes: TYPES }} onBarcodeScanned={paused ? undefined : handle} /> : null}
+      {focused && !switching ? <CameraView key={mountKey} style={{ flex: 1 }} facing={facing} enableTorch={torch && facing === 'back'} barcodeScannerSettings={{ barcodeTypes: TYPES }} onBarcodeScanned={paused ? undefined : handle} /> : null}
       <View pointerEvents="none" style={{ position: 'absolute', inset: 0, alignItems: 'center', justifyContent: 'center' }}>
         <View style={{ width: '70%', height: '55%', borderRadius: Radius.md, borderWidth: 2, borderColor: 'rgba(255,255,255,0.85)' }} />
       </View>
