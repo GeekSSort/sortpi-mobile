@@ -48,10 +48,11 @@ import { clearDraft, clearPending, loadDraft, loadPending, saveDraft, savePendin
 import { mayHaveCommitted, type PendingSale } from '@/sell/journal';
 import { printErrorText, printReceipt } from '@/sell/print';
 import { CashSheet } from '@/sell/cash-sheet';
-import { listSales } from '@/sales/api';
+import { findSaleByInvoice, listSales } from '@/sales/api';
 import { androidPosDevice } from '@/sell/device-printer';
 import { sunmiHandheldScanHint, useSunmiCustomerDisplay, useSunmiScanner } from '@/sell/use-sunmi-peripherals';
 import { receiptText } from '@/sell/receipt';
+import { cue } from '@/lib/cues';
 import { haptics } from '@/lib/haptics';
 import { showToast } from '@/ui/toast';
 import { amountDue } from '@/customers/logic';
@@ -303,7 +304,7 @@ export default function SellScreen() {
     setLastItemKey(key);
     // "3*milk" rings up three: one is added as usual, then the rest.
     setCart((c) => { const added = addItem(c, item); return quantity > 1 ? changeQuantity(added, key, quantity - 1) : added; });
-    if (tap) haptics.tap();
+    if (tap) cue('added');
   }
 
   async function selectTabletLayout(value: TabletLayout | null) {
@@ -368,15 +369,19 @@ export default function SellScreen() {
           else seen.fresh = fresh;
         })
         : lookupCode(code, ctx.branchId)));
-      scanFeedback(!!item);
-      if (item && scanned && lastQuantity(cartRef.current, item) !== null) {
+      const alreadyInCart = !!item && scanned && lastQuantity(cartRef.current, item) !== null;
+      scanFeedback(alreadyInCart ? 'again' : !!item); // a product that is already in the cart sounds different from a new one
+      if (item && alreadyInCart) {
         setAgain(item);
       } else if (item) {
         addToOrder(item, false, quantity);
         seen.added = item;
         if (seen.fresh) reconcile(item, seen.fresh);
       } else {
-        setScanNote({ kind: 'missing', code: code.trim(), scanned });
+        // A receipt's barcode is its invoice number: open that invoice instead of offering to add it as a product.
+        const invoice = await findSaleByInvoice(code).catch(() => null);
+        if (invoice) router.push({ pathname: '/sale/[id]', params: { id: invoice.id } });
+        else setScanNote({ kind: 'missing', code: code.trim(), scanned });
       }
     } catch (e) {
       scanFeedback(false);

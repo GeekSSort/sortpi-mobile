@@ -23,6 +23,7 @@ import { useT } from '@/i18n/prefs';
 import { haptics } from '@/lib/haptics';
 import { formatBDT } from '@/lib/money';
 import { lookupCode } from '@/sell/api';
+import { OutboxNotice } from '@/outbox/notice';
 import { setPendingItem } from '@/sell/pending';
 import { showToast } from '@/ui/toast';
 import { Scanner } from '@/scan/scanner';
@@ -102,6 +103,7 @@ export default function StockScreen() {
   const header = (
     <View style={{ gap: Spacing.three, padding: Spacing.three }}>
       <NegativeStockNotice onShow={() => setFilter('negative')} />
+      <OutboxNotice />
       {wideLandscape ? searchControls : null}
       <View style={{ flexDirection: wideLandscape ? 'column' : 'row', flexWrap: wideLandscape ? 'nowrap' : 'wrap', gap: Spacing.two }}>
         <Tile compact={wideLandscape} half={!wideLandscape} label="Items" icon="Package" value={s ? String(s.lines) : '…'} selected={filter === 'all'} onPress={() => setFilter('all')} />

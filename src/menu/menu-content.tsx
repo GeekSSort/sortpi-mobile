@@ -145,7 +145,7 @@ export function ProfileSettings({ onDone }: { onDone?: () => void } = {}) {
             </>
           ) : null}
           <Choice title="Scanner mode" value={scannerMode} options={[{ key: 'device', label: t('Device default') }, { key: 'auto', label: t('Automatic') }, { key: 'manual', label: t('Manual') }]} onPick={(value) => setTillDevice({ scannerMode: value })} />
-          <Choice title="Scan feedback" value={feedback} options={[{ key: 'sound', label: t('Sound') }, { key: 'vibration', label: t('Vibration') }, { key: 'silent', label: t('Silent') }]} onPick={(value) => setTillDevice({ feedback: value })} />
+          <Choice title="Sound and vibration" value={feedback} options={[{ key: 'sound', label: t('Sound') }, { key: 'vibration', label: t('Vibration') }, { key: 'silent', label: t('Silent') }]} onPick={(value) => setTillDevice({ feedback: value })} />
           {tablet && width > height ? <Row icon="Dashboard" title={focused ? 'Exit focus mode' : 'Focus mode'} sub="Hide the bottom tabs while selling." onPress={() => {
             setTillFocus(!focused);
             onDone?.();

@@ -1,0 +1,110 @@
+diff --git a/node_modules/expo-camera/android/src/main/java/expo/modules/camera/ExpoCameraView.kt b/node_modules/expo-camera/android/src/main/java/expo/modules/camera/ExpoCameraView.kt
+index a676d64..3a301e6 100644
+--- a/node_modules/expo-camera/android/src/main/java/expo/modules/camera/ExpoCameraView.kt
++++ b/node_modules/expo-camera/android/src/main/java/expo/modules/camera/ExpoCameraView.kt
+@@ -13,6 +13,8 @@ import android.os.Bundle
+ import android.os.SystemClock
+ import android.util.Log
+ import android.util.Size
++import android.view.GestureDetector
++import android.view.MotionEvent
+ import android.view.OrientationEventListener
+ import android.view.Surface
+ import android.view.View
+@@ -27,6 +29,8 @@ import androidx.camera.core.CameraSelector
+ import androidx.camera.core.CameraState
+ import androidx.camera.core.DisplayOrientedMeteringPointFactory
+ import androidx.camera.core.FocusMeteringAction
++import com.google.mlkit.vision.barcode.ZoomSuggestionOptions
++import java.util.concurrent.TimeUnit
+ import androidx.camera.core.ImageAnalysis
+ import androidx.camera.core.ImageCapture
+ import androidx.camera.core.ImageCaptureException
+@@ -136,6 +140,25 @@ class ExpoCameraView(
+ 
+   private var previewView = PreviewView(context).apply {
+     elevation = 0f
++    // SortPi patch: tap to focus (and meter exposure) where the person points; after a few seconds the camera returns to continuous focus.
++    val taps = GestureDetector(
++      context,
++      object : GestureDetector.SimpleOnGestureListener() {
++        override fun onDown(e: MotionEvent) = true
++
++        override fun onSingleTapUp(e: MotionEvent): Boolean {
++          val active = camera ?: return false
++          val point = meteringPointFactory.createPoint(e.x, e.y)
++          active.cameraControl.startFocusAndMetering(
++            FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AF or FocusMeteringAction.FLAG_AE)
++              .setAutoCancelDuration(3, TimeUnit.SECONDS)
++              .build()
++          )
++          return true
++        }
++      }
++    )
++    setOnTouchListener { _, event -> taps.onTouchEvent(event) }
+   }
+   private val scope = CoroutineScope(
+     Dispatchers.Main + SupervisorJob() + CoroutineExceptionHandler { _, throwable ->
+@@ -573,7 +596,7 @@ class ExpoCameraView(
+       .also { analyzer ->
+         if (shouldScanBarcodes && CameraUtils.isMLKitBarcodeScannerAvailable()) {
+           try {
+-            barcodeAnalyzer = BarcodeAnalyzer(barcodeFormats) {
++            barcodeAnalyzer = BarcodeAnalyzer(barcodeFormats, zoomSuggestion()) {
+               onBarcodeScanned(it)
+             }.also {
+               analyzer.setAnalyzer(ContextCompat.getMainExecutor(context), it)
+@@ -584,6 +607,20 @@ class ExpoCameraView(
+         }
+       }
+ 
++  // SortPi patch: ML Kit's auto-zoom. It suggests a zoom ratio for a code it sees but cannot read; apply it within what this camera supports.
++  private fun zoomSuggestion(): ZoomSuggestionOptions =
++    ZoomSuggestionOptions.Builder(
++      ZoomSuggestionOptions.ZoomCallback { ratio ->
++        val active = camera ?: return@ZoomCallback false
++        val range = active.cameraInfo.zoomState.value
++        val target = ratio.coerceIn(range?.minZoomRatio ?: 1f, range?.maxZoomRatio ?: 1f)
++        active.cameraControl.setZoomRatio(target)
++        true
++      }
++    )
++      .setMaxSupportedZoomRatio(5f)
++      .build()
++
+   private fun releaseBarcodeAnalyzer() {
+     imageAnalysisUseCase?.clearAnalyzer()
+     barcodeAnalyzer?.close()
+diff --git a/node_modules/expo-camera/android/src/main/java/expo/modules/camera/analyzers/BarcodeAnalyzer.kt b/node_modules/expo-camera/android/src/main/java/expo/modules/camera/analyzers/BarcodeAnalyzer.kt
+index bbe51c0..0cc37c9 100644
+--- a/node_modules/expo-camera/android/src/main/java/expo/modules/camera/analyzers/BarcodeAnalyzer.kt
++++ b/node_modules/expo-camera/android/src/main/java/expo/modules/camera/analyzers/BarcodeAnalyzer.kt
+@@ -8,6 +8,7 @@ import androidx.camera.core.ImageProxy
+ import com.google.mlkit.vision.barcode.BarcodeScanner
+ import com.google.mlkit.vision.barcode.BarcodeScannerOptions
+ import com.google.mlkit.vision.barcode.BarcodeScanning
++import com.google.mlkit.vision.barcode.ZoomSuggestionOptions
+ import com.google.mlkit.vision.common.InputImage
+ import expo.modules.camera.records.BarcodeType
+ import expo.modules.camera.utils.BarCodeScannerResult
+@@ -18,10 +19,18 @@ class BarcodeAnalyzer(
+   private val barcodeScanner: BarcodeScanner,
+   val onComplete: (BarCodeScannerResult) -> Unit
+ ) : ImageAnalysis.Analyzer, Closeable {
+-  constructor(formats: List<BarcodeType>, onComplete: (BarCodeScannerResult) -> Unit) : this(
++  constructor(formats: List<BarcodeType>, onComplete: (BarCodeScannerResult) -> Unit) : this(formats, null, onComplete)
++
++  // SortPi patch: with `zoomSuggestion`, ML Kit asks the camera to zoom in on a code that is too small or far to read.
++  constructor(
++    formats: List<BarcodeType>,
++    zoomSuggestion: ZoomSuggestionOptions?,
++    onComplete: (BarCodeScannerResult) -> Unit
++  ) : this(
+     BarcodeScanning.getClient(
+       BarcodeScannerOptions.Builder()
+         .setBarcodeFormats(barcodeFormats(formats))
++        .apply { zoomSuggestion?.let { setZoomSuggestionOptions(it) } }
+         .build()
+     ),
+     onComplete

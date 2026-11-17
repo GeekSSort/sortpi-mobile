@@ -6,7 +6,7 @@ type ScanFeedback = 'sound' | 'vibration' | 'silent';
 type TillDevice = { scannerMode: ScannerMode; feedback: ScanFeedback };
 
 const KEY = 'sortpi.till.device';
-let state: TillDevice = { scannerMode: 'device', feedback: 'vibration' };
+let state: TillDevice = { scannerMode: 'device', feedback: 'sound' };
 const listeners = new Set<() => void>();
 let load: Promise<void> | undefined;
 let write = Promise.resolve();
@@ -17,7 +17,7 @@ function loadSettings() {
     const saved = JSON.parse(raw) as Partial<TillDevice>;
     state = {
       scannerMode: saved.scannerMode === 'auto' || saved.scannerMode === 'manual' ? saved.scannerMode : 'device',
-      feedback: saved.feedback === 'sound' || saved.feedback === 'silent' ? saved.feedback : 'vibration',
+      feedback: saved.feedback === 'vibration' || saved.feedback === 'silent' ? saved.feedback : 'sound',
     };
     listeners.forEach((notify) => notify());
   }).catch(() => undefined);
@@ -37,6 +37,12 @@ export function setTillDevice(update: Partial<TillDevice>) {
     listeners.forEach((notify) => notify());
     write = write.then(() => SecureStore.setItemAsync(KEY, value)).catch(() => undefined);
   });
+}
+
+/** The sound / vibration / silent choice, for code that is not a component (the cues). Also makes sure the saved choice is being read. */
+export function getFeedback(): ScanFeedback {
+  void loadSettings();
+  return state.feedback;
 }
 
 export const useTillDevice = () => useSyncExternalStore(subscribe, () => state);

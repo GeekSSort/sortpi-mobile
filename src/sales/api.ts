@@ -1,6 +1,7 @@
 import { api } from '@/api/session';
 import { soldInRange, type SalesToday } from '@/home/api';
 
+import { looksLikeInvoiceNumber, pickInvoice } from './invoice-code';
 import { rangeDates, type SalesRange } from './logic';
 import type { previewBody, returnBody, ReturnPreview } from './returns';
 
@@ -53,6 +54,16 @@ export async function listSales(o: { search: string; range: SalesRange; page: nu
 }
 
 export const getSale = (id: string) => api.get<Sale>(`/sales/${id}/`);
+
+/**
+ * The sale whose invoice number is exactly `code`, or null. A receipt's barcode is its invoice number, so a scan screen asks this before it treats an unknown
+ * barcode as a new product. Asks the shop only when the text looks like an invoice number. Needs `sale.view` (or `sale.view_own`).
+ */
+export async function findSaleByInvoice(code: string): Promise<Sale | null> {
+  if (!looksLikeInvoiceNumber(code)) return null;
+  const env = await api.envelope<Sale[]>('GET', '/sales/', { query: { limit: 5, page: 1, search: code.trim() } });
+  return pickInvoice(env.data ?? [], code);
+}
 
 /** Cancel a sale (needs `sale.cancel`). The shop puts the stock and the customer's balance back with reversing entries and keeps the sale on record; a second cancel is refused. */
 export const cancelSale = (id: string) => api.post<Sale>(`/sales/${id}/cancel/`);
