@@ -14,6 +14,8 @@ import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { Field } from '@/components/field';
 import { HeaderAction } from '@/components/header-action';
+import { NotificationBell } from '@/components/notification-bell';
+import { SyncStatus, withSyncStatus } from '@/components/sync-status';
 import { Icon } from '@/components/icons/icon';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
@@ -911,8 +913,10 @@ export default function SellScreen() {
         {focusExit?.()}
         {splitTill ? <HeaderAction title="POS layout" icon="Sliders" onPress={() => { Keyboard.dismiss(); setLayoutOpen(true); }} /> : null}
         <HeaderAction title="Till tools" onPress={() => { Keyboard.dismiss(); setToolsOpen(true); }} />
+        <NotificationBell />
+        <SyncStatus />
       </View>
-    ) : focusExit }} />
+    ) : withSyncStatus(focusExit) }} />
   );
   const itemPicker = (webBar: boolean) => (
     <ItemPicker

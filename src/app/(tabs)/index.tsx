@@ -9,6 +9,8 @@ import { Button } from '@/components/button';
 import { Icon } from '@/components/icons/icon';
 import { Screen } from '@/components/screen';
 import { SetupChecklist } from '@/components/setup-checklist';
+import { NotificationBell } from '@/components/notification-bell';
+import { SyncStatus } from '@/components/sync-status';
 import { SkeletonRows } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { Tap } from '@/components/tap';
@@ -86,6 +88,8 @@ function CompactHome({ sidebarWidth }: { sidebarWidth: number }) {
             </ThemedText>
           )}
         </View>
+        <NotificationBell />
+        <SyncStatus />
       </View>
 
       {canSell ? <Button title="Start selling" size="lg" onPress={() => router.push('/sell')} trailing={<Icon name="ArrowRight" size={20} color="#fff" />} /> : null}
