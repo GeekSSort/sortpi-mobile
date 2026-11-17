@@ -30,6 +30,7 @@ import { setPendingItem } from '@/sell/pending';
 import { formatBDT } from '@/lib/money';
 import { useSession } from '@/auth/session-provider';
 import { Scanner } from '@/scan/scanner';
+import { findSaleByInvoice } from '@/sales/api';
 import { useUsesBarcodes } from '@/sell/use-barcodes';
 import { showToast } from '@/ui/toast';
 import { track } from '@/lib/analytics';
@@ -101,12 +102,32 @@ export default function AddProductScreen() {
     if (piece) setUnit(piece); // chosen while rendering, once the list is here
   }
 
+  /**
+   * A receipt's barcode is its invoice number, so a scan (or a typed code) can be an invoice, never a product. Says so, naming the invoice, and returns true.
+   * Asks the shop only when the text looks like an invoice number; if the shop cannot answer, the code is let through.
+   */
+  async function refusedAsInvoice(code: string): Promise<boolean> {
+    const invoice = await findSaleByInvoice(code).catch(() => null);
+    if (!invoice) return false;
+    setFailure(t('That code is the number of invoice {n}, not a product code.', { n: invoice.invoice_number }));
+    return true;
+  }
+
+  /** A code read by the camera: an invoice's barcode is refused, anything else becomes the product's code. */
+  async function takeScannedCode(c: string) {
+    if (await refusedAsInvoice(c)) return;
+    setFailure(null);
+    setBarcode(c);
+    setScanning(false);
+  }
+
   async function save() {
     const form = { barcode, name, categoryId: category?.id ?? '', unitId: unit?.id ?? '', price, sku, costPrice: canSeeCost ? costPrice : '', wholesalePrice, mrp, reorderLevel, brandId: brand?.id, genericName: hasGeneric ? genericName : '', openingStock: canCount && !sizesOn ? openingStock : '', variants: sizesOn ? sizes.map((r) => ({ ...r, cost: canSeeCost ? r.cost : '', opening: canCount ? r.opening : '' })) : [] };
     const found = validateNewProduct(form);
     setErrors(found);
     setFailure(null);
     if (Object.keys(found).length) return;
+    if (await refusedAsInvoice(barcode)) return;
     setBusy(true);
     // The usual way: write it down on this phone and go back at once; the sender tells the shop in the background (see src/outbox).
     // The one exception is an item added from Sell for a scanned code: it goes straight into the cart, which needs the shop's own record now.
@@ -192,7 +213,7 @@ export default function AddProductScreen() {
               </View>
               {editingCode ? (
                 <View style={{ gap: Spacing.two }}>
-                  {scanning ? <Scanner height={180} onCode={(c) => { setBarcode(c); setScanning(false); }} /> : null}
+                  {scanning ? <Scanner height={180} onCode={(c) => void takeScannedCode(c)} /> : null}
                   <Field label="Type or paste the code" value={barcode} onChangeText={setBarcode} autoCapitalize="none" autoCorrect={false} keyboardType="number-pad" error={errors.barcode} hint="Leave it empty to add the code later." />
                   <View style={{ flexDirection: 'row', gap: Spacing.two }}>
                     <Button title={scanning ? 'Stop camera' : 'Scan with camera'} variant="secondary" onPress={() => setScanning((s) => !s)} style={{ flex: 1 }} />

@@ -1576,6 +1576,7 @@ export const bn: Record<string, string> = {
   'No connection. Check your internet.': 'ইন্টারনেট নেই। ইন্টারনেট দেখুন।',
   'Could not load the stock.': 'স্টক আনা যায়নি।',
   'Saved: {name}': 'সেভ হয়েছে: {name}',
+  'That code is the number of invoice {n}, not a product code.': 'এই কোডটি ইনভয়েস {n}-এর নম্বর, পণ্যের কোড নয়।',
   'Saved on this phone: {name}. Sending it to the shop.': 'ফোনে সেভ হয়েছে: {name}। দোকানে পাঠানো হচ্ছে।',
   'Sent to the shop: {name}': 'দোকানে পাঠানো হয়েছে: {name}',
   'Could not save on this phone. Try again.': 'ফোনে সেভ করা যায়নি। আবার চেষ্টা করুন।',

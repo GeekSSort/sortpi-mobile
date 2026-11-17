@@ -48,7 +48,7 @@ import { clearDraft, clearPending, loadDraft, loadPending, saveDraft, savePendin
 import { mayHaveCommitted, type PendingSale } from '@/sell/journal';
 import { printErrorText, printReceipt } from '@/sell/print';
 import { CashSheet } from '@/sell/cash-sheet';
-import { listSales } from '@/sales/api';
+import { findSaleByInvoice, listSales } from '@/sales/api';
 import { androidPosDevice } from '@/sell/device-printer';
 import { sunmiHandheldScanHint, useSunmiCustomerDisplay, useSunmiScanner } from '@/sell/use-sunmi-peripherals';
 import { receiptText } from '@/sell/receipt';
@@ -378,7 +378,10 @@ export default function SellScreen() {
         seen.added = item;
         if (seen.fresh) reconcile(item, seen.fresh);
       } else {
-        setScanNote({ kind: 'missing', code: code.trim(), scanned });
+        // A receipt's barcode is its invoice number: open that invoice instead of offering to add it as a product.
+        const invoice = await findSaleByInvoice(code).catch(() => null);
+        if (invoice) router.push({ pathname: '/sale/[id]', params: { id: invoice.id } });
+        else setScanNote({ kind: 'missing', code: code.trim(), scanned });
       }
     } catch (e) {
       scanFeedback(false);
