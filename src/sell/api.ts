@@ -7,6 +7,7 @@ import { buildPreviewRequest, buildSellRequest } from './cart';
 import { fromCounterRows, type Counter } from './counters';
 import { fromRow, type HeldCart, type holdBody } from './held';
 import { isOffline, localLookup } from '@/local/read';
+import { localFirst } from './local-first';
 import { toScannedItem, type LookupResponse } from './lookup-map';
 import { isWalkIn, walkInBody, WALK_IN_CODE, WALK_IN_NAME } from './walk-in';
 
@@ -35,6 +36,20 @@ async function lookup(by: 'barcode' | 'code', code: string, branchId: string): P
   }
 }
 export const lookupBarcode = (code: string, branchId: string) => lookup('barcode', code, branchId);
+/**
+ * A camera or scanner read on the Sell screen: the phone's own copy answers at once, and the server's answer follows through `onServer`
+ * (an item to correct the price with, or `null` when the server has no such item any more). With no copy, or a code the copy does not know,
+ * it asks the server and waits, like `lookupBarcode`.
+ */
+export const lookupBarcodeFast = (code: string, branchId: string, onServer?: (item: ScannedItem | null) => void) =>
+  localFirst<ScannedItem>(
+    async () => {
+      const local = await localLookup(code);
+      return local ? toScannedItem(local) : null;
+    },
+    () => lookup('barcode', code, branchId),
+    onServer,
+  );
 export const lookupCode = (code: string, branchId: string) => lookup('code', code, branchId);
 
 const isForbidden = (e: unknown) => e instanceof ApiError && e.status === 403;
