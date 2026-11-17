@@ -18,6 +18,8 @@ import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { createProduct, listCategories, listUnits, postOpeningStock, uploadProductImage, type Photo } from '@/catalog/api';
 import { newIdempotencyKey } from '@/api/idempotency';
+import { outboxAccount } from '@/outbox/outbox';
+import { queueProduct } from '@/outbox/runner';
 import { listBrands } from '@/products/api';
 import { findWarehouseId } from '@/sell/api';
 import { getLastChoice, setLastChoice } from '@/catalog/last-choice';
@@ -42,7 +44,7 @@ export default function AddProductScreen() {
   const router = useRouter();
   const theme = useTheme();
   const t = useT();
-  const { me } = useSession();
+  const { me, workspaceUrl } = useSession();
   const qc = useQueryClient();
   const { code, from } = useLocalSearchParams<{ code?: string; from?: string }>();
   const [barcode, setBarcode] = useState(code ?? '');
@@ -102,6 +104,21 @@ export default function AddProductScreen() {
     setFailure(null);
     if (Object.keys(found).length) return;
     setBusy(true);
+    // The usual way: write it down on this phone and go back at once; the sender tells the shop in the background (see src/outbox).
+    // The one exception is an item added from Sell for a scanned code: it goes straight into the cart, which needs the shop's own record now.
+    if (!(from === 'sell' && barcode.trim()) && me && workspaceUrl) {
+      try {
+        await queueProduct(outboxAccount(workspaceUrl, me.id), { form, branchId: me.active_branch?.id ?? '', photo, name: name.trim() });
+        setLastChoice({ category, unit });
+        track('item_added', { source: from === 'sell' ? 'sell' : 'stock' });
+        showToast({ text: t('Saved on this phone: {name}. Sending it to the shop.', { name: name.trim() }) });
+        router.back();
+      } catch {
+        setFailure(t('Could not save on this phone. Try again.'));
+        setBusy(false);
+      }
+      return;
+    }
     try {
       const made = await createProduct(buildProductRequest(form));
       // The item is saved. Stock and the photo are extras: if one fails the item stays and the person is told what to do.
