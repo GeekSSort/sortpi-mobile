@@ -56,11 +56,11 @@ import { haptics } from '@/lib/haptics';
 import { showToast } from '@/ui/toast';
 import { amountDue } from '@/customers/logic';
 import { salesToday } from '@/home/api';
-import { currentShift, dropHeld, listCounters, heldCarts, holdCart, loadSellContext, lookupBarcode, lookupCode, nextInvoiceNumber, openShift, previewTotal, resumeHeld, sell, type SaleResult } from '@/sell/api';
+import { currentShift, dropHeld, listCounters, heldCarts, holdCart, loadSellContext, lookupBarcodeFast, lookupCode, nextInvoiceNumber, openShift, previewTotal, resumeHeld, sell, type SaleResult } from '@/sell/api';
 import { defaultCounter } from '@/sell/counters';
 import { holdBody, holdReference, mergeHeld, type HeldCart } from '@/sell/held';
 import { HeldSheet } from '@/sell/held-sheet';
-import { addItem, linePriceProblem, lineDiscountProblem, setLineDiscount, setLinePrice, shippingProblem, changeDue, discountProblem, changeQuantity, setQuantity, estimateSubtotal, isEmpty, itemCount, lastQuantity, lineEstimate, lineKey, removeLine, type Cart, type OrderDiscount, type CartLine, type PaymentInput, type ScannedItem } from '@/sell/cart';
+import { addItem, linePriceProblem, lineDiscountProblem, setLineDiscount, setLinePrice, shippingProblem, changeDue, discountProblem, changeQuantity, setQuantity, estimateSubtotal, isEmpty, itemCount, lastQuantity, lineEstimate, lineKey, refreshUnitPrice, removeLine, sameItem, swapScanned, type Cart, type OrderDiscount, type CartLine, type PaymentInput, type ScannedItem } from '@/sell/cart';
 import { SwipeToRemove } from '@/components/swipe-to-remove';
 import { useCameraPermissions } from 'expo-camera';
 import { useUsesBarcodes } from '@/sell/use-barcodes';
@@ -350,12 +350,31 @@ export default function SellScreen() {
     looking.current = true;
     setScanNote(null);
     try {
-      const item = await timed('scan_lookup', () => (scanned ? lookupBarcode : lookupCode)(code, ctx.branchId));
+      // A scan is answered from the phone's own copy at once; the server's answer follows. It corrects the price estimate on the cart line, or,
+      // when the barcode now belongs to another item, swaps the line. `seen` holds whichever of the two (item added, server answer) comes first.
+      const seen: { added: ScannedItem | null; fresh: ScannedItem | null } = { added: null, fresh: null };
+      const reconcile = (local: ScannedItem, fresh: ScannedItem) => {
+        if (sameItem(local, fresh)) {
+          setCart((c) => refreshUnitPrice(c, fresh));
+          return;
+        }
+        setCart((c) => swapScanned(c, local, fresh, quantity));
+        showToast({ text: t('That barcode now belongs to {name}. The cart was updated.', { name: fresh.name }) });
+      };
+      const item = await timed('scan_lookup', () => (scanned
+        ? lookupBarcodeFast(code, ctx.branchId, (fresh) => {
+          if (!fresh) return;
+          if (seen.added) reconcile(seen.added, fresh);
+          else seen.fresh = fresh;
+        })
+        : lookupCode(code, ctx.branchId)));
       scanFeedback(!!item);
       if (item && scanned && lastQuantity(cartRef.current, item) !== null) {
         setAgain(item);
       } else if (item) {
         addToOrder(item, false, quantity);
+        seen.added = item;
+        if (seen.fresh) reconcile(item, seen.fresh);
       } else {
         setScanNote({ kind: 'missing', code: code.trim(), scanned });
       }

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { addItem, buildPreviewRequest, buildSellRequest, changeDue, discountFields, discountProblem, shippingFields, shippingProblem, lineDiscountProblem, lineEstimate, linePriceProblem, setLineDiscount, setLinePrice, changeQuantity, estimateSubtotal, itemCount, lastQuantity, qtyText, setQuantity, type Cart, type ScannedItem } from './cart.ts';
+import { addItem, refreshUnitPrice, sameItem, swapScanned, buildPreviewRequest, buildSellRequest, changeDue, discountFields, discountProblem, shippingFields, shippingProblem, lineDiscountProblem, lineEstimate, linePriceProblem, setLineDiscount, setLinePrice, changeQuantity, estimateSubtotal, itemCount, lastQuantity, qtyText, setQuantity, type Cart, type ScannedItem } from './cart.ts';
 
 const tea: ScannedItem = { variantId: 'v-tea', unitId: null, name: 'Igloo Family Pack Tea 2L', sku: 'SKU-0000000', unitLabel: null, unitPrice: '306.8100' };
 const carton: ScannedItem = { ...tea, unitId: 'u-carton', unitLabel: 'Carton', unitPrice: '3681.7200' };
@@ -129,4 +129,42 @@ test('shipping goes to the server as an extra charge, and only when it is a real
   const ctx = { customerId: 'c', warehouseId: 'w', branchId: 'b', shipping: '60' };
   assert.equal(buildSellRequest(ctx, [], []).extra_charge_amount, '60.00');
   assert.equal('extra_charge_amount' in buildPreviewRequest(ctx, []), false);
+});
+
+test('the server price corrects the estimate on the line, and nothing else', () => {
+  const cart = addItem(addItem([], tea), tea); // two teas
+  const fresh = refreshUnitPrice(cart, { variantId: 'v-tea', unitId: null, unitPrice: '310.0000' });
+  assert.equal(fresh[0].unitPrice, '310.0000');
+  assert.equal(fresh[0].quantity, '2');
+  const agreed = refreshUnitPrice([{ ...cart[0], priceSet: '300' }], { variantId: 'v-tea', unitId: null, unitPrice: '310.0000' });
+  assert.equal(agreed[0].priceSet, '300'); // an agreed price stays
+});
+
+test('a server price that matches, or an item not in the cart, returns the same cart', () => {
+  const cart = addItem([], tea);
+  assert.equal(refreshUnitPrice(cart, { variantId: 'v-tea', unitId: null, unitPrice: tea.unitPrice }), cart);
+  assert.equal(refreshUnitPrice(cart, { variantId: 'v-other', unitId: null, unitPrice: '1' }), cart);
+  assert.equal(refreshUnitPrice(cart, { variantId: 'v-tea', unitId: 'u-carton', unitPrice: '5' }), cart); // the carton is a different line
+});
+
+test('a barcode that now belongs to another item moves the scan to that item', () => {
+  const coffee: ScannedItem = { variantId: 'v-coffee', unitId: null, name: 'Fresh Coffee', sku: 'SKU-C', unitLabel: null, unitPrice: '10.0000' };
+  const dearerTea: ScannedItem = { ...tea, unitPrice: '1' };
+  assert.equal(sameItem(tea, dearerTea), true); // the price does not make it another item
+  assert.equal(sameItem(tea, carton), false); // the carton is another thing to sell
+  assert.equal(sameItem(tea, coffee), false);
+  // the phone thought tea; the server says coffee. The scan was the only tea, so the tea line goes.
+  const only = swapScanned(addItem([], tea), tea, coffee);
+  assert.deepEqual(only.map((l) => [l.key, l.quantity]), [['v-coffee|', '1']]);
+  // tea already rung up twice before this scan made three: two stay.
+  const three = addItem(addItem(addItem([], tea), tea), tea);
+  const swapped = swapScanned(three, tea, coffee);
+  assert.deepEqual(swapped.map((l) => [l.key, l.quantity]), [['v-tea|', '2'], ['v-coffee|', '1']]);
+});
+
+test('a counted scan (3*code) moves all three, and joins a line already there', () => {
+  const coffee: ScannedItem = { variantId: 'v-coffee', unitId: null, name: 'Fresh Coffee', sku: 'SKU-C', unitLabel: null, unitPrice: '10.0000' };
+  const cart = addItem(addItem(addItem(addItem([], coffee), tea), tea), tea); // coffee x1, tea x3 (the scan)
+  const swapped = swapScanned(cart, tea, coffee, 3);
+  assert.deepEqual(swapped.map((l) => [l.key, l.quantity]), [['v-coffee|', '4']]);
 });
